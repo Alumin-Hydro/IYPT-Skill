@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Alumin-Hydro/IYPT-Skill/blob/main/skills/iypt-analysis/templates/model-spec.schema.json",
+  "title": "IYPT model-spec",
+  "description": "Skill 1 (iypt-analysis) -> Skill 2 (iypt-simulation) 的唯一交接契约。Skill 2 只读这个文件就应该知道要算什么、画什么、以及怎么判断算对了。",
+  "type": "object",
+  "required": ["problem", "symbols", "parameters", "assumptions", "equations", "targets", "figures", "risky_assumption_checks"],
+  "additionalProperties": false,
+  "properties": {
+    "problem": {
+      "type": "object",
+      "required": ["slug", "title", "statement", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "title": { "type": "string" },
+        "statement": { "type": "string", "description": "原题逐字，不要改写" },
+        "type": {
+          "type": "string",
+          "enum": ["explanation", "dependence", "optimization", "measurement"],
+          "description": "Stage 0 的题型判定"
+        }
+      }
+    },
+
+    "symbols": {
+      "type": "array",
+      "description": "符号表。正文里出现的每个符号都要在这里，check_analysis.py 会做双向闭合检查。",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "meaning", "unit"],
+        "additionalProperties": false,
+        "properties": {
+          "symbol": { "type": "string", "description": "LaTeX，如 v_t、\\eta、\\sigma" },
+          "meaning": { "type": "string" },
+          "unit": { "type": "string", "description": "SI 单位；无量纲写 \"1\"" }
+        }
+      }
+    },
+
+    "parameters": {
+      "type": "array",
+      "description": "所有输入参数。每个都必须有单位和来源——没有单位的数字对 Skill 2 是无意义的。",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "meaning", "value", "unit", "source"],
+        "additionalProperties": false,
+        "properties": {
+          "symbol": { "type": "string" },
+          "meaning": { "type": "string" },
+          "value": { "type": "number", "description": "基准值 (baseline)" },
+          "unit": { "type": "string" },
+          "sweep_range": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[min, max]。要被扫描的参数必须给；不扫的可省略。机制预算的端点检查用的就是它。"
+          },
+          "sweep_scale": { "type": "string", "enum": ["linear", "log"] },
+          "source": {
+            "type": "string",
+            "enum": ["setting", "literature", "derived"],
+            "description": "setting=设定书里自己选的实验条件；literature=查来的物性（必须给 ref）；derived=从别的量推出来的"
+          },
+          "ref": { "type": "string", "description": "source=literature 时必填：文献出处" }
+        }
+      }
+    },
+
+    "assumptions": {
+      "type": "array",
+      "description": "假设台账。每条 RISKY 必须在 risky_assumption_checks 里有对应条目。",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "criterion", "grade"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^A-[0-9]+$" },
+          "statement": { "type": "string" },
+          "criterion": { "type": "string", "description": "成立判据，必须是不等式形式，如 \"r >> L_magnet\"。写\"通常成立\"等于没写。" },
+          "criterion_check": { "type": "string", "description": "代入基准参数后的实际数值，如 \"r/L = 1.3，只勉强满足\"" },
+          "breaks_when": { "type": "string", "description": "失效边界" },
+          "grade": { "type": "string", "enum": ["SAFE", "LOAD-BEARING", "RISKY"] },
+          "impact_if_false": { "type": "string", "description": "grade 为 LOAD-BEARING 或 RISKY 时必填：如果这条不成立，主结论会怎么变" }
+        }
+      }
+    },
+
+    "dimensionless_groups": {
+      "type": "array",
+      "description": "Stage 3 的产物。数据坍缩图就靠它。",
+      "items": {
+        "type": "object",
+        "required": ["name", "expression", "meaning"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "如 Pi_1、Re、We" },
+          "expression": { "type": "string", "description": "LaTeX" },
+          "meaning": { "type": "string", "description": "物理意义：哪两个效应的比" },
+          "baseline_value": { "type": "number" }
+        }
+      }
+    },
+
+    "equations": {
+      "type": "array",
+      "description": "待数值求解的方程。Skill 2 直接照着实现。",
+      "items": {
+        "type": "object",
+        "required": ["id", "model_level", "latex", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "与 01-analysis.md 里的公式编号对应，如 \"(12)\"" },
+          "model_level": {
+            "type": "string",
+            "enum": ["model-0", "model-1", "model-2"],
+            "description": "model-0=玩具模型(有闭式解)；model-1=修正模型；model-2=完整模型(需数值)"
+          },
+          "latex": { "type": "string" },
+          "kind": { "type": "string", "enum": ["algebraic", "ode", "pde", "integral"] },
+          "closed_form": { "type": "string", "description": "如果有闭式解，写出来——Skill 2 要拿它和数值解对拍" },
+          "state_variables": { "type": "array", "items": { "type": "string" } },
+          "initial_conditions": { "type": "string" },
+          "boundary_conditions": { "type": "string", "description": "PDE 必填。边界条件错是最隐蔽的错误(P6)，写清楚物理含义" },
+          "suggested_method": { "type": "string", "description": "如 \"RK45, rtol=1e-8\"、\"有限差分, 隐式\"、\"scipy.integrate.solve_ivp\"" },
+          "numerical_notes": { "type": "string", "description": "刚性？奇点？需要自适应步长？" }
+        }
+      }
+    },
+
+    "targets": {
+      "type": "array",
+      "description": "要算出来的目标量。analytical_prediction 是 Skill 2 的对拍基准——数值解和它差太远，先怀疑代码，再怀疑模型。",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "meaning", "unit"],
+        "additionalProperties": false,
+        "properties": {
+          "symbol": { "type": "string" },
+          "meaning": { "type": "string" },
+          "unit": { "type": "string" },
+          "analytical_prediction": { "type": "string", "description": "Model-0 的闭式预测 (LaTeX)" },
+          "baseline_value": { "type": "number", "description": "代入基准参数后的预测数值" },
+          "scaling_law": { "type": "string", "description": "如 \"v_t \\propto B^{-2} \\sigma^{-1}\"。幂律指数是零自由参数预测——最有说服力的东西。" }
+        }
+      }
+    },
+
+    "figures": {
+      "type": "array",
+      "description": "期望的图。这既是给 Skill 2 的任务书，也是验收标准——算出来的曲线和 expected_shape 矛盾时，不是把图改好看，是回头查模型或查代码。",
+      "items": {
+        "type": "object",
+        "required": ["id", "purpose", "x", "y", "expected_shape"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^F-[0-9]+$" },
+          "purpose": { "type": "string", "description": "这张图要证明什么？(不能是\"展示结果\")" },
+          "x": { "type": "string" },
+          "y": { "type": "string" },
+          "series": { "type": "string", "description": "多曲线时按什么分系列" },
+          "kind": {
+            "type": "string",
+            "enum": ["line", "scatter", "loglog", "semilogx", "semilogy", "heatmap", "phase-portrait", "collapse", "animation", "interactive"],
+            "description": "collapse=无量纲坍缩图，杀伤力最大的那一张；animation/interactive 交给 JS 页面"
+          },
+          "expected_shape": {
+            "type": "string",
+            "description": "必填。预期的定性形状：单调递减？幂律斜率 -2？有个峰在 x=3 附近？两条曲线坍缩成一条？这是验收标准。"
+          },
+          "compare_with": { "type": "string", "description": "要不要和解析解/实验/文献叠在一起画" }
+        }
+      }
+    },
+
+    "risky_assumption_checks": {
+      "type": "array",
+      "description": "每条 RISKY 假设对应一个数值验证任务。契约硬约束：assumptions 里每个 grade=RISKY 的 id 都必须在这里出现。",
+      "items": {
+        "type": "object",
+        "required": ["assumption_id", "task", "pass_criterion"],
+        "additionalProperties": false,
+        "properties": {
+          "assumption_id": { "type": "string", "pattern": "^A-[0-9]+$" },
+          "task": { "type": "string", "description": "Skill 2 要跑什么来验证它。如 \"用有限长磁体的精确场重算，与点偶极子结果对比\"" },
+          "pass_criterion": { "type": "string", "description": "什么结果算这条假设站得住。如 \"终速偏差 <15%\"" }
+        }
+      }
+    },
+
+    "experiment_plan": {
+      "type": "object",
+      "description": "真实实验方案。仿真不能替代实验——这份是给人去做的。",
+      "additionalProperties": false,
+      "properties": {
+        "apparatus": { "type": "array", "items": { "type": "string" } },
+        "measurements": { "type": "array", "items": { "type": "string" } },
+        "error_sources": { "type": "array", "items": { "type": "string" } },
+        "precision_needed": { "type": "string", "description": "要证伪模型，测量精度至少要多少" }
+      }
+    },
+
+    "open_gaps": {
+      "type": "array",
+      "description": "审稿 3 轮后仍未闭合的问题。非空 = 分析不完整，下游必须知道。",
+      "items": {
+        "type": "object",
+        "required": ["description", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string" },
+          "impact": { "type": "string", "description": "这个洞影响哪个结论" }
+        }
+      }
+    }
+  }
+}
