@@ -15,6 +15,13 @@ import re
 import sys
 from pathlib import Path
 
+# Windows 控制台默认 GBK，中文报告和 ✓/✗ 会直接抛 UnicodeEncodeError
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
+
 ERRORS: list[str] = []
 WARNINGS: list[str] = []
 
@@ -31,12 +38,20 @@ def warn(code: str, msg: str) -> None:
 
 def load(workspace: Path):
     analysis = workspace / "01-analysis.md"
+    problem = workspace / "00-problem.md"
     spec_path = workspace / "handoff" / "model-spec.json"
 
     if not analysis.is_file():
         print(f"找不到 {analysis}", file=sys.stderr)
         sys.exit(2)
     md = analysis.read_text(encoding="utf-8")
+
+    # 设定书 (S-n) 住在 00-problem.md，假设台账 (A-n) 住在 01-analysis.md
+    if problem.is_file():
+        problem_md = problem.read_text(encoding="utf-8")
+    else:
+        problem_md = ""
+        err("PROBLEM-MISSING", "00-problem.md 不存在——原题和设定书没有落盘")
 
     spec = None
     if spec_path.is_file():
@@ -47,7 +62,7 @@ def load(workspace: Path):
     else:
         err("SPEC-MISSING", "handoff/model-spec.json 不存在——Skill 2 没有输入，流水线断了")
 
-    return md, spec
+    return md, problem_md, spec
 
 
 # ---------------------------------------------------------------- 契约检查
@@ -143,22 +158,26 @@ def check_equations(md: str) -> None:
         warn("EQ-GAP", f"公式编号不连续，缺: {missing}")
 
 
-def check_ids(md: str, spec: dict) -> None:
+def check_ids(md: str, problem_md: str, spec: dict) -> None:
     """S-n / A-n：定义了就要被引用；台账要和 spec 对齐。"""
-    defined_s = set(re.findall(r"\|\s*(S-\d+)\s*\|", md))
+    defined_s = set(re.findall(r"\|\s*(S-\d+)\s*\|", problem_md))
     defined_a = set(re.findall(r"###\s*(A-\d+)", md))
 
     if not defined_s:
-        err("NO-SPEC-SHEET", "正文里没有设定书条目（S-n）——IYPT 题目是欠定的，"
+        err("NO-SPEC-SHEET", "00-problem.md 里没有设定书条目（S-n）——IYPT 题目是欠定的，"
                              "补全题目设定是 Stage 1 的核心产出，不能跳过")
     if not defined_a:
-        err("NO-LEDGER", "正文里没有假设台账条目（A-n）——没有一条简化被记账，"
+        err("NO-LEDGER", "01-analysis.md 里没有假设台账条目（A-n）——没有一条简化被记账，"
                          "这在物理上是不可能的：你一定用了假设，只是没说出口")
 
-    # 定义了但正文从未引用（首次定义之外没再出现）
-    for sid in sorted(defined_s | defined_a):
-        if len(re.findall(rf"\b{re.escape(sid)}\b", md)) < 2:
-            warn("ID-UNUSED", f"{sid} 定义之后再也没被引用过——它真的在推导里起作用吗？")
+    # 假设定义了却从不被引用，是真可疑的（要么是废话，要么是你忘了它用在哪）。
+    # 设定 (S-n) 不查这个——设定是通过「数值」进入模型的，不是通过 ID 引用；
+    # 而且有些设定本来就不该进入模型（管长不影响终速），要求它被引用是官僚主义。
+    both = problem_md + "\n" + md
+    for aid in sorted(defined_a):
+        if len(re.findall(rf"\b{re.escape(aid)}\b", both)) < 2:
+            warn("ID-UNUSED", f"{aid} 定义之后再也没被引用过——它真的在推导里起作用吗？"
+                              f"（一条从不被引用的假设，要么是废话，要么是你忘了它在哪里被用到）")
 
     # 台账 vs spec 对齐
     if spec:
@@ -173,17 +192,32 @@ def check_ids(md: str, spec: dict) -> None:
 def check_silent_neglect(md: str) -> None:
     """口头忽略：说了'忽略'但同一行/同一句里没有任何数字。审稿模式 P2 的机械版。"""
     kw = re.compile(r"忽略|略去|可略|negligible|neglect|ignor", re.I)
-    has_number = re.compile(r"\d")
-    # 排除掉解释性的段落（表头、模板说明、引用块）
-    skip = re.compile(r"^\s*(>|\||#|-{3,})?\s*(硬规则|口头忽略|未纳入的机制|一端可忽略)")
+
+    # 不能只查"有没有数字"——$\tfrac12\rho v^2$ 里的 12 和 2 都是数字，
+    # 但它是个「表达式」，不是「量级」。要找的是真正的数量级陈述。
+    has_magnitude = re.compile(
+        r"\d+\.\d"                      # 小数：3.5、0.167
+        r"|10\s*\^|10\s*\{"             # 科学计数法：10^{-8}
+        r"|\\times\s*10"                # \times 10^{-7}
+        r"|\d\s*[eE][+-]?\d"            # 2e-4
+        r"|\d\s*%"                      # 百分比
+        r"|(?:^|\|)\s*0\s*(?:\||$)"     # 表格里独立的 0（如"无接触，比值恰为 0"）
+    )
+    # 这些行谈的是"忽略"这件事本身，不是在做一次忽略决策：
+    #   标题行、引用块、失效边界的描述、表头单元格、以及规则条文本身
+    skip = re.compile(r"^\s*#"                       # 标题
+                      r"|^\s*>"                      # 引用块
+                      r"|失效边界|breaks_when"        # 假设台账里描述"何时会崩"
+                      r"|全程可忽略|一端可忽略"        # 端点检查表的表头
+                      r"|硬规则|口头忽略|未纳入的机制")  # 规则条文/小节名)
 
     for i, line in enumerate(md.splitlines(), 1):
         if not kw.search(line):
             continue
         if skip.search(line):
             continue
-        if not has_number.search(line):
-            warn("SILENT-NEGLECT", f"L{i}: 提到\"忽略\"但这一行没有任何数字 —— "
+        if not has_magnitude.search(line):
+            warn("SILENT-NEGLECT", f"L{i}: 提到\"忽略\"但这一行没有给出任何量级 —— "
                                    f"每个忽略都要给出「被略去项/主项」的数值比（审稿模式 P2）：\n"
                                    f"        {line.strip()[:90]}")
 
@@ -258,11 +292,11 @@ def main() -> int:
         print(f"工作区不存在: {workspace}", file=sys.stderr)
         return 2
 
-    md, spec = load(workspace)
+    md, problem_md, spec = load(workspace)
 
     check_contract(spec or {})
     check_equations(md)
-    check_ids(md, spec or {})
+    check_ids(md, problem_md, spec or {})
     check_silent_neglect(md)
     check_symbols(md, spec or {})
     check_residue(md)

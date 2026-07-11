@@ -1,0 +1,300 @@
+{
+  "problem": {
+    "slug": "magnetic-brake",
+    "title": "Magnetic Brake — 导电管中下落的圆柱磁体",
+    "statement": "A cylindrical magnet is dropped into a vertical conducting pipe. Investigate the motion of the magnet and how the terminal velocity depends on relevant parameters.",
+    "type": "dependence"
+  },
+
+  "symbols": [
+    { "symbol": "M",       "meaning": "磁体质量",              "unit": "kg" },
+    { "symbol": "m",       "meaning": "磁体磁偶极矩",          "unit": "A m^2" },
+    { "symbol": "M_s",     "meaning": "磁体磁化强度",          "unit": "A/m" },
+    { "symbol": "B_r",     "meaning": "磁体剩磁",              "unit": "T" },
+    { "symbol": "R",       "meaning": "磁体半径",              "unit": "m" },
+    { "symbol": "L",       "meaning": "磁体长度",              "unit": "m" },
+    { "symbol": "V",       "meaning": "磁体体积",              "unit": "m^3" },
+    { "symbol": "a",       "meaning": "管内半径",              "unit": "m" },
+    { "symbol": "w",       "meaning": "管壁厚",                "unit": "m" },
+    { "symbol": "\\sigma", "meaning": "管材电导率",            "unit": "S/m" },
+    { "symbol": "\\mu_0",  "meaning": "真空磁导率",            "unit": "T m/A" },
+    { "symbol": "g",       "meaning": "重力加速度",            "unit": "m/s^2" },
+    { "symbol": "v",       "meaning": "磁体速度",              "unit": "m/s" },
+    { "symbol": "v_t",     "meaning": "终速",                  "unit": "m/s" },
+    { "symbol": "z",       "meaning": "沿管轴坐标(相对磁体中心)", "unit": "m" },
+    { "symbol": "\\Phi",   "meaning": "穿过管壁圆环的磁通",    "unit": "Wb" },
+    { "symbol": "\\mathcal{E}", "meaning": "感应电动势",       "unit": "V" },
+    { "symbol": "b",       "meaning": "阻尼系数 (F = b v)",    "unit": "N s/m" },
+    { "symbol": "\\tau",   "meaning": "趋近终速的时间常数",    "unit": "s" },
+    { "symbol": "\\tau_m", "meaning": "磁扩散(涡流建立)时间",  "unit": "s" },
+    { "symbol": "\\delta", "meaning": "趋肤深度",              "unit": "m" },
+    { "symbol": "Re_m",    "meaning": "磁 Reynolds 数",        "unit": "1" },
+    { "symbol": "\\Pi_1",  "meaning": "无量纲终速",            "unit": "1" },
+    { "symbol": "\\Pi_2",  "meaning": "薄壁参数 w/a",          "unit": "1" },
+    { "symbol": "n",       "meaning": "叠放的磁体颗数",        "unit": "1" },
+    { "symbol": "\\omega", "meaning": "涡流的有效角频率 (≈2*pi*v_t/L)", "unit": "rad/s" },
+    { "symbol": "\\theta", "meaning": "积分代换变量 (z = a*tan(theta))", "unit": "rad" },
+    { "symbol": "\\chi_m", "meaning": "管材磁化率",            "unit": "1" },
+    { "symbol": "\\mathcal{R}", "meaning": "管壁圆环的电阻（注意与磁体半径 R 区分）", "unit": "ohm" },
+    { "symbol": "F",       "meaning": "涡流阻尼力",            "unit": "N" },
+    { "symbol": "P",       "meaning": "焦耳耗散功率",          "unit": "W" },
+    { "symbol": "E",       "meaning": "系统机械能",            "unit": "J" },
+    { "symbol": "x",       "meaning": "下落位移",              "unit": "m" },
+    { "symbol": "t",       "meaning": "时间",                  "unit": "s" },
+    { "symbol": "X",       "meaning": "组合量 mu_0^2 m^2 sigma（量纲分析用）", "unit": "kg m^3/s" },
+    { "symbol": "\\rho_{air}", "meaning": "空气密度",          "unit": "kg/m^3" },
+    { "symbol": "C_d",     "meaning": "阻力系数",              "unit": "1" },
+    { "symbol": "A",       "meaning": "磁体迎风截面积",        "unit": "m^2" },
+    { "symbol": "\\mu_s",  "meaning": "静摩擦系数",            "unit": "1" },
+    { "symbol": "N",       "meaning": "管壁对磁体的法向力",    "unit": "N" }
+  ],
+
+  "parameters": [
+    { "symbol": "M",       "meaning": "磁体质量",   "value": 5.89e-3,  "unit": "kg",   "source": "derived",
+      "ref": null },
+    { "symbol": "R",       "meaning": "磁体半径",   "value": 5.0e-3,   "unit": "m",    "source": "setting" },
+    { "symbol": "L",       "meaning": "磁体长度",   "value": 10.0e-3,  "unit": "m",    "source": "setting" },
+    { "symbol": "B_r",     "meaning": "剩磁 (N42)", "value": 1.30,     "unit": "T",    "source": "literature",
+      "ref": "NdFeB N42 供应商牌号规格，公差 ±5%；实验中应实测 m 而非用标称值",
+      "sweep_range": [1.17, 1.45], "sweep_scale": "linear" },
+    { "symbol": "m",       "meaning": "磁偶极矩 = (B_r/mu_0)·V", "value": 0.8125, "unit": "A m^2", "source": "derived" },
+    { "symbol": "a",       "meaning": "管内半径",   "value": 6.0e-3,   "unit": "m",    "source": "setting",
+      "sweep_range": [5.5e-3, 12.0e-3], "sweep_scale": "log" },
+    { "symbol": "w",       "meaning": "管壁厚",     "value": 1.0e-3,   "unit": "m",    "source": "setting",
+      "sweep_range": [0.2e-3, 3.0e-3], "sweep_scale": "log" },
+    { "symbol": "\\sigma", "meaning": "管材电导率(铜)", "value": 5.96e7, "unit": "S/m", "source": "literature",
+      "ref": "CRC Handbook of Chemistry and Physics, @20degC；温度系数约 0.4%/K",
+      "sweep_range": [1.5e7, 5.96e7], "sweep_scale": "log" },
+    { "symbol": "g",       "meaning": "重力加速度", "value": 9.81,     "unit": "m/s^2", "source": "setting" },
+    { "symbol": "\\mu_0",  "meaning": "真空磁导率", "value": 1.25663706e-6, "unit": "T m/A", "source": "literature",
+      "ref": "CODATA" },
+    { "symbol": "n",       "meaning": "叠放磁体颗数", "value": 1,      "unit": "1",    "source": "setting",
+      "sweep_range": [1, 4], "sweep_scale": "linear" }
+  ],
+
+  "dimensionless_groups": [
+    { "name": "\\Pi_1", "expression": "\\dfrac{v_t\\,\\mu_0^2 m^2 \\sigma w}{M g a^4}",
+      "meaning": "无量纲终速：磁阻尼力标度 / 重量。薄壁+偶极子极限下 = 1024/45",
+      "baseline_value": 22.756 },
+    { "name": "\\Pi_2", "expression": "w/a",
+      "meaning": "薄壁参数。Pi_2 -> 0 时 Pi_1 应趋于平台 22.756",
+      "baseline_value": 0.1667 },
+    { "name": "Re_m", "expression": "\\mu_0 \\sigma v w",
+      "meaning": "磁 Reynolds 数：涡流的自感反作用 / 欧姆耗散。<<1 时准静态成立",
+      "baseline_value": 0.0021 }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-1",
+      "statement": "磁体均匀磁化，且远场可等效为点偶极子",
+      "criterion": "a >> L (工程上 a > 3L 时误差 <10%)",
+      "criterion_check": "a/L = 0.60 —— 判据严重不满足；扫描上限 a=12mm 处也只有 a/L=1.2，全程不成立",
+      "breaks_when": "管壁离磁体足够近时，高阶多极矩(四极、八极)贡献不可忽略",
+      "grade": "RISKY",
+      "impact_if_false": "不影响 v_t 对 sigma/w/M/B_r 的幂律指数(它们来自感应链条的线性结构，与场的空间分布无关)；但严重影响 v_t ∝ a^4——该指数完全来自偶极子场的 r^-3 衰减。有限长磁体近场衰减更慢，预期实测指数 < 4。注意：崩掉的是「点」偶极子，不是「均匀磁化」——后者对硬磁材料仍是好近似。"
+    },
+    {
+      "id": "A-2",
+      "statement": "薄壁：管壁内电流密度沿径向均匀",
+      "criterion": "w << a 且 w << delta",
+      "criterion_check": "w/a = 0.167(满足但不宽裕，一阶修正 O(w/a)≈17%)；w/delta = 0.025(极宽裕)",
+      "breaks_when": "扫描到 w=3mm 时 w/a=0.5，径向均匀性明显破坏，外层壁耦合弱于内层",
+      "grade": "RISKY",
+      "impact_if_false": "v_t ∝ w^-1 在大 w 端变缓 ⇒ log v_t 对 log w 的曲线在右端向上弯曲"
+    },
+    {
+      "id": "A-3",
+      "statement": "准静态：涡流瞬时跟随磁体位置（忽略回路自感）",
+      "criterion": "tau_m << L/v_t，等价于 Re_m = mu_0*sigma*v*w << 1",
+      "criterion_check": "tau_m=0.22ms vs L/v_t=365ms ⇒ 比值 6.2e-4；Re_m=2.1e-3。极宽裕满足",
+      "breaks_when": "极高电导率(低温铜、超导)或磁体极快时",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-4",
+      "statement": "忽略趋肤效应：电流沿壁厚均匀",
+      "criterion": "w << delta = sqrt(2/(sigma*mu_0*omega))，omega ≈ 2*pi*v_t/L",
+      "criterion_check": "f_eff=2.74Hz ⇒ delta=39mm，w=1mm ⇒ w/delta=0.025，宽裕满足",
+      "breaks_when": "v_t 增大约 4000 倍才能使 delta 降至 1mm——本题不可能达到",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-5",
+      "statement": "磁体保持共轴、不接触管壁（无摩擦）",
+      "criterion": "mu_s * N << M*g；共轴时 N = 0",
+      "criterion_check": "由实验设定 S-8(PTFE 导向套)保证。注意：轴对称位置对横向扰动是不稳定平衡，磁体会被吸向最近的壁",
+      "breaks_when": "无导向措施时磁体倾斜贴壁，引入干摩擦",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "额外摩擦力使净驱动力减小 ⇒ 实测 v_t 系统性偏低，且重复性变差。这会污染每一个预测——实验上必须用导向套。"
+    },
+    {
+      "id": "A-6",
+      "statement": "忽略管壁自身的磁化（铜为非磁性）",
+      "criterion": "|chi_m| << 1",
+      "criterion_check": "铜 chi_m ≈ -1e-5，宽裕满足",
+      "breaks_when": "换用铁磁性管材时完全失效",
+      "grade": "SAFE"
+    }
+  ],
+
+  "equations": [
+    {
+      "id": "(10)",
+      "model_level": "model-0",
+      "latex": "b = \\dfrac{45}{1024}\\dfrac{\\mu_0^2 m^2 \\sigma w}{a^4}",
+      "kind": "algebraic",
+      "closed_form": "b = 45*mu0**2 * m**2 * sigma * w / (1024 * a**4)",
+      "suggested_method": "直接代入"
+    },
+    {
+      "id": "(11)",
+      "model_level": "model-0",
+      "latex": "v_t = \\dfrac{1024}{45}\\dfrac{M g a^4}{\\mu_0^2 m^2 \\sigma w}",
+      "kind": "algebraic",
+      "closed_form": "v_t = 1024 * M * g * a**4 / (45 * mu0**2 * m**2 * sigma * w)",
+      "suggested_method": "直接代入。基准值 v_t = 2.74 cm/s"
+    },
+    {
+      "id": "(12)",
+      "model_level": "model-1",
+      "latex": "M\\dfrac{dv}{dt} = Mg - b v,\\quad v(0)=0",
+      "kind": "ode",
+      "closed_form": "v(t) = v_t * (1 - exp(-t/tau)),  tau = M/b = v_t/g = 2.80 ms",
+      "state_variables": ["v"],
+      "initial_conditions": "v(0) = 0",
+      "suggested_method": "有闭式解；数值解仅用于对拍 (solve_ivp RK45, rtol=1e-8)",
+      "numerical_notes": "非刚性。tau=2.8ms 远小于总时程 36s ⇒ 若要画整段轨迹，用对数时间轴或分段。"
+    },
+    {
+      "id": "(15)",
+      "model_level": "model-2",
+      "latex": "F(v) = \\sigma v \\int_a^{a+w}\\dfrac{dr}{2\\pi r}\\int_{-\\infty}^{\\infty}\\left(\\dfrac{\\partial\\Phi(r,z)}{\\partial z}\\right)^2 dz",
+      "kind": "integral",
+      "state_variables": ["v"],
+      "initial_conditions": "v(0) = 0",
+      "boundary_conditions": "无（准静态假设 A-3 已把 Maxwell 方程降为求积，这是 ODE+求积而非 PDE）。若放开 A-3，须解涡流扩散 PDE，边界条件为管内外表面 J·n = 0。",
+      "suggested_method": "Phi(r,z) 取有限长均匀磁化圆柱(安培模型：侧面束缚面电流 K = M_s)的磁通，用椭圆积分或对面电流数值积分求得。dPhi/dz 建议解析给出，避免数值微分放大噪声。内层积分用 quad/高斯求积。",
+      "numerical_notes": "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。这个极限对拍不过，就是代码错了，不是物理错了。"
+    }
+  ],
+
+  "targets": [
+    {
+      "symbol": "v_t",
+      "meaning": "终速",
+      "unit": "m/s",
+      "analytical_prediction": "v_t = \\dfrac{1024}{45}\\dfrac{M g a^4}{\\mu_0^2 m^2 \\sigma w}",
+      "baseline_value": 0.0274,
+      "scaling_law": "v_t \\propto \\sigma^{-1} w^{-1} a^{4} B_r^{-2} M^{+1} n^{-1}"
+    },
+    {
+      "symbol": "\\tau",
+      "meaning": "趋近终速的时间常数",
+      "unit": "s",
+      "analytical_prediction": "\\tau = M/b = v_t/g",
+      "baseline_value": 0.00280,
+      "scaling_law": "\\tau \\propto v_t"
+    },
+    {
+      "symbol": "b",
+      "meaning": "阻尼系数",
+      "unit": "N s/m",
+      "analytical_prediction": "b = \\dfrac{45}{1024}\\dfrac{\\mu_0^2 m^2 \\sigma w}{a^4}",
+      "baseline_value": 2.1068,
+      "scaling_law": "b \\propto \\sigma w a^{-4} m^{2}"
+    }
+  ],
+
+  "figures": [
+    {
+      "id": "F-1",
+      "purpose": "证伪 P1/P2：检验 v_t 对 sigma 和 w 的幂律指数是否为 -1",
+      "x": "\\sigma (S/m) 与 w (m)，双面板",
+      "y": "v_t (m/s)",
+      "series": "Model-0 解析解 / Model-2 数值解",
+      "kind": "loglog",
+      "expected_shape": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "compare_with": "Model-0 闭式解 (11)"
+    },
+    {
+      "id": "F-2",
+      "purpose": "证伪 P5（最激进的预测）：v_t ∝ a^4 是否成立。这是 A-1 崩溃的直接后果的检验",
+      "x": "a (m)",
+      "y": "v_t (m/s)",
+      "series": "Model-0(点偶极子) / Model-2(有限长磁体)",
+      "kind": "loglog",
+      "expected_shape": "Model-0 是斜率恰为 +4.00 的直线。**Model-2 预期斜率显著小于 4**（因 a/L 仅 0.6–1.2，近场衰减比 r^-3 慢）。两条线在小 a 端分歧最大。若 Model-2 也给出 4.00，说明有限尺寸修正没被正确实现——回去查代码",
+      "compare_with": "Model-0 闭式解"
+    },
+    {
+      "id": "F-3",
+      "purpose": "展示启动瞬态，证伪 P7（全程恒速）",
+      "x": "下落距离 (mm)，对数轴",
+      "y": "v/v_t",
+      "kind": "semilogx",
+      "expected_shape": "在 0.35 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
+      "compare_with": "(13) 的闭式解 v = v_t(1-e^{-t/tau})"
+    },
+    {
+      "id": "F-4",
+      "purpose": "数据坍缩——本报告杀伤力最大的一张图。证明 Pi_1 = f(Pi_2) 这个标度结构本身是对的",
+      "x": "\\Pi_2 = w/a",
+      "y": "\\Pi_1 = v_t \\mu_0^2 m^2 \\sigma w/(M g a^4)",
+      "series": "不同的 (sigma, w, a, m, M) 组合，至少 5 组，颜色区分",
+      "kind": "collapse",
+      "expected_shape": "**所有点坍缩到同一条曲线 f(Pi_2) 上**（这是关键——若不坍缩，说明遗漏了一个无量纲组，很可能是 L/a）。Pi_2 → 0 时趋于水平渐近线 22.756。注意：Model-2 的点预期**不会**完全坍缩，因为 A-1 崩溃引入了第三个无量纲组 L/a——这个「坍缩失败」本身就是结论",
+      "compare_with": "水平线 Pi_1 = 1024/45 = 22.756"
+    },
+    {
+      "id": "F-5",
+      "purpose": "可视化物理机制：涡流分布随磁体位置的演化（给 PPT 讲机制用）",
+      "x": "z (沿管轴)",
+      "y": "环电流 dI/dz",
+      "kind": "animation",
+      "expected_shape": "反对称的双峰结构（磁体前方与后方电流反向），峰值位于 z = ±a/2 附近，随磁体一起向下平移。前后电流反向是 Lenz 定律的直接体现——前方排斥、后方吸引，两者都阻碍下落",
+      "compare_with": "(4) 的 dPhi/dz"
+    }
+  ],
+
+  "risky_assumption_checks": [
+    {
+      "assumption_id": "A-1",
+      "task": "用有限长均匀磁化圆柱的精确场（安培模型：侧面束缚面电流 K = M_s，磁通经椭圆积分或数值积分求得）重算 (15)，与点偶极子的 (10) 逐点对比。在整个 a ∈ [5.5,12] mm 扫描范围上做，并提取 Model-2 的 v_t–a 对数斜率。",
+      "pass_criterion": "报告两件事：(i) 基准点 a=6mm 处 v_t 的相对偏差；(ii) Model-2 的 v_t∝a^k 的实际指数 k。若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明。预期 k 明显小于 4——这不是失败，是模型边界被正确定位。"
+    },
+    {
+      "assumption_id": "A-2",
+      "task": "在 (15) 中保留径向积分 ∫_a^{a+w} dr/(2πr)（而非薄壁近似 w/(2πa)），扫描 w ∈ [0.2,3] mm，与 Model-0 的 v_t ∝ w^-1 对比。",
+      "pass_criterion": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。"
+    }
+  ],
+
+  "experiment_plan": {
+    "apparatus": [
+      "铜/铝/黄铜管，内径 5.5–12 mm，壁厚 0.2–3 mm",
+      "NdFeB 磁体 N35/N42/N52，直径10×长10 mm",
+      "薄壁 PTFE 导向套（保证共轴，落实 A-5）",
+      "秒表或光电门（分段计时）",
+      "高速相机 240 fps（验证恒速）",
+      "高斯计或扭秤（独立测定磁矩 m）",
+      "温度计（sigma 的温度修正，铜 0.4%/K）"
+    ],
+    "measurements": [
+      "终速：1 m 行程通过时间（约 36 s，秒表 ±0.1s ⇒ 0.3% 精度）",
+      "恒速验证：每 20 cm 分段计时，各段速度应相同",
+      "磁矩 m：必须独立测定，不能用标称 B_r 反推——否则 P3 退化为拟合，失去证伪力（审稿模式 P12）"
+    ],
+    "error_sources": [
+      "系统：磁体贴壁摩擦（A-5，最危险）",
+      "系统：管子不直/不竖直",
+      "系统：管温升高使 sigma 下降（铜 0.4%/K）",
+      "系统：管内径加工公差——v_t ∝ a^4 ⇒ 内径 1% 误差放大成 v_t 的 4% 误差",
+      "随机：计时反应时间 ±0.1 s（0.3%）",
+      "可忽略：释放时的初始扰动（tau=2.8ms，影响 <0.1mm 行程）"
+    ],
+    "precision_needed": "区分 P5 的指数 4.0 与 3.0：a 跨 2 倍时 v_t 变化 16× vs 8×，只需 v_t 达 5% 精度即可分辨——秒表足够。"
+  },
+
+  "open_gaps": []
+}
