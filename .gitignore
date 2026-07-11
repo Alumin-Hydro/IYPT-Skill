@@ -1,0 +1,22 @@
+# 每道题的工作区（产出物属于具体的题，不属于 skill 本身）
+iypt/
+!examples/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node（Skill 2 的可视化会用到）
+node_modules/
+package-lock.json
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/

@@ -1,0 +1,10 @@
+{
+  "name": "iypt",
+  "description": "Pipeline of skills for solving IYPT (International Young Physicists' Tournament) problems end to end: physics analysis with adversarial review, then simulation/visualization, slides, and aesthetic review.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Alumin-Hydro"
+  },
+  "homepage": "https://github.com/Alumin-Hydro/IYPT-Skill",
+  "keywords": ["iypt", "physics", "modeling", "simulation", "competition"]
+}

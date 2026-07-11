@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "iypt-skill",
+  "description": "IYPT problem-solving pipeline for Claude Code.",
+  "owner": {
+    "name": "Alumin-Hydro"
+  },
+  "plugins": [
+    {
+      "name": "iypt",
+      "description": "Solve an IYPT problem end to end: specification sheet + assumption ledger + first-principles derivation under adversarial physics review, then simulation, slides, and design review.",
+      "author": {
+        "name": "Alumin-Hydro"
+      },
+      "category": "productivity",
+      "source": "./"
+    }
+  ]
+}
