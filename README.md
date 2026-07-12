@@ -84,7 +84,7 @@ motion of the magnet and how the terminal velocity depends on relevant parameter
 | `iypt-physics-review` | 对抗式物理审稿（16 条具体错误模式） | ✅ |
 | `iypt-simulation` | 数值解 + 六道验证门 + 可视化（Python / JS 动态页面 / 带自检的 MATLAB 移植） | ✅ |
 | `iypt-slides` | Physics Fight 用的 PPT | 🚧 |
-| `iypt-design-review` | 可视化与 PPT 的美观度审查 | 🚧 |
+| `iypt-design-review` | 可视化与 PPT 的美观度审查（14 条设计失败模式，**必须真的看图**） | ✅ |
 
 流水线的编排顺序、工作区约定和四个 skill 之间的交接契约见 [`docs/pipeline.md`](docs/pipeline.md)。
 

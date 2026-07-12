@@ -13,15 +13,36 @@ Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Sk
 | 1 | `iypt-analysis` | ✅ |
 | 1R | `iypt-physics-review` | ✅（16 条错误模式） |
 | 2 | `iypt-simulation` | ✅ |
-| 3 | `iypt-slides` | 🚧 **下一个** |
-| 4 | `iypt-design-review` | 🚧 |
+| 3 | `iypt-slides` | 🚧 **下一个**（唯一还没做的） |
+| 4 | `iypt-design-review` | ✅（14 条设计失败模式） |
 
 ## 动手前先读
 
 - **`docs/pipeline.md`** —— 工作区约定、四个 skill 的交接契约、**反向边的五种 status**，**单一事实源**。改产出格式先改它。
 - **`skills/iypt-analysis/templates/model-spec.schema.json`** —— Skill 1 → Skill 2 的接口。
 - **`skills/iypt-simulation/templates/results.schema.json`** —— Skill 2 → Skill 3 的接口。
-- **`examples/magnetic-brake/`** —— 一次真实跑通的完整产出，回归基线。**注意它终止在 `MODEL-CHALLENGED` 状态——那是正确的**（A-2 假设被数值证伪，等 Skill 1 修订）。
+- **`examples/magnetic-brake/`** —— 一次真实跑通的完整产出，回归基线。**它把反向边完整走了一遍**：
+  r1 运行判 `MODEL-CHALLENGED`（快照 `02-sim/results-r1.json` + `model-challenge-r1.md`）→ Skill 1 按
+  **物理理由**修订（r2 修 3 处 SPEC-DEFECT；r3 修 A-2 的一阶系数漏了个 2）→ 重跑，现在是
+  `PRESCRIBED-REVISION`（两条 RISKY 假设都**如预期地**不成立 —— 模型边界被正确定位）。
+  **归档链 `model-spec-r1/r2.json` 是 P16（事后合理化）审稿的物证。**
+
+## ★ 开发 skill 时的第一条铁律：**改 skill，不要只改这道题**
+
+跑例子时踩到坑，**先问一句**：
+
+> **这个坑是这道题特有的，还是任何题都会踩的？**
+
+是后者 —— **改 skill，不许只在例子里修好就算完。**
+
+**为什么这条必须写在最前面**：实际场景是**一个没有这段开发上下文的 Opus 4.8 + skill**。它不知道你在 magnetic-brake 里踩过什么、修过什么。**你在例子里修好而没回填进 skill 的东西，等于没修——下一道题它会一模一样地再踩一遍。**
+
+每个坑要走完这三步：
+
+1. **例子里修好**（证明修法可行）
+2. **回填进 skill**：改 `SKILL.md` / `references/` / `templates/` / schema
+3. **加机械检查**（能查就查）—— 写进 `check_analysis.py` / `check_sim.py`。
+   > 文档里的劝诫会被忽略；**机械检查不会**。
 
 ## 已经吃过的亏（别再踩）
 

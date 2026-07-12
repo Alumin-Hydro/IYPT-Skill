@@ -65,6 +65,58 @@ def load(workspace: Path):
     return md, problem_md, spec
 
 
+# ---------------------------------------------------------------- 自相矛盾的门槛
+
+#: criterion_check 里的**误差估计**（"一阶修正 O(w/a)≈17%"）
+_EST = re.compile(r"(?:≈|~|约|大约|approx\.?|~=)\s*([0-9]+(?:\.[0-9]+)?)\s*%")
+#: pass_criterion 里的**通过门槛**（"相对偏差 < 15% 则 A-2 站得住"）
+_THR = re.compile(r"[<＜]\s*([0-9]+(?:\.[0-9]+)?)\s*%")
+#: 承认"预期不通过"的措辞 —— 有它就不算矛盾，而是诚实
+_KNOWN_FAIL = re.compile(r"预期不?通过|预期(?:会)?失败|预期(?:会)?不成立|注定|预计不满足|"
+                         r"expected to fail|will not hold|expected NOT")
+
+
+def _check_threshold_vs_estimate(aid: str, chk: dict, asm: dict) -> None:
+    """★ pass_criterion 的通过门槛，不能比 criterion_check 里你自己给的误差估计还严。
+
+    **那不是"严格"，那是自相矛盾**：按你自己的估计，这条假设注定通不过。
+    而这个矛盾在写下的那一刻就存在了 —— 不需要跑任何数值就能看出来。
+
+    真实案例（magnetic-brake 的 A-2）：
+        criterion_check : "一阶修正 O(w/a) ≈ **17%**"
+        pass_criterion  : "相对偏差 **< 15%** 则 A-2 在基准点站得住"
+    按作者自己的估计，17% > 15%，**它注定不通过**。（实测 23.4%，比两个数都大。）
+
+    逃生口：如果你**明说**"预期不通过"，那不是矛盾，是诚实 —— 放行。
+    """
+    cc = asm.get("criterion_check") or ""
+    pc = chk.get("pass_criterion") or ""
+    if not cc or not pc:
+        return
+
+    est = _EST.search(cc)
+    thr = _THR.search(pc)
+    if not (est and thr):
+        return
+
+    e, t = float(est.group(1)), float(thr.group(1))
+    if t >= e:
+        return
+    if _KNOWN_FAIL.search(pc) or _KNOWN_FAIL.search(cc):
+        return                                   # 明说了"预期不通过" —— 诚实，放行
+
+    err("PASS-CRIT-CONTRADICTION",
+        f"{aid} 的通过门槛比你**自己的估计**还严 —— 这是自相矛盾，不是严格。\n"
+        f"        criterion_check 说：误差 ≈ {e:g}%\n"
+        f"        pass_criterion  说：< {t:g}% 才算通过\n"
+        f"        **按你自己的估计，这条假设注定通不过。** 而这个矛盾在写下的那一刻就存在了——\n"
+        f"        不需要跑任何数值就能看出来。三条出路，选一条：\n"
+        f"          (a) 估计错了 -> 重估（{e:g}% 是怎么来的？系数对吗？）\n"
+        f"          (b) 门槛太苛 -> 放宽，并说清这个精度为什么够用\n"
+        f"          (c) 它**确实**注定不通过 -> 在 pass_criterion 里**明说「预期不通过」**，\n"
+        f"              把任务从「判定通过」改成「量化它有多糟，并据此收窄结论的适用域」")
+
+
 # ---------------------------------------------------------------- 契约检查
 
 def check_contract(spec: dict) -> None:
@@ -109,12 +161,40 @@ def check_contract(spec: dict) -> None:
 
     # 反向：验证任务指向的假设必须存在
     known = {a.get("id") for a in spec.get("assumptions", [])}
+    ledger = {a.get("id"): a for a in spec.get("assumptions", [])}
     for c in spec.get("risky_assumption_checks", []):
         aid = c.get("assumption_id")
         if aid not in known:
             err("CHECK-ORPHAN", f"risky_assumption_checks 引用了不存在的假设 {aid}")
         if not c.get("pass_criterion"):
             err("CHECK-CRIT", f"{aid} 的验证任务没有 pass_criterion——Skill 2 不知道什么结果算通过")
+
+        # ---- 退化特征：Skill 2 唯一能识破"代码偷懒"的手段
+        if not c.get("degenerate_signature"):
+            err("CHECK-NODEGEN",
+                f"{aid} 的验证任务没有 degenerate_signature —— "
+                f"**如果代码根本没实现这条修正（偷偷退化回玩具模型），会出现什么「结构性」特征？**\n"
+                f"        必须是一个在「正确模型」和「退化模型」下取**离散地不同**值的量"
+                f"（峰位、节点数、对称性、解析可证的幂次），**不能是一个拟合出来的数**。\n"
+                f"        血泪教训：只写「若斜率也给出 4.00 则代码错」，被「只少一个修正」的 bug "
+                f"以斜率 3.79 从两条断言之间溜走了。拟合值是连续的，可以落到任何地方。")
+        elif re.search(r"斜率|指数|拟合|slope|exponent|fit",
+                       c.get("degenerate_signature", "")) \
+                and not re.search(
+                    # 结构性的量：离散、可解析确定、不会平滑漂移
+                    r"峰|节点|零点|对称|解析|位置|个数|常数|恒为|恒等|不变|单调|结构|离散|"
+                    r"peak|node|symmetr|analytic|position|count|constant|invariant|"
+                    r"monoton|structur|discrete",
+                    c.get("degenerate_signature", "")):
+            warn("CHECK-DEGEN-WEAK",
+                 f"{aid} 的 degenerate_signature 看起来是在查「拟合出来的数」（斜率/指数）。\n"
+                 f"        **拟合值是连续的** —— 只少一个修正的 bug 会让它落在陷阱值和真值**之间**，"
+                 f"从断言中间溜走。\n"
+                 f"        找一个**结构性**的量：峰位、节点数、对称性、解析可证的幂次。\n"
+                 f"        自问：「把这个修正项整个删掉，哪个量会**跳变**（而不是平滑漂移）？」")
+
+        # ---- ★ pass_criterion 的门槛不能比 criterion_check 自己的估计还严
+        _check_threshold_vs_estimate(aid, c, ledger.get(aid) or {})
 
     # 图：expected_shape 是验收标准
     for f in spec.get("figures", []):
@@ -248,6 +328,90 @@ def check_symbols(md: str, spec: dict) -> None:
                                     f"注意一符多义：ρ(密度/电阻率)、σ(电导率/表面张力)、μ(磁导率/黏度)")
 
 
+#: "0.35 mm" / "$0.28$ mm" / "2.74 cm/s" / "2.80 ms" …
+_NUMUNIT = re.compile(
+    r"([0-9]+(?:\.[0-9]+)?)\s*\$?\s*(?:\\[,; ])?\s*(?:\\mathrm\{)?"
+    r"(cm/s|m/s|mm|cm|km|ms|mT|kHz|Hz|[mT])(?:\})?(?![A-Za-z0-9])"
+)
+
+#: 换算到 SI —— 用来和 model-spec 的 parameters（SI）比对
+_SI = {"mm": 1e-3, "cm": 1e-2, "m": 1.0, "km": 1e3,
+       "ms": 1e-3, "s": 1.0, "cm/s": 1e-2, "m/s": 1.0,
+       "mT": 1e-3, "T": 1.0, "Hz": 1.0, "kHz": 1e3}
+
+
+def check_number_desync(md: str, spec: dict) -> None:
+    """★ 契约里的数字，正文里是不是**同时**存在另一个"接近但不等"的值？
+
+    **修订只改了推导、没改预测表和契约 —— 这是流水线里最阴的一种脱钩，
+    因为没有任何东西会发现它。**
+
+    真实案例（magnetic-brake）：审稿人 r1 抓到"达到终速的距离用了错误捷径，
+    高估 27%，精确值 0.28 mm"。作者改了 §6.2 的**推导**，但漏了：
+      · 01-analysis.md 的**预测表 P7**（还写着 0.35 mm）
+      · handoff/model-spec.json 的 **F-3**（还写着 0.35 mm）
+    **而这两处恰恰是下游真正读的东西。** 这个 bug 一路活到 Skill 2 手里。
+
+    这个检查抓的就是"正文里 0.28 和 0.35 并存，而契约用的是 0.35"。
+    """
+    if not spec:
+        return
+
+    prose = {}                                    # unit -> {value}
+    for v, u in _NUMUNIT.findall(md):
+        prose.setdefault(u, set()).add(float(v))
+
+    # 契约里"故意不同"的数：基准值 + 扫描端点。**扫描端点本来就是两个不同的数**，
+    # 不是脱钩。不排除它们，这个检查会被自己的噪声淹掉。
+    legit_si = set()
+    for p in spec.get("parameters", []):
+        for x in ([p.get("value")] + list(p.get("sweep_range") or [])):
+            if isinstance(x, (int, float)):
+                legit_si.add(float(x))
+
+    def is_legit(v: float, unit: str) -> bool:
+        si = v * _SI.get(unit, 1.0)
+        return any(abs(si - L) <= 0.01 * max(abs(si), abs(L)) for L in legit_si if L)
+
+    spec_txt = json.dumps(spec, ensure_ascii=False)
+    spec_nums = {}
+    for f in spec.get("figures", []):
+        for v, u in _NUMUNIT.findall(f.get("expected_shape", "") or ""):
+            spec_nums.setdefault(u, set()).add((float(v), f.get("id", "?")))
+    for a in spec.get("assumptions", []):
+        for v, u in _NUMUNIT.findall(a.get("criterion_check", "") or ""):
+            spec_nums.setdefault(u, set()).add((float(v), a.get("id", "?")))
+
+    for unit, entries in spec_nums.items():
+        for val, src in entries:
+            if is_legit(val, unit):
+                continue                          # 它就是某个参数/扫描端点
+            others = prose.get(unit, set())
+            # 舍入不算脱钩：契约写 0.277 mm、正文写 0.28 mm，是同一个数
+            near = [o for o in others if abs(o - val) <= 0.02 * max(abs(o), abs(val))]
+            if not near:
+                warn("NUM-NOT-IN-PROSE",
+                     f"契约里 {src} 用的 `{val:g} {unit}`，在 01-analysis.md 里找不到 —— "
+                     f"正文与契约可能已脱钩")
+                continue
+            for o in others:
+                if o in near or is_legit(o, unit):
+                    continue
+                r = max(o, val) / min(o, val) if min(o, val) > 0 else 99
+                if not (1.05 < r < 1.8):          # "接近但不等" —— 典型的修订遗漏
+                    continue
+                # 另一个值只在正文里、不在契约里 —— 典型的"修订只改了一处"
+                if re.search(rf"(?<![0-9.]){o:g}\s*\$?\s*(?:\\[,; ])?\s*(?:\\mathrm\{{)?{re.escape(unit)}",
+                             spec_txt):
+                    continue
+                warn("NUM-DESYNC",
+                     f"正文里**同时**存在 `{val:g} {unit}` 和 `{o:g} {unit}`"
+                     f"（相差 {(r-1)*100:.0f}%），而契约（{src}）用的是 `{val:g} {unit}`。\n"
+                     f"        **修订可能只改了一处。** 一个数通常住在四个地方：推导、机制预算表、\n"
+                     f"        **预测表**、**model-spec.json** —— 后两处才是下游真正读的东西。\n"
+                     f"        改一个数，grep 整个工作区。")
+
+
 def check_residue(md: str) -> None:
     """TODO / [GAP] 残留：允许存在，但必须在文首声明。"""
     head = md[:1500]
@@ -299,6 +463,7 @@ def main() -> int:
     check_ids(md, problem_md, spec or {})
     check_silent_neglect(md)
     check_symbols(md, spec or {})
+    check_number_desync(md, spec or {})
     check_residue(md)
     check_sections(md)
 

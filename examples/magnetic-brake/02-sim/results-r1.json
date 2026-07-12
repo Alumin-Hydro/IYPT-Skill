@@ -1,6 +1,6 @@
 {
   "problem_slug": "magnetic-brake",
-  "model_spec_version": "r3",
+  "model_spec_version": "r1",
   "generated_by": {
     "engine": "python",
     "versions": {
@@ -9,14 +9,14 @@
       "scipy": "1.18.0",
       "matplotlib": "3.11.0"
     },
-    "timestamp": "2026-07-12T15:22:12+00:00"
+    "timestamp": "2026-07-12T14:59:19+00:00"
   },
-  "status": "PRESCRIBED-REVISION",
-  "status_reason": "AS-20, AS-22 判 PRESCRIBED —— 命中 Skill 1 在 pass_criterion 里**预先注册**的分支，已照办。这不是失败：动作在数据出现之前就写在 spec 里了（归档 model-spec-r1.json 是物证），**这是预注册，不是事后合理化（P16）**。\n  · A-1：|k−4| = 0.5608 > 0.3 ⇒ P5 降级（仅在 a ≫ L 时成立）。\n  · A-2：基准点偏差 23.42%，落在预期区间 (15%, 26%) 内 ⇒ P2 适用域收窄到 w/a ≲ 0.03（该处偏差 5.1%）。\n  两条 RISKY 假设都**如预期地不成立** —— 模型边界被正确定位，这正是它们被标为 RISKY 的意义。\n  （历史：r1 那次运行判 MODEL-CHALLENGED，见 02-sim/results-r1.json 与 model-challenge-r1.md。Skill 1 已按物理理由修订至 r3——A-2 的一阶系数漏了个 2。）",
+  "status": "MODEL-CHALLENGED",
+  "status_reason": "AS-21 判 FAIL-MODEL：A-2（薄壁近似）在基准点 w=1mm 处实测偏差 23.42%，超过它自己 pass_criterion 里设的 15% 门槛（台账 criterion_check 自称「一阶修正 O(w/a)≈17%」）。Gate 0 已通过（误差 0.0059%），代码被证明是对的 —— 这是真实的假设失效，不是代码错。触发反向边（docs/pipeline.md §5.3）。另有 AS-20 判 PRESCRIBED：A-1 的预注册动作（把 P5 降级）已执行。",
   "gates": [
     {
       "id": "gate-0-limit",
-      "recipe": "关键对拍：令 R→0 且 L→0（整个磁体等比缩小：R→εR, L→εL, M_s→M_s/ε³，使 m = M_s·πR²L 固定，ε→0），同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。",
+      "recipe": "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。这个极限对拍不过，就是代码错了，不是物理错了。",
       "ran": true,
       "passed": true,
       "evidence": "eps=0.01 时 b2/b0 = 0.999941，误差 0.0059% < 0.1%；误差随 eps 单调趋于 0（28.54% -> 0.0059%）。注意：配方按 SD-1 修正（R 与 L 一起 ->0）；照 spec 字面只令 L->0 会收敛到 3.55。",
@@ -148,7 +148,7 @@
       "id": "AS-1",
       "source": "(15)",
       "source_kind": "equation_limit",
-      "quoted_expectation": "关键对拍：令 R→0 且 L→0（整个磁体等比缩小：R→εR, L→εL, M_s→M_s/ε³，使 m = M_s·πR²L 固定，ε→0），同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。",
+      "quoted_expectation": "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。",
       "assert_kind": "limit",
       "expect": "|b_model2/b_model0 - 1| < 0.1%  (eps -> 0)",
       "tolerance": "0.1%（取自 numerical_notes 原文）",
@@ -264,7 +264,7 @@
       "id": "AS-10",
       "source": "F-3",
       "source_kind": "figure",
-      "quoted_expectation": "在 0.277 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
+      "quoted_expectation": "在 0.35 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
       "assert_kind": "value",
       "expect": "v/v_t = 0.99 处的下落距离 x = v_t·tau·(ln100 - 0.99) = 0.277 mm（SD-2 修正后）",
       "tolerance": "±2%",
@@ -277,7 +277,7 @@
       "id": "AS-11",
       "source": "F-3",
       "source_kind": "figure",
-      "quoted_expectation": "在 0.277 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
+      "quoted_expectation": "在 0.35 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
       "assert_kind": "asymptote",
       "expect": "1 m 管中处于终速（v/v_t > 0.99）的行程占比 > 99.9%",
       "tolerance": "—",
@@ -355,15 +355,15 @@
     },
     {
       "id": "AS-27",
-      "source": "A-1",
-      "source_kind": "risky_check",
-      "quoted_expectation": "点偶极子场的 dPhi/dz ∝ z*(a^2+z^2)^(-5/2)，求极值（d/dz[...] = 0 ⇒ a^2+z^2 = 5z^2）得峰**解析地**落在 **z = ±a/2**",
+      "source": "F-5",
+      "source_kind": "figure",
+      "quoted_expectation": "反对称的双峰结构（磁体前方与后方电流反向），峰值位于 z = ±a/2 附近，随磁体一起向下平移。前后电流反向是 Lenz 定律的直接体现——前方排斥、后方吸引，两者都阻碍下落",
       "assert_kind": "must_not",
       "expect": "NOT (|z_peak - a/2| / (a/2) < 5%) —— 若落在 a/2 上，说明用的是点偶极子场",
-      "tolerance": "5%（a/2 与 L/2 相差 67%，5% 的带宽绰绰有余）",
+      "tolerance": "5%（a/2 = 3.00 mm vs L/2 = 5.00 mm，两者相差 67%，5% 的带宽绰绰有余）",
       "measured": "|z_peak - a/2|/(a/2) = 67.6%",
       "verdict": "PASS",
-      "interpretation": "契约的 degenerate_signature 直译。峰位是场的**结构**性质，只有两个答案：点偶极子 a/2 = 3.00 mm，有限长磁体 ≈ L/2 = 5.00 mm，相差 67%。拟合出来的斜率则是连续的 —— 「只少一个修正」的 bug 会让它落在 3.79，从断言之间溜走。",
+      "interpretation": "结构性 must_not（冒烟测试逼出来的）：如果涡流峰位落在点偶极子解析预言的 a/2 上，那说明代码根本没在用有限长磁体的场 —— 你只是把 Model-0 换了个壳。峰位是场的**结构**性质，不是拟合量，因此比「斜率是不是 4.00」可靠得多。",
       "figure_ref": "F-5"
     },
     {
@@ -415,39 +415,38 @@
       "id": "AS-21",
       "source": "A-2",
       "source_kind": "risky_check",
-      "quoted_expectation": "**预期不通过。** 闭式一阶分析已给出基准点偏差 25.95%（点偶极子场，见 assumptions[A-2].criterion_check 的推导），远超结论所需的 15%",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
       "assert_kind": "deviation",
-      "expect": "基准点 w=1mm 的偏差必须落在 (15%, 26%) —— 下界 = 结论所需的门槛（已知会被突破），上界 = 点偶极子场的闭式值 25.95%（有限长磁体近场衰减慢于 r^-3，故应更小）",
-      "tolerance": "两个端点均独立推出，非照数值结果画定",
+      "expect": "w = 1 mm（基准）处，径向积分 vs 薄壁近似的相对偏差 < 15%",
+      "tolerance": "**15%，直接取自 spec 原文。作者已知实测会超过它，仍照写。**",
       "measured": "23.42%",
-      "verdict": "PASS",
+      "verdict": "FAIL-MODEL",
       "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。",
-      "verdict_note": "A-2 **确如预期地不成立**（23.42% > 15%），且落在闭式上界之内 —— 模型边界被正确定位。这不是失败。"
+      "verdict_note": "A-2 **没跨过它自己设的杆**：台账 criterion_check 自称「一阶修正 O(w/a)≈17%」、pass_criterion 把门槛设在 15%，实测 23.4%。Gate 0 已过（0.0059%），代码被证明是对的 —— 这是真实的假设失效，不是代码错。"
     },
     {
       "id": "AS-22",
       "source": "A-2",
       "source_kind": "risky_check",
-      "quoted_expectation": "**预期不通过。** 闭式一阶分析已给出基准点偏差 25.95%（点偶极子场，见 assumptions[A-2].criterion_check 的推导），远超结论所需的 15%",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
       "assert_kind": "deviation",
-      "expect": "预注册动作：把 P2 的适用域收窄到 w/a ≲ 0.03，并在 01-analysis.md 的预测表中说明",
-      "tolerance": "—",
-      "measured": "w/a ≲ 0.03 处偏差 5.1%（基准 w/a=0.167 处 23.4%）",
-      "verdict": "PRESCRIBED",
-      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。",
-      "verdict_note": "已执行：P2 在 01-analysis.md 的预测表中降级，适用域收窄到 w/a ≲ 0.03。"
+      "expect": "w = 3 mm（w/a=0.5）处相对偏差 > 20%",
+      "tolerance": "20%，取自 spec",
+      "measured": "49.29%",
+      "verdict": "PASS",
+      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。"
     },
     {
       "id": "AS-23",
       "source": "A-2",
       "source_kind": "risky_check",
-      "quoted_expectation": "薄壁近似下 b = sigma * (w/(2*pi*a)) * g(a) —— **b/w 恒为常数**，严格地、对任意 w 都成立",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
       "assert_kind": "must_not",
-      "expect": "NOT (b/w 在 w ∈ [0.2,3] mm 上的相对变化 < 1e-6) —— 若它是个常数，径向积分根本没实现",
-      "tolerance": "1e-6（薄壁近似下 b/w **恒等于**常数，差异只可能来自浮点噪声）",
-      "measured": "b/w 相对变化 56.4%（单调下降: True）",
+      "expect": "NOT (w=3mm 处偏差 < 5%) —— 若 <5%，说明径向积分根本没实现",
+      "tolerance": "5%，取自 spec",
+      "measured": "49.29%",
       "verdict": "PASS",
-      "interpretation": "契约的 degenerate_signature 直译。**结构性**判据：常数 vs 非常数，两个离散的答案。"
+      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。"
     },
     {
       "id": "AS-24",
@@ -596,12 +595,10 @@
     },
     {
       "assumption_id": "A-2",
-      "quoted_pass_criterion": "**预期不通过。** 闭式一阶分析已给出基准点偏差 25.95%（点偶极子场，见 assumptions[A-2].criterion_check 的推导），远超结论所需的 15%",
-      "result": "判读 (a)：径向积分 vs 薄壁近似（两者都用有限长磁体的场，以隔离 A-2 本身）。基准点 w=1mm 偏差 **23.42%**，落在预期区间 (15%, 26%) 内 ✓（下界 = 结论所需的门槛，上界 = 点偶极子场的闭式值 25.95%）。结构性 must_not（AS-23）：b/w 相对变化 56.4% 且单调下降 —— **径向积分确实实现了**（若它是常数，说明根本没实现）。w=3mm 处偏差 49.29%。",
+      "quoted_pass_criterion": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
+      "result": "判读 (a)：径向积分 vs 薄壁近似（两者都用有限长磁体的场，以隔离 A-2 本身）。w = 1 mm（基准）处偏差 23.42%（门槛 <15% —— **未通过**）；w = 3 mm（w/a=0.5）处偏差 49.29%（预期 >20% —— 通过；且远大于 5%，说明径向积分确实实现了）",
       "holds": false,
-      "prescribed_action": "把 P2 的适用域收窄到 w/a ≲ 0.03，并在 01-analysis.md 的预测表中说明",
-      "prescribed_action_taken": true,
-      "impact_on_predictions": "A-2 **如预期地不成立** —— 这不是失败，是模型边界被正确定位。【r3】原台账的一阶估计 O(w/a)≈17% **漏了系数 2**：径向积分的被积函数是 ∝ r^-4（额外的 1/r 来自 dr/2πr 的权重），积出来 b_full/b_thin = (1/3ε)[1-(1+ε)^-3] = 1 - 2ε + O(ε²)。闭式精确值 25.95%（桌上可算，不需任何数值）。后果：(1) Model-0 的闭式解 (11) 在基准点就带有约 26% 的薄壁误差——**这是独立于 A-1 的另一份**；(2) **P2（v_t ∝ w⁻¹）的适用域已收窄到 w/a ≲ 0.03**（该处偏差 5.1%），基准点 w/a=0.167 不在适用域内。注意 A-1 与 A-2 的失效是**相乘**的：×1.3993 · ×1.3059 = ×1.8273 ⇒ v_t 偏差 +82.7%。"
+      "impact_on_predictions": "A-2 **没跨过它自己设的杆**：台账 criterion_check 自称「一阶修正 O(w/a)≈17%」，pass_criterion 把门槛设在 15%，实测 23.42%。后果：Model-0 的闭式解 (11) 在基准点就带有 ~23% 的薄壁误差（这是在 A-1 的误差之外的、独立的一份）。P2（v_t ∝ w⁻¹）的适用域必须收窄到 w/a ≲ 0.03（该处偏差 5.7%）。**这条触发反向边**（docs/pipeline.md §5.3）。"
     }
   ],
   "matlab_port": {
@@ -612,7 +609,7 @@
   },
   "reproduce": {
     "command": "python 02-sim/code/run_all.py",
-    "runtime_seconds": 5.2,
+    "runtime_seconds": 4.3,
     "notes": "需要 numpy / scipy / matplotlib。参数全部从 handoff/model-spec.json 载入，无硬编码。"
   },
   "spec_defects": [

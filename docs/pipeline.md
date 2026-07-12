@@ -10,7 +10,7 @@
 | 1R | `iypt-physics-review` | 对抗式物理审稿（Skill 1 内置调用，也可单独调用） | ✅ 已实现 |
 | 2 | `iypt-simulation` | 数值解、验证、可视化（Python / JS 动态页面；MATLAB 为带自检的移植） | ✅ 已实现 |
 | 3 | `iypt-slides` | 生成 Physics Fight 用的 PPT | 🚧 未实现 |
-| 4 | `iypt-design-review` | 可视化与 PPT 的美观度 / 可读性审查 | 🚧 未实现 |
+| 4 | `iypt-design-review` | 可视化与 PPT 的美观度 / 可读性审查（14 条失败模式） | ✅ 已实现 |
 
 编排：
 

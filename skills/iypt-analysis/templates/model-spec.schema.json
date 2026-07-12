@@ -179,12 +179,19 @@
       "description": "每条 RISKY 假设对应一个数值验证任务。契约硬约束：assumptions 里每个 grade=RISKY 的 id 都必须在这里出现。",
       "items": {
         "type": "object",
-        "required": ["assumption_id", "task", "pass_criterion"],
+        "required": ["assumption_id", "task", "pass_criterion", "degenerate_signature"],
         "additionalProperties": false,
         "properties": {
           "assumption_id": { "type": "string", "pattern": "^A-[0-9]+$" },
           "task": { "type": "string", "description": "Skill 2 要跑什么来验证它。如 \"用有限长磁体的精确场重算，与点偶极子结果对比\"" },
-          "pass_criterion": { "type": "string", "description": "什么结果算这条假设站得住。如 \"终速偏差 <15%\"" }
+          "pass_criterion": {
+            "type": "string",
+            "description": "什么结果算这条假设站得住。如 \"终速偏差 <15%\"。\n\n**门槛不能比 assumptions[].criterion_check 里你自己给的误差估计还严** —— 那不是严格，是自相矛盾（按你自己的估计，这条假设注定通不过）。check_analysis.py 机械抓这一条。\n\n**可以（并且鼓励）在这里预先注册应对动作**：\"若 |k-4| > 0.3，则 P5 被判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明\"。预注册的动作在数据出现之前就写死了，因此执行它**不构成事后合理化**（P16）——这是临床试验的金标准，也是你事后免于被指控 HARKing 的唯一护身符。"
+          },
+          "degenerate_signature": {
+            "type": "string",
+            "description": "★ **如果代码根本没实现这条修正（偷偷退化回玩具模型），会出现什么「结构性」特征？** Skill 2 把它翻译成一条 must_not 断言。\n\n**必须是一个在「正确模型」和「退化模型」下取「离散地不同」值的量** —— 峰的位置、节点/零点个数、对称性、解析可证的渐近幂次、临界点位置。\n\n**绝不能是一个拟合出来的数。** 血泪教训：F-2 的陷阱写的是「若斜率也给出 4.00 则代码错」。但注入「点偶极子场 + 正确的径向积分」（**只少一个修正**）后，斜率落在 3.79 —— 既不是陷阱值 4.00 也不是真值 3.44，**从两条断言之间溜过去了**。因为陷阱是按「整个模型退化」校准的，而真实的 bug 往往只少一个修正；**拟合值是连续的，可以落到任何地方**。\n\n正确的做法（同一道题）：「点偶极子场的涡流峰**解析地**落在 z = ±a/2（由 d/dz[z(a²+z²)^(-5/2)] = 0 得）；有限长磁体的落在 ≈ ±L/2。峰位若落在 a/2 上 ⇒ 代码在用点偶极子场。」两个答案，没有中间地带，一击即中。\n\n**怎么找**：问「如果我把这个修正项整个删掉，哪个量会**跳变**（而不是平滑漂移）？」"
+          }
         }
       }
     },

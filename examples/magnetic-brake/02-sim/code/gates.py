@@ -31,10 +31,11 @@ for _s in (sys.stdout, sys.stderr):
 
 # ================================================================== Gate 0
 
-#: model-spec 的 numerical_notes 逐字（写进 results.json 的 gates[].recipe）
+#: model-spec 的 numerical_notes 逐字（r3；写进 results.json 的 gates[].recipe）
+#  r1 的配方是错的（只令 L→0，会收敛到 3.5505 而非 1）—— SPEC-DEFECT SD-1，已在 r2 修正。
 GATE0_RECIPE_SPEC = (
-    "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，"
-    "(15) 必须回到 (10)，误差 <0.1%。这个极限对拍不过，就是代码错了，不是物理错了。"
+    "关键对拍：令 R→0 且 L→0（整个磁体等比缩小：R→εR, L→εL, M_s→M_s/ε³，"
+    "使 m = M_s·πR²L 固定，ε→0），同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。"
 )
 
 GATE0_TOL = 1e-3        # 0.1%，直接来自 numerical_notes 原文

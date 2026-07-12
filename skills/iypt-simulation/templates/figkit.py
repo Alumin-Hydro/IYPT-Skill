@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -184,6 +185,42 @@ def fit_range_note(fig, text: str):
 
 # ---------------------------------------------------------------- Figure 上下文
 
+#: CJK 码点。DejaVu Sans 没有中文字形 —— 中文会**静默地**渲染成豆腐块 □□□。
+_CJK = re.compile(r"[　-〿㐀-䶿一-鿿＀-￯]")
+
+
+def _assert_no_cjk(fig, fig_id: str) -> None:
+    """存图前扫描**所有**文本对象。遇到中文 -> 直接抛错。
+
+    **把一个静默的视觉 bug 变成一个响亮的错误。**
+
+    为什么图上不许有中文（两个独立的理由，任一条都足够）：
+      1. **IYPT 是英文赛事。** 中文轴标签到了赛场上是废的 —— 图要直接进英文 PPT。
+      2. DejaVu Sans 没有 CJK 字形，中文会渲染成**豆腐块 □□□**，而且 matplotlib
+         **不会报错**。你要等到肉眼看图才发现 —— 如果你看了的话。
+
+    实测：作者把 acceptance.py 里的中文 `expect` 字符串直接喂给了绘图函数，
+    四张图的断言框全是豆腐块。看图才发现。
+    """
+    import matplotlib.text as mtext
+    bad = []
+    for t in fig.findobj(mtext.Text):
+        s = t.get_text()
+        if s and _CJK.search(s):
+            bad.append(s[:60])
+    if bad:
+        raise ValueError(
+            f"\n\n  [figkit] 图 {fig_id} 里有 {len(bad)} 处**中文**。\n\n"
+            + "".join(f"      · {s}\n" for s in bad[:6])
+            + "\n  图上的文字**一律英文**：\n"
+              "    1. IYPT 是英文赛事，图要直接进英文 PPT —— 中文轴标签在赛场上是废的。\n"
+              "    2. DejaVu Sans 没有 CJK 字形，中文会**静默地**渲染成豆腐块 □□□，\n"
+              "       matplotlib 不报错，你要等到肉眼看图才发现。\n\n"
+              "  中文写在 acceptance.md / results.json / 文档里 —— 不要写在图上。\n"
+              "  （典型的踩法：把 acceptance.py 里的中文 `expect` 字段直接喂给 assertions()。\n"
+              "    给它一个英文短标。）\n")
+
+
 class Figure:
     """出图上下文。**退出时无条件盖 SIMULATION 戳，并同时存 PNG + SVG。**
 
@@ -268,6 +305,9 @@ class Figure:
             ha="right", va="bottom", fontsize=9.5, color=INK_MUTED,
             fontweight="bold", family="monospace", alpha=0.95,
         )
+
+        # ---- 存图前的机械拦截：图上不许有中文（否则静默渲染成豆腐块）
+        _assert_no_cjk(fig, self.fig_id)
 
         self.outdir.mkdir(parents=True, exist_ok=True)
         for ext in ("png", "svg"):

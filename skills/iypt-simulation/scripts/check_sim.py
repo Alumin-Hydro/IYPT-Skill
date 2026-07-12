@@ -111,8 +111,10 @@ def check_quotes(spec: dict, res: dict) -> None:
     for f in spec.get("figures", []):
         pool[f"figure:{f.get('id')}"] = f.get("expected_shape", "")
     for c in spec.get("risky_assumption_checks", []):
-        pool[f"risky_check:{c.get('assumption_id')}"] = \
-            (c.get("pass_criterion", "") + " " + c.get("task", ""))
+        # degenerate_signature 也是可引用的字段 —— 结构型 must_not 断言正是从它抄来的
+        pool[f"risky_check:{c.get('assumption_id')}"] = " ".join(
+            (c.get("pass_criterion") or "", c.get("task") or "",
+             c.get("degenerate_signature") or ""))
     for t in spec.get("targets", []):
         pool[f"target:{t.get('symbol')}"] = \
             (t.get("analytical_prediction", "") + " " + (t.get("scaling_law") or ""))
@@ -256,6 +258,23 @@ def check_coverage(spec: dict, res: dict, workspace: Path) -> None:
             err("PRESCRIBED-REFUSED",
                 f"{aid} 的预注册动作被触发了却**没有执行**：{c.get('prescribed_action', '')[:80]}")
 
+    # ---- ★ 每条带 degenerate_signature 的 RISKY，必须有一条对应的 must_not 断言
+    #
+    #  degenerate_signature 是 Skill 1 交给你的**结构性陷阱** —— 它是唯一能识破
+    #  "代码偷懒偷偷退化回玩具模型"的手段。收到了不用，等于白给。
+    must_nots = {a.get("source") for a in res.get("assertions", [])
+                 if a.get("assert_kind") == "must_not"}
+    for c in spec.get("risky_assumption_checks", []):
+        aid = c.get("assumption_id")
+        if c.get("degenerate_signature") and aid not in must_nots:
+            err("DEGEN-UNUSED",
+                f"{aid} 的契约里给了 degenerate_signature（结构性退化特征），"
+                f"但 results.json 里**没有对应的 must_not 断言**（source = {aid}）。\n"
+                f"        契约原文：{norm(c['degenerate_signature'])[:110]}\n"
+                f"        **这是唯一能识破「代码偷偷退化回玩具模型」的手段。收到了不用，等于白给。**\n"
+                f"        血泪教训：只查「拟合出来的斜率是不是陷阱值」，会被「只少一个修正」的 bug\n"
+                f"        以一个落在陷阱值和真值**之间**的数溜走（实测 3.79，陷阱 4.00，真值 3.44）。")
+
 
 # ---------------------------------------------------------------- 断言的完整性
 
@@ -286,7 +305,7 @@ def check_assertions(res: dict) -> None:
 
 # ---------------------------------------------------------------- 验证门
 
-def check_gates(res: dict) -> None:
+def check_gates(res: dict) -> None:                                    # noqa: C901
     gates = {g.get("id"): g for g in res.get("gates", [])}
 
     if "gate-0-limit" not in gates:
@@ -308,6 +327,20 @@ def check_gates(res: dict) -> None:
         err("GATE1-MISSING",
             "没有收敛门的记录 —— 结果必须与网格/容差/截断无关。\n"
             "        不做这个，你那个「斜率 -1.02」可能纯粹是网格太粗，然后你会以为发现了物理。")
+    else:
+        # ★ 收敛门必须在**扫描端点**上也做，不能只在基准点做。
+        #   （和 Skill 1 的「机制预算必须做扫描端点检查」是同一个道理。）
+        g1 = gates["gate-1-convergence"]
+        rows = (g1.get("numbers") or {}).get("rows") or []
+        ev = g1.get("evidence", "")
+        if len(rows) < 3 and not re.search(r"端点|endpoint|扫描的两端|sweep", ev):
+            err("GATE1-BASELINE-ONLY",
+                f"收敛门只有 {len(rows)} 个检查点 —— **看起来只在基准点做了**。\n"
+                f"        **必须在扫描端点上也做。** 基准点收敛，不代表扫描的另一端也收敛。\n"
+                f"        血泪教训：把广义积分的截断长度写成**绝对值**而非自然尺度的倍数，\n"
+                f"        基准点上一切正常（Gate 0 也过，误差 0.017%），但扫描上端每个点都偏小一点，\n"
+                f"        **拟合出的斜率是 3.4509，真值 3.4392 —— 差 0.012，肉眼完全看不出来。**\n"
+                f"        （这和 Skill 1 的「机制预算必须做扫描端点检查」是同一个道理。）")
 
     for g in res.get("gates", []):
         if g.get("ran") and not g.get("evidence"):

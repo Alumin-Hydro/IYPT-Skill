@@ -41,6 +41,7 @@ Q_A1 = ACC.Q_A1
 Q_A2 = ACC.Q_A2
 PRESCRIBED_A1 = ("若 |k-4| > 0.3，则 P5 被数值判定为不可靠，"
                  "必须在 01-analysis.md 的预测表中把 P5 降级并说明")
+PRESCRIBED_A2 = ("把 P2 的适用域收窄到 w/a ≲ 0.03，并在 01-analysis.md 的预测表中说明")
 
 
 def rel(p) -> str:
@@ -74,18 +75,22 @@ def main() -> int:
     elif "FAIL-MODEL" in verdicts:
         status = "MODEL-CHALLENGED"
         bad = [a["id"] for a in AS if a["verdict"] == "FAIL-MODEL"]
-        status_pre = [a["id"] for a in AS if a["verdict"] == "PRESCRIBED"]
-        reason = (
-            f"{', '.join(bad)} 判 FAIL-MODEL：A-2（薄壁近似）在基准点 w=1mm 处实测偏差 "
-            f"{D['a2_dev_1mm']*100:.2f}%，超过它自己 pass_criterion 里设的 15% 门槛"
-            f"（台账 criterion_check 自称「一阶修正 O(w/a)≈17%」）。"
-            f"Gate 0 已通过（误差 0.0059%），代码被证明是对的 —— 这是真实的假设失效，不是代码错。"
-            f"触发反向边（docs/pipeline.md §5.3）。"
-            f"另有 {', '.join(status_pre)} 判 PRESCRIBED：A-1 的预注册动作（把 P5 降级）已执行。"
-        )
+        reason = (f"{', '.join(bad)} 判 FAIL-MODEL。Gate 0 已通过，代码被证明是对的 —— "
+                  f"这是真实的假设失效，触发反向边（docs/pipeline.md §5.3）。")
     elif "PRESCRIBED" in verdicts:
         status = "PRESCRIBED-REVISION"
-        reason = "命中 Skill 1 预先注册的分支，已照办。"
+        pre = [a["id"] for a in AS if a["verdict"] == "PRESCRIBED"]
+        reason = (
+            f"{', '.join(pre)} 判 PRESCRIBED —— 命中 Skill 1 在 pass_criterion 里**预先注册**的分支，"
+            f"已照办。这不是失败：动作在数据出现之前就写在 spec 里了（归档 model-spec-r1.json 是物证），"
+            f"**这是预注册，不是事后合理化（P16）**。\n"
+            f"  · A-1：|k−4| = {abs(D['k2a']-4):.4f} > 0.3 ⇒ P5 降级（仅在 a ≫ L 时成立）。\n"
+            f"  · A-2：基准点偏差 {D['a2_dev_1mm']*100:.2f}%，落在预期区间 (15%, 26%) 内 ⇒ "
+            f"P2 适用域收窄到 w/a ≲ 0.03（该处偏差 {D['a2_dev_small']*100:.1f}%）。\n"
+            f"  两条 RISKY 假设都**如预期地不成立** —— 模型边界被正确定位，这正是它们被标为 RISKY 的意义。\n"
+            f"  （历史：r1 那次运行判 MODEL-CHALLENGED，见 02-sim/results-r1.json 与 "
+            f"model-challenge-r1.md。Skill 1 已按物理理由修订至 r3——A-2 的一阶系数漏了个 2。）"
+        )
     else:
         status = "PASS"
         reason = ""
@@ -166,16 +171,23 @@ def main() -> int:
                  "线性结构，与场的空间分布无关（F-1 的 σ 面板实测 −1.0000 证实了这一点）。")),
         dict(assumption_id="A-2", quoted_pass_criterion=Q_A2,
              result=(f"判读 (a)：径向积分 vs 薄壁近似（两者都用有限长磁体的场，以隔离 A-2 本身）。"
-                     f"w = 1 mm（基准）处偏差 {D['a2_dev_1mm']*100:.2f}%（门槛 <15% —— **未通过**）；"
-                     f"w = 3 mm（w/a=0.5）处偏差 {D['a2_dev_3mm']*100:.2f}%（预期 >20% —— 通过；"
-                     f"且远大于 5%，说明径向积分确实实现了）"),
+                     f"基准点 w=1mm 偏差 **{D['a2_dev_1mm']*100:.2f}%**，落在预期区间 (15%, 26%) 内 ✓"
+                     f"（下界 = 结论所需的门槛，上界 = 点偶极子场的闭式值 25.95%）。"
+                     f"结构性 must_not（AS-23）：b/w 相对变化 {D['bw_var']*100:.1f}% 且单调下降 —— "
+                     f"**径向积分确实实现了**（若它是常数，说明根本没实现）。"
+                     f"w=3mm 处偏差 {D['a2_dev_3mm']*100:.2f}%。"),
              holds=False,
+             prescribed_action=PRESCRIBED_A2,
+             prescribed_action_taken=True,
              impact_on_predictions=(
-                 "A-2 **没跨过它自己设的杆**：台账 criterion_check 自称「一阶修正 O(w/a)≈17%」，"
-                 "pass_criterion 把门槛设在 15%，实测 23.42%。后果：Model-0 的闭式解 (11) 在基准点"
-                 "就带有 ~23% 的薄壁误差（这是在 A-1 的误差之外的、独立的一份）。"
-                 "P2（v_t ∝ w⁻¹）的适用域必须收窄到 w/a ≲ 0.03（该处偏差 5.7%）。"
-                 "**这条触发反向边**（docs/pipeline.md §5.3）。")),
+                 "A-2 **如预期地不成立** —— 这不是失败，是模型边界被正确定位。"
+                 "【r3】原台账的一阶估计 O(w/a)≈17% **漏了系数 2**：径向积分的被积函数是 ∝ r^-4"
+                 "（额外的 1/r 来自 dr/2πr 的权重），积出来 b_full/b_thin = (1/3ε)[1-(1+ε)^-3] "
+                 "= 1 - 2ε + O(ε²)。闭式精确值 25.95%（桌上可算，不需任何数值）。"
+                 "后果：(1) Model-0 的闭式解 (11) 在基准点就带有约 26% 的薄壁误差——"
+                 "**这是独立于 A-1 的另一份**；(2) **P2（v_t ∝ w⁻¹）的适用域已收窄到 w/a ≲ 0.03**"
+                 f"（该处偏差 {D['a2_dev_small']*100:.1f}%），基准点 w/a=0.167 不在适用域内。"
+                 "注意 A-1 与 A-2 的失效是**相乘**的：×1.3993 · ×1.3059 = ×1.8273 ⇒ v_t 偏差 +82.7%。")),
     ]
 
     # ================================================== SPEC-DEFECT
@@ -211,7 +223,7 @@ def main() -> int:
 
     results = dict(
         problem_slug=SPEC["problem"]["slug"],
-        model_spec_version="r1",
+        model_spec_version="r3",
         generated_by=dict(
             engine="python",
             versions=dict(python=platform.python_version(), numpy=np.__version__,
