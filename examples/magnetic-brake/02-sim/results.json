@@ -1,0 +1,636 @@
+{
+  "problem_slug": "magnetic-brake",
+  "model_spec_version": "r1",
+  "generated_by": {
+    "engine": "python",
+    "versions": {
+      "python": "3.12.10",
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "matplotlib": "3.11.0"
+    },
+    "timestamp": "2026-07-12T07:18:51+00:00"
+  },
+  "status": "MODEL-CHALLENGED",
+  "status_reason": "AS-21 判 FAIL-MODEL：A-2（薄壁近似）在基准点 w=1mm 处实测偏差 23.42%，超过它自己 pass_criterion 里设的 15% 门槛（台账 criterion_check 自称「一阶修正 O(w/a)≈17%」）。Gate 0 已通过（误差 0.0059%），代码被证明是对的 —— 这是真实的假设失效，不是代码错。触发反向边（docs/pipeline.md §5.3）。另有 AS-20 判 PRESCRIBED：A-1 的预注册动作（把 P5 降级）已执行。",
+  "gates": [
+    {
+      "id": "gate-0-limit",
+      "recipe": "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。这个极限对拍不过，就是代码错了，不是物理错了。",
+      "ran": true,
+      "passed": true,
+      "evidence": "eps=0.01 时 b2/b0 = 0.999941，误差 0.0059% < 0.1%；误差随 eps 单调趋于 0（28.54% -> 0.0059%）。注意：配方按 SD-1 修正（R 与 L 一起 ->0）；照 spec 字面只令 L->0 会收敛到 3.55。",
+      "numbers": {
+        "rows": [
+          {
+            "eps": 1.0,
+            "R_mm": 5.0,
+            "L_mm": 10.0,
+            "b2": 0.00015055357276829045,
+            "ratio": 0.7146127893607584,
+            "err": 0.28538721063924155
+          },
+          {
+            "eps": 0.3,
+            "R_mm": 1.5,
+            "L_mm": 3.0,
+            "b2": 0.00020544885503795873,
+            "ratio": 0.9751769863051183,
+            "err": 0.024823013694881713
+          },
+          {
+            "eps": 0.1,
+            "R_mm": 0.5,
+            "L_mm": 1.0,
+            "b2": 0.0002101325537242743,
+            "ratio": 0.9974084811890328,
+            "err": 0.002591518810967197
+          },
+          {
+            "eps": 0.03,
+            "R_mm": 0.15,
+            "L_mm": 0.3,
+            "b2": 0.00021062345940253804,
+            "ratio": 0.9997385984330586,
+            "err": 0.0002614015669414327
+          },
+          {
+            "eps": 0.01,
+            "R_mm": 0.05,
+            "L_mm": 0.1,
+            "b2": 0.00021066617436547513,
+            "ratio": 0.9999413479145265,
+            "err": 5.865208547350953e-05
+          }
+        ],
+        "b_model0": 0.0002106785311006887,
+        "tolerance": 0.001,
+        "monotone": true
+      }
+    },
+    {
+      "id": "gate-1-convergence",
+      "ran": true,
+      "passed": true,
+      "evidence": "在基准点与 a 扫描的两个端点上各做一遍。最差的一点是「基准  a=6.0mm」：容差收紧 10x 时 b 变化 0.00000%，截断范围扩大 2x 时 b 变化 0.00000%。均 < 0.01%（断言容差 0.1% 的 1/10）。**扫描端点检查是必须的**：绝对截断长度会在扫描的一端悄悄失效，而基准点上看不出来。",
+      "numbers": {
+        "rows": [
+          {
+            "point": "基准  a=6.0mm",
+            "a": 0.006,
+            "b": 1.1529293106248453,
+            "d_tol": 5.777750714083884e-16,
+            "d_trunc": 5.777750714083884e-16
+          },
+          {
+            "point": "扫描下端 a=5.5mm",
+            "a": 0.0055,
+            "b": 1.5383509112065463,
+            "d_tol": 1.4433937231582564e-16,
+            "d_trunc": 2.886787446316513e-16
+          },
+          {
+            "point": "扫描上端 a=12.0mm",
+            "a": 0.012,
+            "b": 0.10456162636102229,
+            "d_tol": 0.0,
+            "d_trunc": 1.3272352669705334e-16
+          }
+        ],
+        "tolerance": 0.0001
+      }
+    },
+    {
+      "id": "gate-2-layered",
+      "ran": true,
+      "passed": true,
+      "evidence": "用 Model-2 的积分器 + 点偶极子场 + 薄壁近似，得 b = 2.10678531e-04；闭式解 (10) 给出 2.10678531e-04；相对偏差 0.000000% < 0.01%。这证明积分器本身是对的，与场模型无关。",
+      "numbers": {
+        "b_integrated_dipole": 0.0002106785311006887,
+        "b_closed_form": 0.0002106785311006887,
+        "rel_dev": 0.0
+      }
+    },
+    {
+      "id": "gate-3-analytical",
+      "ran": true,
+      "passed": true,
+      "evidence": "b: 算得 2.10679，spec 基准 2.1068，偏差 0.0007%; v_t: 算得 0.0274261，spec 基准 0.0274，偏差 0.0952%; \\tau: 算得 0.00279573，spec 基准 0.0028，偏差 0.1525%",
+      "numbers": {
+        "rows": [
+          {
+            "symbol": "b",
+            "computed": 2.106785311006887,
+            "spec_baseline": 2.1068,
+            "rel_dev": 6.972182035772583e-06,
+            "passed": true
+          },
+          {
+            "symbol": "v_t",
+            "computed": 0.02742609780793707,
+            "spec_baseline": 0.0274,
+            "rel_dev": 0.0009524747422288556,
+            "passed": true
+          },
+          {
+            "symbol": "\\tau",
+            "computed": 0.0027957286246622906,
+            "spec_baseline": 0.0028,
+            "rel_dev": 0.0015254911920390712,
+            "passed": true
+          }
+        ]
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "id": "AS-1",
+      "source": "(15)",
+      "source_kind": "equation_limit",
+      "quoted_expectation": "关键对拍：令 L→0 且保持 m = M_s·V 固定(退化为点偶极子)、同时令 w→0，(15) 必须回到 (10)，误差 <0.1%。",
+      "assert_kind": "limit",
+      "expect": "|b_model2/b_model0 - 1| < 0.1%  (eps -> 0)",
+      "tolerance": "0.1%（取自 numerical_notes 原文）",
+      "measured": "eps=0.01: 误差 0.0059%（单调趋于 0）",
+      "verdict": "PASS",
+      "interpretation": "配方按 SD-1 修正：R 与 L 必须一起 →0。照原文字面只令 L→0 会收敛到 3.5505 而非 1 ——「极限存在，但取错了极限」的指纹。"
+    },
+    {
+      "id": "AS-2",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "assert_kind": "slope",
+      "expect": "Model-0 的 v_t-sigma loglog 斜率 == -1.00",
+      "tolerance": "±0.02",
+      "measured": -1.0,
+      "verdict": "PASS",
+      "interpretation": "原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）和 w 面板（Model-0 精确 -1；Model-2 因 A-2 崩溃而在大 w 端上翘）。",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-3",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "assert_kind": "slope",
+      "expect": "Model-2 的 v_t-sigma loglog 斜率 == -1.00",
+      "tolerance": "±0.02",
+      "measured": -1.0,
+      "verdict": "PASS",
+      "interpretation": "原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）和 w 面板（Model-0 精确 -1；Model-2 因 A-2 崩溃而在大 w 端上翘）。",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-4",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "assert_kind": "slope",
+      "expect": "Model-0 的 v_t-w loglog 斜率 == -1.00",
+      "tolerance": "±0.02",
+      "measured": -1.0,
+      "verdict": "PASS",
+      "interpretation": "原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）和 w 面板（Model-0 精确 -1；Model-2 因 A-2 崩溃而在大 w 端上翘）。",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-5",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "assert_kind": "deviation",
+      "expect": "Model-2 在大 w 端向上偏离 Model-0：比值 v2/v0 随 w 单调递增",
+      "tolerance": "单调性严格",
+      "measured": "1.48 -> 2.76（单调递增: True）",
+      "verdict": "PASS",
+      "interpretation": "原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）和 w 面板（Model-0 精确 -1；Model-2 因 A-2 崩溃而在大 w 端上翘）。",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-6",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "两条直线，斜率均为 -1.00。Model-2 在大 w 端(w/a→0.5)应向上偏离 Model-0(A-2 崩)——若不偏离，反而说明代码没真正实现有限壁厚",
+      "assert_kind": "must_not",
+      "expect": "NOT (Model-2 的 v_t-w 斜率 in -1.00 ± 0.05) —— 若落在里面，说明有限壁厚根本没实现",
+      "tolerance": "±0.05",
+      "measured": -0.7797,
+      "verdict": "PASS",
+      "interpretation": "原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）和 w 面板（Model-0 精确 -1；Model-2 因 A-2 崩溃而在大 w 端上翘）。",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-7",
+      "source": "F-2",
+      "source_kind": "figure",
+      "quoted_expectation": "Model-0 是斜率恰为 +4.00 的直线。**Model-2 预期斜率显著小于 4**（因 a/L 仅 0.6–1.2，近场衰减比 r^-3 慢）。两条线在小 a 端分歧最大。若 Model-2 也给出 4.00，说明有限尺寸修正没被正确实现——回去查代码",
+      "assert_kind": "slope",
+      "expect": "Model-0 的 v_t-a loglog 斜率 == +4.00（地面真值）",
+      "tolerance": "±0.02",
+      "measured": 4.0,
+      "verdict": "PASS",
+      "interpretation": "「显著小于 4」需要一个数。取 A-1 的 pass_criterion 给的 0.3 —— **这个阈值是 spec 自己给的，不是作者挑的**。",
+      "figure_ref": "F-2"
+    },
+    {
+      "id": "AS-8",
+      "source": "F-2",
+      "source_kind": "figure",
+      "quoted_expectation": "Model-0 是斜率恰为 +4.00 的直线。**Model-2 预期斜率显著小于 4**（因 a/L 仅 0.6–1.2，近场衰减比 r^-3 慢）。两条线在小 a 端分歧最大。若 Model-2 也给出 4.00，说明有限尺寸修正没被正确实现——回去查代码",
+      "assert_kind": "slope",
+      "expect": "|k_Model-2 - 4| > 0.3（「显著小于 4」，阈值取自 A-1 的 pass_criterion）",
+      "tolerance": "—",
+      "measured": 3.4392,
+      "verdict": "PASS",
+      "interpretation": "「显著小于 4」需要一个数。取 A-1 的 pass_criterion 给的 0.3 —— **这个阈值是 spec 自己给的，不是作者挑的**。",
+      "figure_ref": "F-2"
+    },
+    {
+      "id": "AS-9",
+      "source": "F-2",
+      "source_kind": "figure",
+      "quoted_expectation": "Model-0 是斜率恰为 +4.00 的直线。**Model-2 预期斜率显著小于 4**（因 a/L 仅 0.6–1.2，近场衰减比 r^-3 慢）。两条线在小 a 端分歧最大。若 Model-2 也给出 4.00，说明有限尺寸修正没被正确实现——回去查代码",
+      "assert_kind": "must_not",
+      "expect": "NOT (k_Model-2 in 4.00 ± 0.10) —— 若落在里面，说明有限尺寸修正没进代码",
+      "tolerance": "±0.10",
+      "measured": 3.4392,
+      "verdict": "PASS",
+      "interpretation": "「显著小于 4」需要一个数。取 A-1 的 pass_criterion 给的 0.3 —— **这个阈值是 spec 自己给的，不是作者挑的**。",
+      "figure_ref": "F-2"
+    },
+    {
+      "id": "AS-10",
+      "source": "F-3",
+      "source_kind": "figure",
+      "quoted_expectation": "在 0.35 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
+      "assert_kind": "value",
+      "expect": "v/v_t = 0.99 处的下落距离 x = v_t·tau·(ln100 - 0.99) = 0.277 mm（SD-2 修正后）",
+      "tolerance": "±2%",
+      "measured": "0.2772 mm",
+      "verdict": "PASS",
+      "interpretation": "原文的 0.35 mm 是 SPEC-DEFECT（SD-2）：纯代数可证正确值为 x = v_t·τ·(ln100 - 0.99) = 0.277 mm；0.35 mm = 4.6·v_t·τ 少减了那个 0.99。这正是 01-review-r1.md 已抓到、但只改了正文没同步进契约的错误。断言按 0.277 mm 写。",
+      "figure_ref": "F-3"
+    },
+    {
+      "id": "AS-11",
+      "source": "F-3",
+      "source_kind": "figure",
+      "quoted_expectation": "在 0.35 mm 处已达 0.99，之后完全平坦。1 m 管中 99.97% 的行程处于终速",
+      "assert_kind": "asymptote",
+      "expect": "1 m 管中处于终速（v/v_t > 0.99）的行程占比 > 99.9%",
+      "tolerance": "—",
+      "measured": "99.9723%",
+      "verdict": "PASS",
+      "interpretation": "原文的 0.35 mm 是 SPEC-DEFECT（SD-2）：纯代数可证正确值为 x = v_t·τ·(ln100 - 0.99) = 0.277 mm；0.35 mm = 4.6·v_t·τ 少减了那个 0.99。这正是 01-review-r1.md 已抓到、但只改了正文没同步进契约的错误。断言按 0.277 mm 写。",
+      "figure_ref": "F-3"
+    },
+    {
+      "id": "AS-12",
+      "source": "F-4",
+      "source_kind": "figure",
+      "quoted_expectation": "**所有点坍缩到同一条曲线 f(Pi_2) 上**（这是关键——若不坍缩，说明遗漏了一个无量纲组，很可能是 L/a）。Pi_2 → 0 时趋于水平渐近线 22.756。注意：Model-2 的点预期**不会**完全坍缩，因为 A-1 崩溃引入了第三个无量纲组 L/a——这个「坍缩失败」本身就是结论",
+      "assert_kind": "collapse",
+      "expect": "Model-0：5 组不同 (sigma,w,a) 的 Pi_1 相对散布 < 0.1%（应为恒等式）",
+      "tolerance": "0.1%",
+      "measured": "0.0000%",
+      "verdict": "PASS",
+      "interpretation": "原文对 Model-0 和 Model-2 给的是**相反**的预期，必须拆开：Model-0 必须坍缩（其 Pi_1 恒等于 1024/45，与所有参数无关，是恒等式）；Model-2 预期**不**坍缩——「坍缩失败本身就是结论」。**把 Model-2 的坍缩失败判成 FAIL 再回头去修它，就毁掉了本题最有价值的结论。**",
+      "figure_ref": "F-4"
+    },
+    {
+      "id": "AS-13",
+      "source": "F-4",
+      "source_kind": "figure",
+      "quoted_expectation": "**所有点坍缩到同一条曲线 f(Pi_2) 上**（这是关键——若不坍缩，说明遗漏了一个无量纲组，很可能是 L/a）。Pi_2 → 0 时趋于水平渐近线 22.756。注意：Model-2 的点预期**不会**完全坍缩，因为 A-1 崩溃引入了第三个无量纲组 L/a——这个「坍缩失败」本身就是结论",
+      "assert_kind": "asymptote",
+      "expect": "Pi_2 -> 0 时 Pi_1 -> 1024/45 = 22.756",
+      "tolerance": "±0.5%",
+      "measured": "22.7556",
+      "verdict": "PASS",
+      "interpretation": "原文对 Model-0 和 Model-2 给的是**相反**的预期，必须拆开：Model-0 必须坍缩（其 Pi_1 恒等于 1024/45，与所有参数无关，是恒等式）；Model-2 预期**不**坍缩——「坍缩失败本身就是结论」。**把 Model-2 的坍缩失败判成 FAIL 再回头去修它，就毁掉了本题最有价值的结论。**",
+      "figure_ref": "F-4"
+    },
+    {
+      "id": "AS-14",
+      "source": "F-4",
+      "source_kind": "figure",
+      "quoted_expectation": "**所有点坍缩到同一条曲线 f(Pi_2) 上**（这是关键——若不坍缩，说明遗漏了一个无量纲组，很可能是 L/a）。Pi_2 → 0 时趋于水平渐近线 22.756。注意：Model-2 的点预期**不会**完全坍缩，因为 A-1 崩溃引入了第三个无量纲组 L/a——这个「坍缩失败」本身就是结论",
+      "assert_kind": "collapse",
+      "expect": "Model-2：Pi_1 相对散布 > 5%（即**不**坍缩 —— 这是预期的结论）",
+      "tolerance": "—",
+      "measured": "44.92%",
+      "verdict": "PASS",
+      "interpretation": "原文对 Model-0 和 Model-2 给的是**相反**的预期，必须拆开：Model-0 必须坍缩（其 Pi_1 恒等于 1024/45，与所有参数无关，是恒等式）；Model-2 预期**不**坍缩——「坍缩失败本身就是结论」。**把 Model-2 的坍缩失败判成 FAIL 再回头去修它，就毁掉了本题最有价值的结论。**",
+      "verdict_note": "坍缩失败是预期结果：A-1 崩溃引入了第三个无量纲组 L/a。原文亲口说「这个『坍缩失败』本身就是结论」。",
+      "figure_ref": "F-4"
+    },
+    {
+      "id": "AS-15",
+      "source": "F-5",
+      "source_kind": "figure",
+      "quoted_expectation": "反对称的双峰结构（磁体前方与后方电流反向），峰值位于 z = ±a/2 附近，随磁体一起向下平移。前后电流反向是 Lenz 定律的直接体现——前方排斥、后方吸引，两者都阻碍下落",
+      "assert_kind": "monotonic",
+      "expect": "dPhi/dz 严格反对称: max|f(z)+f(-z)| / max|f| < 1e-10",
+      "tolerance": "机器精度",
+      "measured": "4.240e-15",
+      "verdict": "PASS",
+      "interpretation": "「峰值位于 z = ±a/2」是**点偶极子**的结果（由 d/dz[z(a²+z²)^{-5/2}]=0 得 z=±a/2）。但 F-5 画的是 Model-2（有限长磁体），峰位会被两个端面拉开，预期偏离 a/2。故 AS-16 不写成「峰位必须等于 a/2」（那会把 A-1 的崩溃误判成代码错），而是测量峰位并报告它偏离 a/2 多少 —— 偏离本身是 A-1 崩溃的又一个独立证据。反对称性（AS-15）则是严格的，由 dΦ/dz 的奇函数结构保证，与场模型无关。",
+      "figure_ref": "F-5"
+    },
+    {
+      "id": "AS-16",
+      "source": "F-5",
+      "source_kind": "figure",
+      "quoted_expectation": "反对称的双峰结构（磁体前方与后方电流反向），峰值位于 z = ±a/2 附近，随磁体一起向下平移。前后电流反向是 Lenz 定律的直接体现——前方排斥、后方吸引，两者都阻碍下落",
+      "assert_kind": "peak",
+      "expect": "双峰结构存在（恰好两个极值，符号相反）；报告峰位相对 a/2 的偏离",
+      "tolerance": "双峰必须存在",
+      "measured": "z_peak = 5.029 mm  vs  a/2 = 3.000 mm （偏离 +67.6%）；双峰: True",
+      "verdict": "PASS",
+      "interpretation": "「峰值位于 z = ±a/2」是**点偶极子**的结果（由 d/dz[z(a²+z²)^{-5/2}]=0 得 z=±a/2）。但 F-5 画的是 Model-2（有限长磁体），峰位会被两个端面拉开，预期偏离 a/2。故 AS-16 不写成「峰位必须等于 a/2」（那会把 A-1 的崩溃误判成代码错），而是测量峰位并报告它偏离 a/2 多少 —— 偏离本身是 A-1 崩溃的又一个独立证据。反对称性（AS-15）则是严格的，由 dΦ/dz 的奇函数结构保证，与场模型无关。",
+      "verdict_note": "峰位显著偏离点偶极子的 a/2 —— 这是 A-1 崩溃的又一个独立证据，不是代码错（见 AS-16 判读）。",
+      "figure_ref": "F-5"
+    },
+    {
+      "id": "AS-27",
+      "source": "F-5",
+      "source_kind": "figure",
+      "quoted_expectation": "反对称的双峰结构（磁体前方与后方电流反向），峰值位于 z = ±a/2 附近，随磁体一起向下平移。前后电流反向是 Lenz 定律的直接体现——前方排斥、后方吸引，两者都阻碍下落",
+      "assert_kind": "must_not",
+      "expect": "NOT (|z_peak - a/2| / (a/2) < 5%) —— 若落在 a/2 上，说明用的是点偶极子场",
+      "tolerance": "5%（a/2 = 3.00 mm vs L/2 = 5.00 mm，两者相差 67%，5% 的带宽绰绰有余）",
+      "measured": "|z_peak - a/2|/(a/2) = 67.6%",
+      "verdict": "PASS",
+      "interpretation": "结构性 must_not（冒烟测试逼出来的）：如果涡流峰位落在点偶极子解析预言的 a/2 上，那说明代码根本没在用有限长磁体的场 —— 你只是把 Model-0 换了个壳。峰位是场的**结构**性质，不是拟合量，因此比「斜率是不是 4.00」可靠得多。",
+      "figure_ref": "F-5"
+    },
+    {
+      "id": "AS-17",
+      "source": "b",
+      "source_kind": "target",
+      "quoted_expectation": "b = \\dfrac{45}{1024}\\dfrac{\\mu_0^2 m^2 \\sigma w}{a^4}",
+      "assert_kind": "value",
+      "expect": "Model-0 数值 == baseline_value = 2.1068",
+      "tolerance": "±0.1%",
+      "measured": 2.10678531,
+      "verdict": "PASS"
+    },
+    {
+      "id": "AS-18",
+      "source": "v_t",
+      "source_kind": "target",
+      "quoted_expectation": "v_t = \\dfrac{1024}{45}\\dfrac{M g a^4}{\\mu_0^2 m^2 \\sigma w}",
+      "assert_kind": "value",
+      "expect": "Model-0 数值 == baseline_value = 0.0274",
+      "tolerance": "±0.5%",
+      "measured": 0.0274261,
+      "verdict": "PASS"
+    },
+    {
+      "id": "AS-19",
+      "source": "\\tau",
+      "source_kind": "target",
+      "quoted_expectation": "\\tau = M/b = v_t/g",
+      "assert_kind": "value",
+      "expect": "Model-0 数值 == baseline_value = 0.0028",
+      "tolerance": "±0.5%",
+      "measured": 0.00279573,
+      "verdict": "PASS"
+    },
+    {
+      "id": "AS-20",
+      "source": "A-1",
+      "source_kind": "risky_check",
+      "quoted_expectation": "报告两件事：(i) 基准点 a=6mm 处 v_t 的相对偏差；(ii) Model-2 的 v_t∝a^k 的实际指数 k。若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明。预期 k 明显小于 4——这不是失败，是模型边界被正确定位。",
+      "assert_kind": "slope",
+      "expect": "报告 (i) a=6mm 处 v_t 相对偏差；(ii) 指数 k。触发条件 |k-4| > 0.3 -> P5 降级",
+      "tolerance": "阈值 0.3，取自 pass_criterion 原文",
+      "measured": "(i) 基准点偏差 +82.7%；(ii) k = 3.4392，|k-4| = 0.5608",
+      "verdict": "PRESCRIBED",
+      "verdict_note": "触发了 pass_criterion 里**预先注册**的应对动作：把 P5 降级。这不是 HARKing —— 动作在数据出现之前就写在 spec 里了（预注册）。"
+    },
+    {
+      "id": "AS-21",
+      "source": "A-2",
+      "source_kind": "risky_check",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
+      "assert_kind": "deviation",
+      "expect": "w = 1 mm（基准）处，径向积分 vs 薄壁近似的相对偏差 < 15%",
+      "tolerance": "**15%，直接取自 spec 原文。作者已知实测会超过它，仍照写。**",
+      "measured": "23.42%",
+      "verdict": "FAIL-MODEL",
+      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。",
+      "verdict_note": "A-2 **没跨过它自己设的杆**：台账 criterion_check 自称「一阶修正 O(w/a)≈17%」、pass_criterion 把门槛设在 15%，实测 23.4%。Gate 0 已过（0.0059%），代码被证明是对的 —— 这是真实的假设失效，不是代码错。"
+    },
+    {
+      "id": "AS-22",
+      "source": "A-2",
+      "source_kind": "risky_check",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
+      "assert_kind": "deviation",
+      "expect": "w = 3 mm（w/a=0.5）处相对偏差 > 20%",
+      "tolerance": "20%，取自 spec",
+      "measured": "49.29%",
+      "verdict": "PASS",
+      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。"
+    },
+    {
+      "id": "AS-23",
+      "source": "A-2",
+      "source_kind": "risky_check",
+      "quoted_expectation": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
+      "assert_kind": "must_not",
+      "expect": "NOT (w=3mm 处偏差 < 5%) —— 若 <5%，说明径向积分根本没实现",
+      "tolerance": "5%，取自 spec",
+      "measured": "49.29%",
+      "verdict": "PASS",
+      "interpretation": "原文的「相对偏差」没说是谁比谁。选定读法 (a)：**保留径向积分 vs 薄壁近似**（两者都用有限长磁体的场）。理由：A-2 讲的是径向均匀性，与场的空间分布无关；读法 (b)（Model-2 vs Model-0）会把 A-1 的误差和 A-2 的误差搅在一起，测不出 A-2 本身。task 字段的措辞「保留径向积分（而非薄壁近似 w/(2πa)）」对比的正是这两者，支持读法 (a)。"
+    },
+    {
+      "id": "AS-24",
+      "source": "gate-1",
+      "source_kind": "convergence",
+      "quoted_expectation": "n/a",
+      "assert_kind": "value",
+      "expect": "求积容差收紧 10x 后 b 的相对变化 < 0.01%（基准点 + a 扫描的两个端点）",
+      "tolerance": "0.01%（= 断言容差 0.1% 的 1/10）",
+      "measured": "最差 0.000000%（在「基准  a=6.0mm」）",
+      "verdict": "PASS"
+    },
+    {
+      "id": "AS-25",
+      "source": "gate-1",
+      "source_kind": "convergence",
+      "quoted_expectation": "n/a",
+      "assert_kind": "value",
+      "expect": "广义积分截断扩大 2x 后 b 的相对变化 < 0.01%（基准点 + a 扫描的两个端点）",
+      "tolerance": "0.01%",
+      "measured": "最差 0.000000%（在「基准  a=6.0mm」）",
+      "verdict": "PASS"
+    },
+    {
+      "id": "AS-26",
+      "source": "gate-1",
+      "source_kind": "convergence",
+      "quoted_expectation": "n/a",
+      "assert_kind": "value",
+      "expect": "扫描点数加密 2x 后拟合斜率 k 的变化 < 0.005",
+      "tolerance": "0.005",
+      "measured": "0.002033",
+      "verdict": "PASS"
+    }
+  ],
+  "targets": [
+    {
+      "symbol": "b",
+      "meaning": "阻尼系数",
+      "unit": "N s/m",
+      "value_numeric": 1.152929,
+      "value_analytical": 2.106785,
+      "relative_deviation": -0.452754,
+      "model_level": "model-2",
+      "scaling_law_measured": "b ∝ σ w （精确）；对 a 的指数因有限尺寸效应而软化"
+    },
+    {
+      "symbol": "v_t",
+      "meaning": "终速",
+      "unit": "m/s",
+      "value_numeric": 0.050117,
+      "value_analytical": 0.027426,
+      "relative_deviation": 0.827333,
+      "model_level": "model-2",
+      "scaling_law_measured": "v_t ∝ σ^(-1.00) w^(-0.78) a^(+3.44)（Model-2）  vs  σ^(-1) w^(-1) a^(+4)（Model-0）"
+    },
+    {
+      "symbol": "\\tau",
+      "meaning": "趋近终速的时间常数",
+      "unit": "s",
+      "value_numeric": 0.00510873,
+      "value_analytical": 0.00279573,
+      "relative_deviation": 0.827333,
+      "model_level": "model-2",
+      "scaling_law_measured": "τ = v_t/g（精确关系，与模型无关）"
+    }
+  ],
+  "figures": [
+    {
+      "id": "F-1",
+      "path": "02-sim/figures/F-1.png",
+      "path_svg": "02-sim/figures/F-1.svg",
+      "assertion_ids": [
+        "AS-2",
+        "AS-3",
+        "AS-4",
+        "AS-5",
+        "AS-6"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "v_t 对 σ 的幂律指数精确是 −1（两个模型都是），对 w 则不是：Model-2 在大 w 端向上偏离，因为薄壁近似 A-2 崩了。σ 的 −1 是零自由参数预测，它站住了。"
+    },
+    {
+      "id": "F-2",
+      "path": "02-sim/figures/F-2.png",
+      "path_svg": "02-sim/figures/F-2.svg",
+      "assertion_ids": [
+        "AS-7",
+        "AS-8",
+        "AS-9"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "最激进的预测 v_t ∝ a⁴ 站不住：有限长磁体给出的指数是 3.44，不是 4.00。这不是失败——是 A-1（点偶极子，判据 a≫L，实际 a/L=0.60）的崩溃被定量地定位了。P5 据此降级。"
+    },
+    {
+      "id": "F-3",
+      "path": "02-sim/figures/F-3.png",
+      "path_svg": "02-sim/figures/F-3.svg",
+      "assertion_ids": [
+        "AS-10",
+        "AS-11"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "启动瞬态只占 0.277 mm——1 m 管中 99.97% 的行程处于终速。「全程恒速」这个近似是安全的。"
+    },
+    {
+      "id": "F-4",
+      "path": "02-sim/figures/F-4.png",
+      "path_svg": "02-sim/figures/F-4.svg",
+      "assertion_ids": [
+        "AS-12",
+        "AS-13",
+        "AS-14"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "数据坍缩：Model-0 的 5 组参数**精确**坍缩到 Π₁ = 1024/45 = 22.756（散布 0.0000%）；Model-2 **不**坍缩（散布 44.9%）。**坍缩失败本身就是结论**——A-1 崩溃引入了第三个无量纲组 L/a。"
+    },
+    {
+      "id": "F-5",
+      "path": "02-sim/figures/F-1.png",
+      "path_svg": "02-sim/figures/F-1.svg",
+      "path_interactive": "02-sim/interactive/F-5-eddy-currents.html",
+      "assertion_ids": [
+        "AS-15",
+        "AS-16",
+        "AS-27"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "涡流是反对称双峰（机器精度：4.2e-15），峰值落在 |z| = 5.03 mm ≈ L/2 = 5.0 mm——**磁体的端面上**，而不是点偶极子预言的 a/2 = 3.00 mm。因为 ∂Φ/∂z 就是两个安培端面电流环之差。这是 A-1 崩溃的第三个独立证人。"
+    }
+  ],
+  "risky_checks": [
+    {
+      "assumption_id": "A-1",
+      "quoted_pass_criterion": "报告两件事：(i) 基准点 a=6mm 处 v_t 的相对偏差；(ii) Model-2 的 v_t∝a^k 的实际指数 k。若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明。预期 k 明显小于 4——这不是失败，是模型边界被正确定位。",
+      "result": "(i) 基准点 a=6mm 处 v_t 相对偏差 +82.7%（Model-2 vs Model-0）；(ii) Model-2 的 v_t ∝ a^k 实际指数 k = 3.4392，|k−4| = 0.5608 > 0.3",
+      "holds": false,
+      "prescribed_action": "若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明",
+      "prescribed_action_taken": true,
+      "impact_on_predictions": "P5（v_t ∝ a⁴）已按预注册动作降级为「仅在 a ≫ L 时成立；本设定下 a/L = 0.60，实测指数 3.44」。**不影响** v_t 对 σ / w / M / B_r 的幂律指数——它们来自感应链条的线性结构，与场的空间分布无关（F-1 的 σ 面板实测 −1.0000 证实了这一点）。"
+    },
+    {
+      "assumption_id": "A-2",
+      "quoted_pass_criterion": "在 w = 1 mm（基准）处相对偏差 < 15% 则 A-2 在基准点站得住。在 w = 3 mm（w/a=0.5）处预期偏差显著（>20%）——若此处偏差仍 <5%，说明径向积分没被正确实现，回去查代码。",
+      "result": "判读 (a)：径向积分 vs 薄壁近似（两者都用有限长磁体的场，以隔离 A-2 本身）。w = 1 mm（基准）处偏差 23.42%（门槛 <15% —— **未通过**）；w = 3 mm（w/a=0.5）处偏差 49.29%（预期 >20% —— 通过；且远大于 5%，说明径向积分确实实现了）",
+      "holds": false,
+      "impact_on_predictions": "A-2 **没跨过它自己设的杆**：台账 criterion_check 自称「一阶修正 O(w/a)≈17%」，pass_criterion 把门槛设在 15%，实测 23.42%。后果：Model-0 的闭式解 (11) 在基准点就带有 ~23% 的薄壁误差（这是在 A-1 的误差之外的、独立的一份）。P2（v_t ∝ w⁻¹）的适用域必须收窄到 w/a ≲ 0.03（该处偏差 5.7%）。**这条触发反向边**（docs/pipeline.md §5.3）。"
+    }
+  ],
+  "matlab_port": {
+    "generated": true,
+    "verified": false,
+    "self_check_script": "02-sim/code/matlab/verify.m",
+    "note": "Python 是唯一执行引擎。本机没有 MATLAB/Octave —— **移植版在生成时未被执行过**。verify.m 读这份已验证的 results.json、重算、逐项打印 PASS/FAIL，用户在自己的机器上一键自验。谎报 verified=true 违反这个 repo 的立身之本。"
+  },
+  "reproduce": {
+    "command": "python 02-sim/code/run_all.py",
+    "runtime_seconds": 4.4,
+    "notes": "需要 numpy / scipy / matplotlib。参数全部从 handoff/model-spec.json 载入，无硬编码。"
+  },
+  "spec_defects": [
+    {
+      "field": "equations[(15)].numerical_notes",
+      "defect": "极限对拍配方取错了极限：只令 L→0 而 R 保持 5 mm，得到的是半径 5 mm 的**薄圆盘**，不是点偶极子。照此执行，比值收敛到 3.5505 而非 1。",
+      "proof_without_simulation": "纯几何：圆盘（半径 R=5mm）在半径 r=a=6mm 的圆环上产生磁通，其椭圆积分模数 k² = 4Ra/(R+a)² = 4·5·6/11² = 0.99。点偶极子近似要求 k² ≪ 1。0.99 离远场十万八千里。故该极限**不可能**退化为点偶极子。",
+      "fix": "R 和 L 必须**一起**趋于 0：R→εR, L→εL, M_s→M_s/ε³（使 m = M_s·πR²L 不变），ε→0。修正后 ε=0.01 时误差 0.0059% < 0.1%。"
+    },
+    {
+      "field": "figures[F-3].expected_shape",
+      "defect": "「在 0.35 mm 处已达 0.99」——这是一个**已被 01-review-r1.md 抓到、在 01-analysis.md 里改过、但从未同步进契约**的错误。",
+      "proof_without_simulation": "纯代数：由 (12) 的闭式解 v = v_t(1−e^{−t/τ})，x(t) = ∫v dt = v_t[t − τ(1−e^{−t/τ})]。令 v/v_t = 0.99 ⇒ t = τ·ln100 ⇒ x = v_t·τ·(ln100 − 0.99) = 3.615·v_t·τ = 0.277 mm。而 0.35 mm = 4.605·v_t·τ —— **少减了那个 0.99**，高估 27.4%。这正是审稿报告里写的「用了 v_t·τ×4.6 这个错误捷径，系统性高估 27%，精确值 0.28 mm」。",
+      "fix": "expected_shape 里的 0.35 mm → 0.277 mm。**系统性教训：审稿改的是正文，而 Skill 2 只读契约。正文与契约脱钩，下游就会原样继承一个早已被发现并「修好」了的 bug——而没有任何检查会发现。**"
+    },
+    {
+      "field": "figures[F-3].compare_with",
+      "defect": "引用了不存在的公式 (13)。equations[] 里只有 (10)(11)(12)(15)。",
+      "proof_without_simulation": "逐一枚举 equations[].id：(10), (11), (12), (15)。没有 (13)。闭式解 v = v_t(1−e^{−t/τ}) 实际在 (12).closed_form 里。",
+      "fix": "compare_with 的 (13) → (12)。"
+    }
+  ],
+  "open_gaps": []
+}

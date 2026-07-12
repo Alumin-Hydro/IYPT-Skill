@@ -1,0 +1,300 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Alumin-Hydro/IYPT-Skill/blob/main/skills/iypt-simulation/templates/results.schema.json",
+  "title": "IYPT sim-results",
+  "description": "Skill 2 (iypt-simulation) -> Skill 3 (iypt-slides) 的唯一交接契约，同时是 Skill 2 自己的验收记录。每一条断言的判定都在这里，不许有\"未评估\"。Skill 3 引用的每一个数字都必须能在这里找到出处。",
+  "type": "object",
+  "required": ["problem_slug", "status", "gates", "assertions", "targets", "figures", "risky_checks", "reproduce"],
+  "additionalProperties": false,
+  "properties": {
+
+    "problem_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "必须与 model-spec.json 的 problem.slug 一致"
+    },
+
+    "model_spec_version": {
+      "type": "string",
+      "description": "这份结果是基于哪一版 model-spec 算的。反向边修订过就写 \"r2\" 等；未修订写 \"r1\"。跨版本比较结果时靠它。"
+    },
+
+    "generated_by": {
+      "type": "object",
+      "description": "Python 是唯一执行引擎。results.json 只能由它产生。",
+      "required": ["engine"],
+      "additionalProperties": false,
+      "properties": {
+        "engine": { "type": "string", "enum": ["python"] },
+        "versions": {
+          "type": "object",
+          "description": "python / numpy / scipy / matplotlib 版本。复现要靠它。",
+          "additionalProperties": { "type": "string" }
+        },
+        "timestamp": { "type": "string" }
+      }
+    },
+
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "PRESCRIBED-REVISION", "MODEL-CHALLENGED", "SPEC-DEFECT", "FAIL-CODE", "GAP"],
+      "description": "见 docs/pipeline.md §5。分类不是自由裁量——判定规则在写代码之前就定死了。FAIL-CODE 不许交付下游。"
+    },
+
+    "status_reason": {
+      "type": "string",
+      "description": "一句话说清为什么是这个 status，并指向具体的断言 id。status != PASS 时必填。"
+    },
+
+    "gates": {
+      "type": "array",
+      "description": "验证阶梯。严格按序，前一道不过不许走下一道。每道门都必须有记录——跳过一道门 = 契约违约。",
+      "items": {
+        "type": "object",
+        "required": ["id", "ran", "passed", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["gate-0-limit", "gate-1-convergence", "gate-2-layered", "gate-3-analytical"],
+            "description": "gate-0-limit=极限对拍(纯数学恒等式，不过必是代码错)；gate-1-convergence=收敛(网格/容差/截断无关性)；gate-2-layered=分层对拍(Model-0→1→2 在重叠区一致)；gate-3-analytical=解析对拍(targets 的 analytical_prediction)"
+          },
+          "recipe": {
+            "type": "string",
+            "description": "gate-0 必填：**逐字抄写** model-spec 里 equations[].numerical_notes 的极限对拍配方。抄不上说明你没读它。"
+          },
+          "ran": { "type": "boolean" },
+          "passed": { "type": "boolean" },
+          "evidence": {
+            "type": "string",
+            "description": "具体数字，不是\"通过了\"。如 \"eps=0.01 时 b2/b0 = 0.999941，误差 0.0059% < 0.1%\""
+          },
+          "numbers": {
+            "type": "object",
+            "description": "收敛表 / 极限表的原始数据，供 Skill 3 引用",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+
+    "assertions": {
+      "type": "array",
+      "description": "★ 本 schema 的核心。每条 expected_shape / pass_criterion / analytical_prediction 都必须被翻译成一条机械可判的断言，并在这里给出判定。**不许有未评估的断言。**",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "source_kind", "quoted_expectation", "assert_kind", "expect", "measured", "verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^AS-[0-9]+$" },
+
+          "source": {
+            "type": "string",
+            "description": "断言从 model-spec 的哪一条来的。如 \"F-2\"、\"A-1\"、\"v_t\"、\"(15)\""
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": ["figure", "target", "risky_check", "equation_limit", "convergence"]
+          },
+
+          "quoted_expectation": {
+            "type": "string",
+            "description": "★★ **逐字抄写** model-spec 里对应字段的原文（figures[].expected_shape / risky_assumption_checks[].pass_criterion / targets[].analytical_prediction / equations[].numerical_notes）。\n\n为什么必须抄：验证类 agent 的通用失效模式是**拿自己重推的正确版本替换掉作者写的字**——它会独立推一遍物理，然后拿数值结果跟\"自己心里的预期\"比对，而不是跟 Skill 1 白纸黑字承诺的东西比对。抄写这个动作本身就是强制去读它。\n\ncheck_sim.py 会机械验证这段引文**确实是 model-spec 对应字段的子串**。抄不上 = ERROR。"
+          },
+
+          "interpretation": {
+            "type": "string",
+            "description": "翻译时的判读。**expected_shape 是自然语言，有歧义时必须在这里说明你选了哪个读法，以及为什么。**\n\n实例：magnetic-brake 的 F-1 同时写着\"两条直线，斜率均为 -1.00\"和\"Model-2 在大 w 端应向上偏离\"——这两句字面上是矛盾的。选了哪个读法，写在这里，交给人眼审。\n\n**这一条是 acceptance.md 存在的理由**：不强制记录判读，agent 会挑对自己有利的那个读法。"
+          },
+
+          "assert_kind": {
+            "type": "string",
+            "enum": ["slope", "value", "monotonic", "asymptote", "collapse", "peak", "deviation", "limit", "must_not"],
+            "description": "must_not = **反向断言**：\"符得太好\"也是失败。如 F-2 的\"若 Model-2 也给出斜率 4.00，说明有限尺寸修正没被实现——回去查代码\"。这类断言被触发时判 FAIL-CODE。"
+          },
+
+          "expect": {
+            "type": "string",
+            "description": "机械可判的期望。如 \"slope == -1.00\"、\"|k - 4.0| > 0.3\"、\"scatter < 1%\"、\"NOT (|k-4.0| < 0.1)\""
+          },
+          "tolerance": {
+            "type": "string",
+            "description": "容差，以及**它是怎么定出来的**。不许事后放宽——放宽容差是把图改好看的另一种写法。"
+          },
+
+          "measured": {
+            "description": "实测值。数字或简短字符串。",
+            "type": ["number", "string"]
+          },
+
+          "verdict": {
+            "type": "string",
+            "enum": ["PASS", "FAIL-CODE", "FAIL-MODEL", "PRESCRIBED"],
+            "description": "判定规则在写代码之前就定死（docs/pipeline.md §5）：\n- limit 断言(Gate 0)被违反 -> FAIL-CODE（纯数学恒等式，与物理无关）\n- must_not 被触发（符得太好）-> FAIL-CODE（修正项根本没进代码）\n- convergence 被违反 -> FAIL-CODE（网格/容差/截断污染了结果）\n- Skill 1 承诺的定性形状被违反，且 Gate 0 已过 -> FAIL-MODEL（代码已证明对 -> 物理错了 -> 触发反向边）\n- 命中 Skill 1 在 pass_criterion 里**预先注册**的分支 -> PRESCRIBED（不是失败；照它写的动作执行即可）"
+          },
+          "verdict_note": {
+            "type": "string",
+            "description": "verdict != PASS 时必填。FAIL-MODEL 要说清\"Gate 0 已过，所以不是我代码错\"的举证。PRESCRIBED 要指明是哪条预注册动作。"
+          },
+
+          "figure_ref": {
+            "type": "string",
+            "description": "这条断言画在哪张图上（断言结果应当直接标注在图上：expected vs measured）"
+          }
+        }
+      }
+    },
+
+    "targets": {
+      "type": "array",
+      "description": "model-spec 的每个 target 都必须在这里有数值结果。",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "unit", "value_numeric"],
+        "additionalProperties": false,
+        "properties": {
+          "symbol": { "type": "string" },
+          "meaning": { "type": "string" },
+          "unit": { "type": "string" },
+          "value_numeric": { "type": "number", "description": "数值解（最完整的模型，通常是 Model-2）" },
+          "value_analytical": { "type": "number", "description": "model-spec 里 analytical_prediction 的值" },
+          "relative_deviation": {
+            "type": "number",
+            "description": "(numeric - analytical)/analytical。**偏差大不一定是错**——Model-2 与 Model-0 的差距正是 RISKY 假设崩溃的量度。但必须记录，并在 verdict_note 里解释。"
+          },
+          "model_level": { "type": "string", "enum": ["model-0", "model-1", "model-2"] },
+          "scaling_law_measured": {
+            "type": "string",
+            "description": "数值上拟合出来的幂律指数。如 \"v_t ∝ a^{3.44}（Model-2）vs a^{4.00}（Model-0）\"。**幂律指数是零自由参数预测——这是最有说服力的数字，也是最容易被 Opponent 攻击的数字。**"
+          }
+        }
+      }
+    },
+
+    "figures": {
+      "type": "array",
+      "description": "model-spec 的每张图都必须在这里有产出。",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "assertion_ids", "verdict", "simulation_stamped"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^F-[0-9]+$" },
+          "path": { "type": "string", "description": "相对工作区的路径，如 \"02-sim/figures/F-1.png\"" },
+          "path_svg": { "type": "string" },
+          "path_interactive": { "type": "string", "description": "animation/interactive 类型的图：自包含单文件 HTML" },
+          "assertion_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "这张图对应哪些断言。**空数组 = 这张图没有验收标准 = 它只是装饰。**"
+          },
+          "verdict": { "type": "string", "enum": ["PASS", "FAIL-CODE", "FAIL-MODEL", "PRESCRIBED"] },
+          "simulation_stamped": {
+            "type": "boolean",
+            "description": "**必须为 true。** 每张图都要盖 SIMULATION 戳——仿真结果绝不伪装成实验数据（docs/pipeline.md §7）。check_sim.py 机械检查这一条。"
+          },
+          "caption": { "type": "string", "description": "给 Skill 3 用的图注：这张图**证明了什么**（不是\"展示了什么\"）" }
+        }
+      }
+    },
+
+    "risky_checks": {
+      "type": "array",
+      "description": "model-spec 里每条 risky_assumption_checks 都必须在这里有结果。**跳过一条 = 契约违约**——RISKY 假设的存在意义就是它必须被数值验证。",
+      "items": {
+        "type": "object",
+        "required": ["assumption_id", "quoted_pass_criterion", "result", "holds"],
+        "additionalProperties": false,
+        "properties": {
+          "assumption_id": { "type": "string", "pattern": "^A-[0-9]+$" },
+          "quoted_pass_criterion": {
+            "type": "string",
+            "description": "**逐字抄写** model-spec 里的 pass_criterion。同 assertions.quoted_expectation，check_sim.py 机械校验。"
+          },
+          "result": { "type": "string", "description": "跑出来的具体数字" },
+          "holds": {
+            "type": "boolean",
+            "description": "这条假设在基准点站得住吗？**false 不是灾难——标出来的 RISKY 且验过 = 满分答案；藏起来的 RISKY = 被 Opponent 一击致命。**"
+          },
+          "prescribed_action": {
+            "type": "string",
+            "description": "pass_criterion 里**预先注册**的应对动作（若有）。如 A-1 的\"若 |k-4| > 0.3，则必须在 01-analysis.md 的预测表中把 P5 降级并说明\"。"
+          },
+          "prescribed_action_taken": {
+            "type": "boolean",
+            "description": "预注册的动作执行了吗？有 prescribed_action 时必填。**写了却不执行，比没写更糟。**"
+          },
+          "impact_on_predictions": {
+            "type": "string",
+            "description": "这条假设的实测状态影响哪几条预测。Skill 3 要靠它决定 PPT 上哪些结论要加限定词。"
+          }
+        }
+      }
+    },
+
+    "matlab_port": {
+      "type": "object",
+      "description": "MATLAB 移植版。Python 是唯一执行引擎——移植版**在生成时未被执行过**，必须诚实标注。",
+      "required": ["generated", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "generated": { "type": "boolean" },
+        "verified": {
+          "type": "boolean",
+          "description": "**生成时必须为 false。** 本机没有 MATLAB/Octave，代码未经执行。谎报 verified=true 违反 repo 的立身之本：一切结论必须被数值验证。"
+        },
+        "self_check_script": {
+          "type": "string",
+          "description": "自检脚本路径。它读这份已验证的 results.json、重算、逐项打印 PASS/FAIL —— 用户在自己机器上一键自验。"
+        },
+        "note": { "type": "string" }
+      }
+    },
+
+    "reproduce": {
+      "type": "object",
+      "description": "一条命令重现全部数字和图。做不到 = 结果不可信。",
+      "required": ["command"],
+      "additionalProperties": false,
+      "properties": {
+        "command": { "type": "string", "description": "如 \"python 02-sim/code/run_all.py\"" },
+        "runtime_seconds": { "type": "number" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "spec_defects": {
+      "type": "array",
+      "description": "契约本身的缺陷（docs/pipeline.md §5.2）。**门槛：你必须能在不引用任何仿真结果的情况下证明它有毛病。**需要引用数字才能说明的，那不是 SPEC-DEFECT，是模型被数据打脸了——那条线必须画死，否则 SPEC-DEFECT 就是个逃生舱。",
+      "items": {
+        "type": "object",
+        "required": ["field", "defect", "proof_without_simulation", "fix"],
+        "additionalProperties": false,
+        "properties": {
+          "field": { "type": "string", "description": "model-spec 里的哪个字段，如 \"equations[(15)].numerical_notes\"" },
+          "defect": { "type": "string" },
+          "proof_without_simulation": {
+            "type": "string",
+            "description": "**不引用仿真结果**的证明。做不到就不是 SPEC-DEFECT。"
+          },
+          "fix": { "type": "string", "description": "改成什么" }
+        }
+      }
+    },
+
+    "open_gaps": {
+      "type": "array",
+      "description": "反向边 2 轮后仍未闭合的问题。非空 = status 应为 GAP，下游必须知情。",
+      "items": {
+        "type": "object",
+        "required": ["description", "impact"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string" },
+          "impact": { "type": "string" }
+        }
+      }
+    }
+  }
+}
