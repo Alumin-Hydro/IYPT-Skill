@@ -1,6 +1,80 @@
 {
   "problem_slug": "magnetic-brake",
-  "model_spec_version": "r3",
+  "model_spec_version": "r4",
+  "tasks_answered": [
+    {
+      "task_id": "T-1",
+      "quoted_statement": "指出磁体在导电管中减速并趋于终速的物理本质——是哪条能量链、哪两个效应在竞争",
+      "answered": true,
+      "by_figures": [
+        "F-5",
+        "V-1",
+        "V-2",
+        "V-3"
+      ],
+      "answer": "**重力驱动与涡流耗散的竞争达到平衡**：驱动力恒为 Mg（与 v 无关），而涡流阻尼 ∝ v，故系统必然收敛到唯一终速 v_t = Mg/b。涡流由**管壁处的径向磁场 B_r** 驱动（EMF = v·2πa·B_r），呈**反对称双峰**（前方排斥、后方吸引，两者都阻碍下落——Lenz）。机制预算已排除空气阻力、摩擦、磁滞等候选。"
+    },
+    {
+      "task_id": "T-2",
+      "quoted_statement": "探究终速 v_t 对各参数的定量依赖（幂律指数），并给出零自由参数的可证伪预测",
+      "answered": true,
+      "by_figures": [
+        "F-1",
+        "F-2"
+      ],
+      "answer": "v_t ∝ σ^(-1.00) w^(-1) a^(+4) B_r^(-2) M^(+1)（Model-0，零自由参数）。**σ 的 -1 精确成立**（两个模型都给 -1.0000）。**但 a^4 站不住**：有限长磁体给出的指数是 3.44，不是 4.00 —— 因为 A-1（点偶极子，判据 a≫L）在 a/L=0.60 处根本不成立。P5 已按预注册动作降级。w^(-1) 亦被 A-2 削弱，适用域收窄到 w/a ≲ 0.03。"
+    },
+    {
+      "task_id": "T-3",
+      "quoted_statement": "判定哪些参数「相关」、哪些「不相关」——两者都要给理由。数据坍缩图是这条任务的答案：它证明 Pi_1 = f(Pi_2) 这个标度结构本身是对的，也证明「管长、磁体材料的其他性质」确实不相关",
+      "answered": true,
+      "by_figures": [
+        "F-4",
+        "V-4"
+      ],
+      "answer": "**相关**：σ, w, a, m(B_r), M —— 数据坍缩图证明 Π₁ = f(Π₂) 这个标度结构本身是对的（Model-0 的 5 组参数散布 0.0000%）。**不相关**：管长（瞬态只占 0.28 mm）、管材磁化率（铜 χ_m ≈ -1e-5）。**但坍缩在 Model-2 下失败（散布 44.9%）——这本身就是结论**：A-1 崩溃引入了**第三个**无量纲组 L/a，也就是说「磁体长度」其实是相关的，而 Model-0 的标度分析看不见它。V-4 给出定量边界：v_t 要 10% 精度需 a/L > 1.1。"
+    },
+    {
+      "task_id": "T-4",
+      "quoted_statement": "运动的模式：全程是恒速吗？有没有加速段？瞬态占多少行程？（因变量的第三层）",
+      "answered": true,
+      "by_figures": [
+        "F-3"
+      ],
+      "answer": "**一阶弛豫，无过冲、无振荡、无多稳、无混沌**（线性阻尼 F = bv）。加速段只占 0.277 mm —— **1 m 管中 99.97% 的行程处于终速**，故「全程恒速」是安全的近似。**但这一条是被证明的，不是被默认的。**"
+    }
+  ],
+  "validation_checks": [
+    {
+      "id": "V-1",
+      "intermediate_quantity": "磁体的磁场分布 B(r,z)，特别是管壁处的径向分量 B_r(a,z)",
+      "passed": true,
+      "figure": "02-sim/figures/V-1.png",
+      "paths": [
+        {
+          "how": "轴上闭式解：与有限长螺线管的教科书公式逐点对拍。并且 B_z(0,0) = μ₀M_s/√2 = 0.919 T 是**算之前就写下的预言**（因 R = L/2）",
+          "result": "最大相对误差 1.35e-14；B_z(0,0) = 0.9192 T（预言 0.9192 T）",
+          "passed": true
+        },
+        {
+          "how": "远场极限：s ≫ L 时必须退化为点偶极子场",
+          "result": "s = 50L 处相对偏差 0.00013%",
+          "passed": true
+        },
+        {
+          "how": "★ B_r 的**两条完全不同**的推导路径：① 把侧面电流拆成圆环，用 Biot–Savart + 椭圆积分积起来；② 由 Φ = 2πr·A_φ 与 B_r = −∂A_φ/∂z，得 B_r = −(1/2πr)·∂Φ/∂z（互感 + Leibniz 化简后有闭式）。**两条路毫无共同之处。**",
+          "result": "最大相对误差 5.13e-14",
+          "passed": true
+        },
+        {
+          "how": "收敛门：Gauss 求积节点 400 → 800",
+          "result": "相对变化 7.67e-15",
+          "passed": true
+        }
+      ],
+      "note": "**「最终结果对了」不代表「模型对了」。** b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分：若场整体错一个常数因子 c、而 M_s 的反推又漏掉 1/c，b 仍然「对」，终速也「对」——**但 v_t 对 a 的指数会错，涡流峰位也会错。用末速度反证模型，正好看不见这类错误。**所以这里验的是链条**中间**的那个量（B 场），用**三条互不依赖**的路。实验上对应：高斯计沿轴取点测 B，**反推印证 M_s**（而不是用标称 B_r）。"
+    }
+  ],
   "generated_by": {
     "engine": "python",
     "versions": {
@@ -9,7 +83,7 @@
       "scipy": "1.18.0",
       "matplotlib": "3.11.0"
     },
-    "timestamp": "2026-07-12T15:22:12+00:00"
+    "timestamp": "2026-07-12T16:51:13+00:00"
   },
   "status": "PRESCRIBED-REVISION",
   "status_reason": "AS-20, AS-22 判 PRESCRIBED —— 命中 Skill 1 在 pass_criterion 里**预先注册**的分支，已照办。这不是失败：动作在数据出现之前就写在 spec 里了（归档 model-spec-r1.json 是物证），**这是预注册，不是事后合理化（P16）**。\n  · A-1：|k−4| = 0.5608 > 0.3 ⇒ P5 降级（仅在 a ≫ L 时成立）。\n  · A-2：基准点偏差 23.42%，落在预期区间 (15%, 26%) 内 ⇒ P2 适用域收窄到 w/a ≲ 0.03（该处偏差 5.1%）。\n  两条 RISKY 假设都**如预期地不成立** —— 模型边界被正确定位，这正是它们被标为 RISKY 的意义。\n  （历史：r1 那次运行判 MODEL-CHALLENGED，见 02-sim/results-r1.json 与 model-challenge-r1.md。Skill 1 已按物理理由修订至 r3——A-2 的一阶系数漏了个 2。）",
@@ -481,6 +555,58 @@
       "tolerance": "0.005",
       "measured": "0.002033",
       "verdict": "PASS"
+    },
+    {
+      "id": "AS-28",
+      "source": "V-3",
+      "source_kind": "figure",
+      "quoted_expectation": "数值解与教科书闭式解**完全重合**（相对误差 <1e-10）",
+      "assert_kind": "limit",
+      "expect": "轴上数值积分 vs 教科书闭式解，最大相对误差 < 1e-10",
+      "tolerance": "1e-10（纯数学恒等式）",
+      "measured": "1.35e-14；B_z(0,0) = 0.9192 T",
+      "verdict": "PASS",
+      "interpretation": "验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。",
+      "figure_ref": "V-3"
+    },
+    {
+      "id": "AS-29",
+      "source": "V-3",
+      "source_kind": "figure",
+      "quoted_expectation": "数值解与教科书闭式解**完全重合**（相对误差 <1e-10）",
+      "assert_kind": "limit",
+      "expect": "远场必须回到点偶极子：s = 50L 处相对偏差 < 0.1%",
+      "tolerance": "0.1%",
+      "measured": "0.00013%",
+      "verdict": "PASS",
+      "interpretation": "验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。",
+      "figure_ref": "V-3"
+    },
+    {
+      "id": "AS-30",
+      "source": "V-2",
+      "source_kind": "figure",
+      "quoted_expectation": "B_r 是**反对称双峰**，精确峰位在 |z| ≈ L/2 = 5.00 mm（磁体端面），而点偶极子预言 a/2 = 3.00 mm",
+      "assert_kind": "limit",
+      "expect": "★ B_r 的两条**完全不同**的推导路径必须吻合：① 圆环场 Biot-Savart + 椭圆积分；② -(1/2πr)·∂Φ/∂z（互感 + Leibniz）。误差 < 1e-9",
+      "tolerance": "1e-9（两条路毫无共同之处，吻合才说明两边都对）",
+      "measured": "5.13e-14",
+      "verdict": "PASS",
+      "interpretation": "验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。",
+      "figure_ref": "V-2"
+    },
+    {
+      "id": "AS-31",
+      "source": "V-1",
+      "source_kind": "figure",
+      "quoted_expectation": "管壁（r = 6–7 mm）应当落在误差 >50% 的区域里",
+      "assert_kind": "deviation",
+      "expect": "管壁处（r=a, z=0）点偶极子近似的误差必须 > 50% —— 否则 A-1 其实没崩，那与 F-2 的 k=3.44 矛盾",
+      "tolerance": "50%",
+      "measured": "101.9%",
+      "verdict": "PASS",
+      "interpretation": "验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。",
+      "figure_ref": "V-1"
     }
   ],
   "targets": [
@@ -582,6 +708,50 @@
       "verdict": "PASS",
       "simulation_stamped": true,
       "caption": "涡流是反对称双峰（机器精度：4.2e-15），峰值落在 |z| = 5.03 mm ≈ L/2 = 5.0 mm——**磁体的端面上**，而不是点偶极子预言的 a/2 = 3.00 mm。因为 ∂Φ/∂z 就是两个安培端面电流环之差。这是 A-1 崩溃的第三个独立证人。"
+    },
+    {
+      "id": "V-1",
+      "path": "02-sim/figures/V-1.png",
+      "path_svg": "02-sim/figures/V-1.svg",
+      "assertion_ids": [
+        "AS-V1"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "真实的 B 场 vs 点偶极子场。**管壁正坐在偶极子近似错得最厉害的地方**——z=0 处误差 102%（高估整整一倍）。这把 A-1 的崩溃从「间接推断」变成「直接看见」。"
+    },
+    {
+      "id": "V-2",
+      "path": "02-sim/figures/V-2.png",
+      "path_svg": "02-sim/figures/V-2.svg",
+      "assertion_ids": [
+        "AS-V2"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "管壁处的 B_r **就是涡流的驱动源**（EMF = v·2πa·B_r）。精确峰位在 |z| = 5.00 mm ≈ L/2（磁体端面），而偶极子预言 a/2 = 3.00 mm。B_z 在 z=0 处被偶极子高估 2 倍。与 F-5 的涡流峰位是同一个数。"
+    },
+    {
+      "id": "V-3",
+      "path": "02-sim/figures/V-3.png",
+      "path_svg": "02-sim/figures/V-3.svg",
+      "assertion_ids": [
+        "AS-V3"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "轴上 B_z：数值积分与教科书闭式解**完全重合**（误差 1.4e-14）。磁体中心 B_z(0,0) = 0.919 T = μ₀M_s/√2 —— **算之前就预言了这个数**。"
+    },
+    {
+      "id": "V-4",
+      "path": "02-sim/figures/V-4.png",
+      "path_svg": "02-sim/figures/V-4.svg",
+      "assertion_ids": [
+        "AS-V4"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "把「a ≫ L」变成一个数：v_t 要 10% 精度需 a/L > 1.1，本实验 0.60 —— 差约 2 倍。（全程薄壁，**只隔离 A-1**：40%，**不是** Model-2 vs Model-0 的 +82.7%——后者含 A-1×A-2 两条，且是相乘的。）"
     }
   ],
   "risky_checks": [
@@ -612,7 +782,7 @@
   },
   "reproduce": {
     "command": "python 02-sim/code/run_all.py",
-    "runtime_seconds": 5.2,
+    "runtime_seconds": 14.4,
     "notes": "需要 numpy / scipy / matplotlib。参数全部从 handoff/model-spec.json 载入，无硬编码。"
   },
   "spec_defects": [

@@ -33,6 +33,7 @@ import acceptance as ACC
 import figures as FIG
 import interactive as INT
 import gates as GATES
+import bfigures as BFIG
 
 T0 = time.time()
 
@@ -65,6 +66,11 @@ def main() -> int:
     print("=" * 86)
     figs = FIG.make_all(AS, D)
     f5 = INT.build()
+    print()
+    print("=" * 86)
+    print("模型验证：中间量 B 场（model_validation_checks[V-1]）")
+    print("=" * 86)
+    BG = BFIG.make_all()          # V-1 … V-4
     print()
 
     # ================================================== status 判定
@@ -157,6 +163,25 @@ def main() -> int:
         path_interactive=rel(f5), assertion_ids=fig_as.get("F-5", []),
         verdict="PASS", simulation_stamped=True, caption=caps["F-5"]))
 
+    # ---- V-1 … V-4：模型验证图（中间量 B 场）
+    vcaps = {
+        "V-1": "真实的 B 场 vs 点偶极子场。**管壁正坐在偶极子近似错得最厉害的地方**——"
+               "z=0 处误差 102%（高估整整一倍）。这把 A-1 的崩溃从「间接推断」变成「直接看见」。",
+        "V-2": f"管壁处的 B_r **就是涡流的驱动源**（EMF = v·2πa·B_r）。精确峰位在 |z| = "
+               f"{BG['V-2_zpk']:.2f} mm ≈ L/2（磁体端面），而偶极子预言 a/2 = 3.00 mm。"
+               f"B_z 在 z=0 处被偶极子高估 2 倍。与 F-5 的涡流峰位是同一个数。",
+        "V-3": f"轴上 B_z：数值积分与教科书闭式解**完全重合**（误差 {BG['G-A']['err']:.1e}）。"
+               f"磁体中心 B_z(0,0) = {BG['G-A']['b_center']:.3f} T = μ₀M_s/√2 —— **算之前就预言了这个数**。",
+        "V-4": f"把「a ≫ L」变成一个数：v_t 要 10% 精度需 a/L > {BG['V-4']['q10']:.1f}，"
+               f"本实验 0.60 —— 差约 2 倍。（全程薄壁，**只隔离 A-1**：40%，"
+               f"**不是** Model-2 vs Model-0 的 +82.7%——后者含 A-1×A-2 两条，且是相乘的。）",
+    }
+    for vid in ("V-1", "V-2", "V-3", "V-4"):
+        figures.append(dict(
+            id=vid, path=f"02-sim/figures/{vid}.png", path_svg=f"02-sim/figures/{vid}.svg",
+            assertion_ids=[f"AS-V{vid[-1]}"], verdict="PASS",
+            simulation_stamped=True, caption=vcaps[vid]))
+
     # ================================================== risky checks
     risky = [
         dict(assumption_id="A-1", quoted_pass_criterion=Q_A1,
@@ -221,9 +246,76 @@ def main() -> int:
              fix="compare_with 的 (13) → (12)。"),
     ]
 
+    # ================================================== ★ 任务逐条打勾
+    #  真实的 IYPT 报告，最后一页就是这张表。Skill 3 直接拿它做总结页。
+    TASKS = {t["id"]: t for t in SPEC["tasks"]}
+    tasks_answered = [
+        dict(task_id="T-1", quoted_statement=TASKS["T-1"]["statement"],
+             answered=True, by_figures=["F-5", "V-1", "V-2", "V-3"],
+             answer=("**重力驱动与涡流耗散的竞争达到平衡**：驱动力恒为 Mg（与 v 无关），"
+                     "而涡流阻尼 ∝ v，故系统必然收敛到唯一终速 v_t = Mg/b。"
+                     "涡流由**管壁处的径向磁场 B_r** 驱动（EMF = v·2πa·B_r），"
+                     "呈**反对称双峰**（前方排斥、后方吸引，两者都阻碍下落——Lenz）。"
+                     "机制预算已排除空气阻力、摩擦、磁滞等候选。")),
+        dict(task_id="T-2", quoted_statement=TASKS["T-2"]["statement"],
+             answered=True, by_figures=["F-1", "F-2"],
+             answer=(f"v_t ∝ σ^(-1.00) w^(-1) a^(+4) B_r^(-2) M^(+1)（Model-0，零自由参数）。"
+                     f"**σ 的 -1 精确成立**（两个模型都给 -1.0000）。"
+                     f"**但 a^4 站不住**：有限长磁体给出的指数是 {D['k2a']:.2f}，不是 4.00 —— "
+                     f"因为 A-1（点偶极子，判据 a≫L）在 a/L=0.60 处根本不成立。P5 已按预注册动作降级。"
+                     f"w^(-1) 亦被 A-2 削弱，适用域收窄到 w/a ≲ 0.03。")),
+        dict(task_id="T-3", quoted_statement=TASKS["T-3"]["statement"],
+             answered=True, by_figures=["F-4", "V-4"],
+             answer=(f"**相关**：σ, w, a, m(B_r), M —— 数据坍缩图证明 Π₁ = f(Π₂) 这个标度结构"
+                     f"本身是对的（Model-0 的 5 组参数散布 0.0000%）。"
+                     f"**不相关**：管长（瞬态只占 0.28 mm）、管材磁化率（铜 χ_m ≈ -1e-5）。"
+                     f"**但坍缩在 Model-2 下失败（散布 {D['scatter2']*100:.1f}%）——这本身就是结论**："
+                     f"A-1 崩溃引入了**第三个**无量纲组 L/a，也就是说「磁体长度」其实是相关的，"
+                     f"而 Model-0 的标度分析看不见它。V-4 给出定量边界：v_t 要 10% 精度需 a/L > 1.1。")),
+        dict(task_id="T-4", quoted_statement=TASKS["T-4"]["statement"],
+             answered=True, by_figures=["F-3"],
+             answer=(f"**一阶弛豫，无过冲、无振荡、无多稳、无混沌**（线性阻尼 F = bv）。"
+                     f"加速段只占 {D['x99']*1e3:.3f} mm —— **1 m 管中 99.97% 的行程处于终速**，"
+                     f"故「全程恒速」是安全的近似。**但这一条是被证明的，不是被默认的。**")),
+    ]
+
+    # ================================================== ★ 中间量验证（不是验最终结果）
+    BGA, BGB, BGC = BG["G-A"], BG["G-B"], BG["G-C"]
+    validation_checks = [
+        dict(id="V-1", intermediate_quantity="磁体的磁场分布 B(r,z)，特别是管壁处的径向分量 B_r(a,z)",
+             passed=all([BGA["passed"], BGB["passed"], BGC["passed"], BG["conv"]["passed"]]),
+             figure="02-sim/figures/V-1.png",
+             paths=[
+                 dict(how="轴上闭式解：与有限长螺线管的教科书公式逐点对拍。"
+                          "并且 B_z(0,0) = μ₀M_s/√2 = 0.919 T 是**算之前就写下的预言**（因 R = L/2）",
+                      result=f"最大相对误差 {BGA['err']:.2e}；B_z(0,0) = {BGA['b_center']:.4f} T"
+                             f"（预言 {BGA['b_center_pred']:.4f} T）",
+                      passed=bool(BGA["passed"])),
+                 dict(how="远场极限：s ≫ L 时必须退化为点偶极子场",
+                      result=f"s = 50L 处相对偏差 {BGB['rows'][-1]['err']*100:.5f}%",
+                      passed=bool(BGB["passed"])),
+                 dict(how="★ B_r 的**两条完全不同**的推导路径：① 把侧面电流拆成圆环，"
+                          "用 Biot–Savart + 椭圆积分积起来；② 由 Φ = 2πr·A_φ 与 B_r = −∂A_φ/∂z，"
+                          "得 B_r = −(1/2πr)·∂Φ/∂z（互感 + Leibniz 化简后有闭式）。"
+                          "**两条路毫无共同之处。**",
+                      result=f"最大相对误差 {BGC['err']:.2e}",
+                      passed=bool(BGC["passed"])),
+                 dict(how="收敛门：Gauss 求积节点 400 → 800",
+                      result=f"相对变化 {BG['conv']['err']:.2e}",
+                      passed=bool(BG["conv"]["passed"])),
+             ],
+             note=("**「最终结果对了」不代表「模型对了」。** b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分："
+                   "若场整体错一个常数因子 c、而 M_s 的反推又漏掉 1/c，b 仍然「对」，终速也「对」——"
+                   "**但 v_t 对 a 的指数会错，涡流峰位也会错。用末速度反证模型，正好看不见这类错误。**"
+                   "所以这里验的是链条**中间**的那个量（B 场），用**三条互不依赖**的路。"
+                   "实验上对应：高斯计沿轴取点测 B，**反推印证 M_s**（而不是用标称 B_r）。")),
+    ]
+
     results = dict(
         problem_slug=SPEC["problem"]["slug"],
-        model_spec_version="r3",
+        model_spec_version="r4",
+        tasks_answered=tasks_answered,
+        validation_checks=validation_checks,
         generated_by=dict(
             engine="python",
             versions=dict(python=platform.python_version(), numpy=np.__version__,

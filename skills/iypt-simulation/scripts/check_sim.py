@@ -196,6 +196,55 @@ def check_quotes(spec: dict, res: dict) -> None:
 
 # ---------------------------------------------------------------- 覆盖度
 
+def check_tasks_and_validation(spec: dict, res: dict) -> None:
+    """★ 任务要逐条打勾；中间量验证要全跑。"""
+
+    # ---- 每条 task 都必须被答（或诚实标 answered=false）
+    spec_t = {t.get("id"): t for t in spec.get("tasks", [])}
+    res_t = {t.get("task_id"): t for t in res.get("tasks_answered", [])}
+
+    if spec_t and not res_t:
+        err("NO-TASKS-ANSWERED",
+            f"model-spec 里有 {len(spec_t)} 条 task，但 results.json 里没有 tasks_answered[]。\n"
+            f"        **每条任务都必须被答掉，并逐条打勾** —— 真实的 IYPT 报告最后一页就是这张表。\n"
+            f"        答不上来就诚实标 answered=false，说清卡在哪。**藏起来才是灾难。**")
+
+    for tid, t in spec_t.items():
+        if tid not in res_t:
+            err("TASK-NOTANSWERED",
+                f"task {tid}（{(t.get('statement') or '')[:40]}）在 results.json 的 "
+                f"tasks_answered[] 里**没有出现** —— 挖出来的任务，一条都不许漏答。")
+            continue
+        a = res_t[tid]
+        if not a.get("by_figures"):
+            err("TASK-NOFIG", f"{tid} 没写 by_figures —— 是哪几张图/target 回答了它？")
+        if not a.get("answer"):
+            err("TASK-NOANSWER",
+                f"{tid} 没写 answer —— **要一句话的答案，不是「见图 F-2」。**")
+
+    # ---- 每条 model_validation_check 都必须跑
+    spec_v = {v.get("id"): v for v in spec.get("model_validation_checks", [])}
+    res_v = {v.get("id"): v for v in res.get("validation_checks", [])}
+
+    for vid, v in spec_v.items():
+        if vid not in res_v:
+            err("VALIDATION-SKIPPED",
+                f"{vid}（{v.get('intermediate_quantity','?')}）的**中间量验证没跑**。\n"
+                f"        **「最终结果对了」不代表「模型对了」—— 两个错误可以互相抵消。**\n"
+                f"        真题的做法是拿高斯计去测 B 场（链条中间的量），不是拿末速度反证模型。")
+            continue
+        r = res_v[vid]
+        paths = r.get("paths") or []
+        if len(paths) < 2:
+            err("VALIDATION-ONEPATH",
+                f"{vid} 只有 {len(paths)} 条验证路径 —— **至少要两条互不依赖的**。"
+                f"只有一条路 = 没有交叉验证。")
+        if r.get("passed") is False and res.get("status") != "FAIL-CODE":
+            err("VALIDATION-FAILED-BUT-SHIPPED",
+                f"{vid} 的中间量验证**没过**，但 status 是 `{res.get('status')}`。\n"
+                f"        中间量算错了 = 实现问题 = **FAIL-CODE**，不许交付下游。")
+
+
 def check_coverage(spec: dict, res: dict, workspace: Path) -> None:
     """契约里答应要跑的，一件都不许少。"""
 
@@ -486,6 +535,7 @@ def main() -> int:
     spec, res, acc, spec_path = load(workspace)
 
     check_quotes(spec, res)
+    check_tasks_and_validation(spec, res)
     check_coverage(spec, res, workspace)
     check_assertions(res)
     check_gates(res)

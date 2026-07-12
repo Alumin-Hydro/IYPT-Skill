@@ -81,6 +81,15 @@ Q_TB = "b = \\dfrac{45}{1024}\\dfrac{\\mu_0^2 m^2 \\sigma w}{a^4}"
 Q_TV = "v_t = \\dfrac{1024}{45}\\dfrac{M g a^4}{\\mu_0^2 m^2 \\sigma w}"
 Q_TT = "\\tau = M/b = v_t/g"
 
+#: V-1..V-3 的 expected_shape 逐字 —— model_validation_checks[V-1] 的载体。
+#  **验的是「中间量」B 场，不是最终结果。** 「最终结果对了」不代表「模型对了」：
+#  b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分，场整体错一个常数因子 c、而 M_s 反推又漏 1/c，
+#  b 仍然「对」——但 v_t 对 a 的指数会错，涡流峰位也会错。用末速度反证模型看不见这类错。
+Q_V1 = "管壁（r = 6–7 mm）应当落在误差 >50% 的区域里"
+Q_V2 = ("B_r 是**反对称双峰**，精确峰位在 |z| ≈ L/2 = 5.00 mm（磁体端面），"
+        "而点偶极子预言 a/2 = 3.00 mm")
+Q_V3 = "数值解与教科书闭式解**完全重合**（相对误差 <1e-10）"
+
 I_F1 = ("原文自相矛盾：同时说「斜率均为 -1.00」和「Model-2 在大 w 端应向上偏离」。"
         "选定读法：「-1.00」是**领头阶**断言，「偏离」是同句立刻给出的限定。"
         "据此拆成 σ 面板（两条线都精确 -1，因 σ 只是 b 的线性前因子，与场分布无关）"
@@ -396,6 +405,38 @@ def run(verbose=True) -> tuple[list[dict], dict]:
     AS.append(A("AS-26", "gate-1", "convergence", "n/a", None, "value",
                 "扫描点数加密 2x 后拟合斜率 k 的变化 < 0.005", "0.005",
                 f"{dk:.6f}", "PASS" if dk < 5e-3 else "FAIL-CODE"))
+
+    # ================================================== V-1..V-4 -> AS-28..AS-31
+    #  ★ 模型验证：**中间量** B 场（model_validation_checks[V-1]）。
+    #    「最终结果对了」不代表「模型对了」—— 两个错误可以互相抵消。
+    #    这里验的是链条**中间**的那个量，用三条**互不依赖**的路。
+    I_V = '验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。'
+    import bfield as BF
+    BG = BF.gates(verbose=False)
+    D["bgates"] = BG
+
+    AS.append(A("AS-28", "V-3", "figure", Q_V3, I_V, "limit",
+                "轴上数值积分 vs 教科书闭式解，最大相对误差 < 1e-10",
+                "1e-10（纯数学恒等式）",
+                f"{BG['G-A']['err']:.2e}；B_z(0,0) = {BG['G-A']['b_center']:.4f} T",
+                "PASS" if BG["G-A"]["passed"] else "FAIL-CODE", fig="V-3"))
+    AS.append(A("AS-29", "V-3", "figure", Q_V3, I_V, "limit",
+                "远场必须回到点偶极子：s = 50L 处相对偏差 < 0.1%", "0.1%",
+                f"{BG['G-B']['rows'][-1]['err']*100:.5f}%",
+                "PASS" if BG["G-B"]["passed"] else "FAIL-CODE", fig="V-3"))
+    AS.append(A("AS-30", "V-2", "figure", Q_V2, I_V, "limit",
+                "★ B_r 的两条**完全不同**的推导路径必须吻合："
+                "① 圆环场 Biot-Savart + 椭圆积分；② -(1/2πr)·∂Φ/∂z（互感 + Leibniz）。误差 < 1e-9",
+                "1e-9（两条路毫无共同之处，吻合才说明两边都对）",
+                f"{BG['G-C']['err']:.2e}",
+                "PASS" if BG["G-C"]["passed"] else "FAIL-CODE", fig="V-2"))
+    err_wall = BF.dipole_error_at(A_TUBE, 0.0)
+    AS.append(A("AS-31", "V-1", "figure", Q_V1, I_V, "deviation",
+                "管壁处（r=a, z=0）点偶极子近似的误差必须 > 50% —— 否则 A-1 其实没崩，"
+                "那与 F-2 的 k=3.44 矛盾", "50%",
+                f"{err_wall*100:.1f}%", "PASS" if err_wall > 0.5 else "FAIL-MODEL",
+                "" if err_wall > 0.5 else
+                "管壁处偶极子近似居然还准 —— 与 F-2 的指数 3.44 矛盾，回头查", fig="V-1"))
 
     D["gates"] = [g0, g1, G8.gate2_layered(verbose=False), G8.gate3_analytical(verbose=False)]
     D["a1_triggered"] = a1_trig

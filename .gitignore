@@ -2,6 +2,11 @@
 iypt/
 !examples/
 
+# 真实 IYPT 报告（参考资料，不是交付物）。1.3 GB，且单个 pptx 达 227 MB
+# —— 远超 GitHub 的 100 MB 单文件上限。skill 里需要的东西已经抽成文字写进
+# task-excavation.md / essence-toolkit.md 了。
+example-ppt/
+
 # Python
 __pycache__/
 *.pyc

@@ -4,9 +4,67 @@
   "title": "IYPT sim-results",
   "description": "Skill 2 (iypt-simulation) -> Skill 3 (iypt-slides) 的唯一交接契约，同时是 Skill 2 自己的验收记录。每一条断言的判定都在这里，不许有\"未评估\"。Skill 3 引用的每一个数字都必须能在这里找到出处。",
   "type": "object",
-  "required": ["problem_slug", "status", "gates", "assertions", "targets", "figures", "risky_checks", "reproduce"],
+  "required": ["problem_slug", "status", "tasks_answered", "gates", "assertions", "targets", "figures", "risky_checks", "reproduce"],
   "additionalProperties": false,
   "properties": {
+
+    "tasks_answered": {
+      "type": "array",
+      "description": "★ **逐条打勾。** model-spec 的每一条 task 都必须在这里出现。\n\n真实的 IYPT 报告，最后一页就是这张打勾表：\n  · 指出磁铁加速过程的**物理本质** ✓\n  · 探究**末速度、加速度变化与参数的关系** ✓\n  · 探究磁铁**有效加速的条件** ✓\n\n**答不上来的任务，比没挖出来的任务更糟——但都不如「挖出来了、答上了、还打了勾」。**\n\nSkill 3 直接拿这张表做 PPT 的总结页。",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "answered", "by_figures", "answer"],
+        "additionalProperties": false,
+        "properties": {
+          "task_id": { "type": "string", "pattern": "^T-[0-9]+$" },
+          "quoted_statement": { "type": "string", "description": "逐字抄写 model-spec 里的 tasks[].statement" },
+          "answered": {
+            "type": "boolean",
+            "description": "**false 不是灾难，藏起来才是。** 答不上来就诚实标 false，并在 answer 里说清卡在哪。"
+          },
+          "by_figures": {
+            "type": "array", "items": { "type": "string" }, "minItems": 1,
+            "description": "哪几张图 / 哪几个 target 回答了它"
+          },
+          "answer": {
+            "type": "string",
+            "description": "**一句话的答案**（不是「见图 F-2」）。如：「v_t ∝ σ^-1 w^-1 精确成立；但 a^4 站不住，实测指数 3.44，因为 A-1 崩溃」"
+          }
+        }
+      }
+    },
+
+    "validation_checks": {
+      "type": "array",
+      "description": "★ **中间量的独立验证**（对应 model-spec 的 model_validation_checks[]）。\n\n> **「最终结果对了」不代表「模型对了」——两个错误可以互相抵消，而你永远不会知道。**\n\n**任何一条不过 → status = FAIL-CODE。** 中间量算错了，这是纯粹的实现问题，不是物理问题。",
+      "items": {
+        "type": "object",
+        "required": ["id", "intermediate_quantity", "paths", "passed"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^V-[0-9]+$" },
+          "intermediate_quantity": { "type": "string" },
+          "paths": {
+            "type": "array",
+            "minItems": 2,
+            "description": "★ **至少两条互不依赖的验证路径**，每条给出具体误差。只有一条路 = 没有交叉验证。",
+            "items": {
+              "type": "object",
+              "required": ["how", "result", "passed"],
+              "additionalProperties": false,
+              "properties": {
+                "how": { "type": "string", "description": "这条路是怎么验的（轴上闭式解 / 远场极限 / 另一条完全不同的推导 / 实测）" },
+                "result": { "type": "string", "description": "具体数字。如 \"最大相对误差 5.13e-14\"" },
+                "passed": { "type": "boolean" }
+              }
+            }
+          },
+          "passed": { "type": "boolean" },
+          "figure": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
 
     "problem_slug": {
       "type": "string",

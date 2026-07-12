@@ -65,6 +65,199 @@ def load(workspace: Path):
     return md, problem_md, spec
 
 
+# ---------------------------------------------------------------- 任务挖掘
+
+#: 题面里的「任务种子」—— 每一个都藏着一条任务。
+#: 漏掉一个限定词 = 漏掉一条任务 = Opponent 的第一个问题。
+_TASK_SEEDS: list[tuple[str, str]] = [
+    (r"under (?:certain|some|specific|the right) conditions?",
+     "★ **条件边界**（regime-boundary）—— 现象**不总是**发生。答案是一张**参数空间相图**"
+     "（哪片区域会、哪片不会），不是一条曲线。**这往往是最难、最值钱的一条。**"),
+    (r"in (?:certain|some) cases",
+     "★ 条件边界（regime-boundary）—— 参数空间相图"),
+    (r"can also\b",
+     "★ **模式分类**（mode-classification）—— 「还能干什么？」通常通向分岔 / 混沌"),
+    (r"other (?:interesting )?behaviou?rs?",
+     "★ **模式分类** —— 真题里这句话最后落到了**混沌**和 **Lyapunov 指数**，"
+     "而「混沌」两个字题面里一个都没有"),
+    (r"(?:various|different|several) (?:modes|regimes|behaviou?rs|patterns)",
+     "★ 模式分类 + 模式之间的转变"),
+    (r"relevant parameters?",
+     "「relevant」本身是个问句：**哪些参数相关、哪些不相关，都要给理由**。"
+     "说一个参数「不相关」和说它「相关」一样需要证据"),
+    (r"\binvestigate\b",
+     "★ **指出物理本质**（essence）—— 不是「测几条曲线」，是**解释**"),
+    (r"\bexplain\b",
+     "**机制识别**：证明是这个机制，并**排除**其他候选（机制预算）"),
+    (r"similar (?:to|way|manner)",
+     "**对照**：与已知系统的异同 —— 哪里像、哪里不像、**为什么**"),
+    (r"\b(?:optimi[sz]e|maximi[sz]e|minimi[sz]e)\b",
+     "**权衡关系**：什么增大了、什么**必然**减小"),
+    (r"\bdetermine\b[^.]{0,60}\busing\b",
+     "**误差分析**：灵敏度、系统误差、精度极限"),
+    (r"how (?:does|do)[^.]{0,60}depend",
+     "标度律 + **数据坍缩**"),
+    (r"(?:study|investigate|analy[sz]e|describe) the (?:motion|movement|dynamics|behaviou?r)",
+     "★ **不只是 x(t)**：相图、模式、稳定性、吸引子。"
+     "**因变量的第三层「模式」是 IYPT 的分水岭。**"),
+]
+
+#: 物理本质里的词 -> 必须有的图。essence 决定图的骨架。
+_ESSENCE_TO_KIND: list[tuple[str, set[str], str]] = [
+    (r"非对称|势能驱动|势能.{0,6}(?:转换|下降|梯度)",
+     {"potential-landscape"}, "势能景观 U(x) —— 那个「非对称」长什么样？势阱在哪？会卡在哪？"),
+    (r"非线性",
+     {"phase-portrait", "spectrum", "bifurcation", "lyapunov-map", "poincare"},
+     "相图 / FFT 频谱（离散峰 vs 连续宽带）"),
+    (r"多体|耦合",
+     {"mode-shape", "spectrum", "phase-portrait"}, "简正模 / 频谱"),
+    (r"混沌|不规律|chaos|chaotic",
+     {"lyapunov-map", "poincare", "bifurcation", "spectrum"},
+     "Lyapunov 指数 / Poincaré 截面 / 分岔图"),
+    (r"多稳|双稳|bistab|multistab",
+     {"basin"}, "吸引域 (basin)"),
+]
+
+
+def check_tasks(spec: dict) -> None:
+    """★ 任务挖掘的机械检查（Stage 0.5）。"""
+    if not spec:
+        return
+
+    tasks = spec.get("tasks") or []
+    if not tasks:
+        err("NO-TASKS",
+            "model-spec.json 里没有 tasks[] —— **题面不是任务书，任务要挖**。\n"
+            "        \"Investigate the phenomenon\" 不是一条任务，它是**三条**任务的种子。\n"
+            "        见 references/task-excavation.md。")
+        return
+
+    for t in tasks:
+        tid = t.get("id", "?")
+        if not t.get("excavated_from"):
+            err("TASK-NOSRC",
+                f"{tid} 没有 excavated_from（题面里的**哪个词**）。\n"
+                f"        **这一条是防自欺的**：挖不出出处的「任务」，多半是你自己编的。")
+
+    # ---- ★ 题面里的限定词，有没有被漏掉？
+    stmt = (spec.get("problem") or {}).get("statement", "")
+    cited = " ".join((t.get("excavated_from") or "") for t in tasks).lower()
+    for pat, hint in _TASK_SEEDS:
+        m = re.search(pat, stmt, re.I)
+        if not m:
+            continue
+        phrase = m.group(0)
+        # 引用里出现了这个词（或它的核心词）就算引用过
+        core = re.sub(r"\\b|[\\()?:]", "", pat).split("|")[0][:12].strip()
+        if phrase.lower() in cited or (core and core.lower() in cited):
+            continue
+        warn("TASK-MISSED",
+             f"题面里有 “**{phrase}**”，但**没有任何一条 task 引用它**。\n"
+             f"        这多半是你漏掉的一条任务：{hint}\n"
+             f"        **题面里每一个限定词都要被追问一次。**")
+
+    # ---- 每条任务必须被至少一张图或一个 target 回答
+    answered = {f.get("answers_task") for f in spec.get("figures", []) if f.get("answers_task")}
+    for t in tasks:
+        tid = t.get("id")
+        if tid not in answered:
+            err("TASK-UNANSWERED",
+                f"{tid}（{(t.get('statement') or '')[:40]}）**没有任何一张图回答它**。\n"
+                f"        没有图回答的任务 = 空头支票。给它安排一张图"
+                f"（figures[].answers_task = {tid}）。")
+
+    # ---- 反向：没有任务归属的图 = 装饰
+    for f in spec.get("figures", []):
+        if not f.get("answers_task"):
+            warn("FIG-NOTASK",
+                 f"图 {f.get('id')} 没有 answers_task —— **没有任务归属的图是装饰**")
+
+
+def check_essence(spec: dict) -> None:
+    """★ 物理本质：一句话。它决定图的骨架。"""
+    if not spec:
+        return
+    ess = spec.get("essence") or {}
+    one = (ess.get("one_sentence") or "").strip()
+
+    if not one:
+        err("NO-ESSENCE",
+            "没有 essence.one_sentence —— **在写下任何方程之前，用一句话说清这是个什么系统**。\n"
+            "        格式：「X 通过 Y 转换/耦合/竞争为 Z 的〈某类〉系统」。\n"
+            "        真题：「磁势能向动能的**非对称转换**」、"
+            "「在重力约束下、通过非接触磁排斥实现耦合的**非线性多体动力系统**」。\n"
+            "        **这句话不是修辞，是骨架 —— 它决定了你要画哪些图。说不出来 = 你还没懂。**")
+        return
+
+    # 「研究 XX 的运动」不是本质，那是题目
+    if re.match(r"^(?:研究|探究|分析|study|investigate)", one) or len(one) < 8:
+        warn("ESSENCE-VAGUE",
+             f"essence.one_sentence = “{one[:40]}” —— 这读起来像**题目**，不像**本质**。\n"
+             f"        本质要说清**机制/能量的转换或竞争**：「重力驱动与涡流耗散的**平衡**」、"
+             f"「磁势能向动能的**非对称转换**」。")
+
+    # ---- ★ 本质里的关键词 -> 必须有对应的图
+    #
+    #  注意否定：「线性一阶弛豫，**无**振荡、**无**多稳、**无**混沌」里的「混沌」「多稳」
+    #  是在**排除**这些行为，不是在断言它们。断言「不会混沌」不需要画 Lyapunov 图。
+    #  （这个 bug 是本检查第一次跑就撞到的。）
+    kinds = {f.get("kind") for f in spec.get("figures", [])}
+    blob = one + " " + (ess.get("system_type") or "") + " " + (ess.get("competing_effects") or "")
+    NEG = r"(?:无|非|不|没有|排除|不会|不存在|no |not |non-)\s*$"
+    for pat, need, what in _ESSENCE_TO_KIND:
+        m = re.search(pat, blob, re.I)
+        if not m:
+            continue
+        if re.search(NEG, blob[max(0, m.start() - 6):m.start()]):
+            continue                                # 否定语境 —— 它在说「不会」，放行
+        if kinds & need:
+            continue
+        err("ESSENCE-NOFIG",
+            f"物理本质里说了「{m.group(0)}」，"
+            f"但 figures[] 里**没有任何一张 {'/'.join(sorted(need))}**。\n"
+            f"        说了这个词，就必须画：**{what}**。\n"
+            f"        **essence 决定图的骨架 —— 说了却不画，那句话就是修辞。**")
+
+    # ---- 题面有 "under certain conditions" -> 必须有参数空间相图
+    stmt = (spec.get("problem") or {}).get("statement", "")
+    if re.search(r"under (?:certain|some|specific) conditions?|in (?:certain|some) cases",
+                 stmt, re.I) and "regime-map" not in kinds:
+        err("NO-REGIME-MAP",
+            "题面里有 “under certain conditions”（现象**不总是**发生），"
+            "但 figures[] 里**没有 regime-map（参数空间相图）**。\n"
+            "        「什么时候会、什么时候不会」的答案是**一张参数平面上按模式上色的图**，"
+            "不是一条曲线。\n"
+            "        **这是 IYPT 报告里最值钱的一张图。**")
+
+
+def check_model_validation(spec: dict) -> None:
+    """★ 中间量的独立验证。「最终结果对了」不代表「模型对了」。"""
+    if not spec:
+        return
+    mv = spec.get("model_validation_checks") or []
+    if not mv:
+        warn("NO-MODEL-VALIDATION",
+             "没有 model_validation_checks[] —— **你打算只用「最终结果吻合」来证明模型对吗？**\n"
+             "        **两个错误可以互相抵消。** 真题的做法是拿**高斯计去测 B 场**"
+             "（模型链条中间的那个量），\n"
+             "        而不是拿末速度去反证模型。挑一个可以**独立验证**的中间量："
+             "场分布 / 势能景观 / 力曲线 / 本征频率 / 守恒量。")
+        return
+    for v in mv:
+        vid = v.get("id", "?")
+        paths = v.get("independent_checks") or []
+        if len(paths) < 2:
+            err("MV-ONEPATH",
+                f"{vid}（{v.get('intermediate_quantity','?')}）只有 {len(paths)} 条验证路径 —— "
+                f"**至少要两条互不依赖的**。\n"
+                f"        只有一条路 = 没有交叉验证。（如：① 轴上闭式解；② 远场极限；"
+                f"③ 对称性；④ 实测。）")
+        if not v.get("why_it_can_fail_silently"):
+            warn("MV-NOSILENT",
+                 f"{vid} 没写 why_it_can_fail_silently —— "
+                 f"**它错了而最终结果仍然「对」，是哪两个错误在抵消？**")
+
+
 # ---------------------------------------------------------------- 自相矛盾的门槛
 
 #: criterion_check 里的**误差估计**（"一阶修正 O(w/a)≈17%"）
@@ -458,6 +651,9 @@ def main() -> int:
 
     md, problem_md, spec = load(workspace)
 
+    check_tasks(spec or {})
+    check_essence(spec or {})
+    check_model_validation(spec or {})
     check_contract(spec or {})
     check_equations(md)
     check_ids(md, problem_md, spec or {})

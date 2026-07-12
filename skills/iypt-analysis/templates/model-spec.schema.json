@@ -4,7 +4,7 @@
   "title": "IYPT model-spec",
   "description": "Skill 1 (iypt-analysis) -> Skill 2 (iypt-simulation) 的唯一交接契约。Skill 2 只读这个文件就应该知道要算什么、画什么、以及怎么判断算对了。",
   "type": "object",
-  "required": ["problem", "symbols", "parameters", "assumptions", "equations", "targets", "figures", "risky_assumption_checks"],
+  "required": ["problem", "tasks", "essence", "symbols", "parameters", "assumptions", "equations", "targets", "figures", "risky_assumption_checks"],
   "additionalProperties": false,
   "properties": {
     "problem": {
@@ -19,6 +19,114 @@
           "type": "string",
           "enum": ["explanation", "dependence", "optimization", "measurement"],
           "description": "Stage 0 的题型判定"
+        }
+      }
+    },
+
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "★ Stage 0.5 的产物：从题面里**挖**出来的任务清单。\n\nIYPT 的题面是一段话，不是一张任务清单——但真正的任务全藏在措辞里。**挖不出来 = 你在答一道自己编的、更容易的题**，而 Opponent 会拿真正的那道题问你。\n\n真实案例：磁铁加速器的题面里有 \"will accelerate ... under certain conditions\"。那个介词短语挖出来的任务是「探究**有效加速的条件**」——它的答案是一张**参数空间相图**（哪片区域会加速、哪片不会），不是一条曲线。而它往往是最难、最值钱的一条。\n\n磁力牛顿摆的 \"can also exhibit other interesting behaviour\" 挖出来的是「**运动模式的分类**」，最后落到**混沌**和 **Lyapunov 指数**——而「混沌」两个字题面里一个都没有。\n\n方法见 references/task-excavation.md。",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "kind", "excavated_from"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^T-[0-9]+$" },
+          "statement": { "type": "string", "description": "这条任务本身" },
+          "kind": {
+            "type": "string",
+            "enum": ["essence", "dependence", "regime-boundary", "mode-classification",
+                     "comparison", "optimization", "measurement"],
+            "description": "essence=指出物理本质；regime-boundary=找出现象发生/不发生的条件边界（答案是参数空间相图）；mode-classification=运动模式的分类与转变（→ 分岔/混沌）；comparison=与已知系统的异同"
+          },
+          "excavated_from": {
+            "type": "string",
+            "description": "★ **题面里的哪个词**（逐字引用）。\n\n**这一条是防自欺的**：挖不出出处的「任务」多半是你自己编的；而题面里没被任何任务引用的限定词（\"under certain conditions\"、\"can also\"、\"in a similar way\"），就是你**漏掉的任务**。\n\ncheck_analysis.py 会机械检查：题面里的每个限定词，是否都被某条任务引用过。"
+          },
+          "why_implicit": { "type": "string", "description": "题面没有直接问，为什么它仍然是一条任务" }
+        }
+      }
+    },
+
+    "essence": {
+      "type": "object",
+      "required": ["one_sentence", "system_type"],
+      "additionalProperties": false,
+      "description": "★ **物理本质：一句话。** 在写下任何方程之前就要说出来。\n\n**它的作用不是修辞，是骨架——它决定了你要画哪些图。**\n\n真实案例（都来自拿过分的报告）：\n  · 磁铁加速器：「**磁势能向动能的非对称转换**」⇒ 必须画势能景观 U(x)，看那个「非对称」长什么样\n  · 磁力牛顿摆：「**在重力约束下、通过非接触磁排斥实现耦合的非线性多体动力系统**」⇒ 必须画相图、频谱、Lyapunov\n  · 磁刹车：「**重力驱动与涡流耗散的平衡；驱动 ∝ 常数、耗散 ∝ v，故必然趋于终速**」⇒ 必须画力平衡、弛豫时间、标度律\n\n**说不出这句话 = 你还没懂 = 你不知道该画什么图。**",
+      "properties": {
+        "one_sentence": {
+          "type": "string",
+          "description": "格式：「X 通过 Y 转换/耦合/竞争为 Z 的〈某类〉系统」。不许写成「研究磁铁的运动」这种废话。"
+        },
+        "system_type": {
+          "type": "string",
+          "description": "决定 Skill 2 该用哪套工具（见 iypt-simulation/references/essence-toolkit.md 的对照表）。如：\"耗散-驱动平衡（趋于定态）\"、\"非线性多体耦合（可能混沌）\"、\"势能驱动的输运\"、\"参数激励\"、\"多稳态\""
+        },
+        "energy_chain": { "type": "string", "description": "能量/机制的转换链条。如 \"重力势能 → 动能 → 涡流焦耳耗散\"" },
+        "competing_effects": { "type": "string", "description": "哪几个效应在竞争？它们的比值就是关键无量纲组" }
+      }
+    },
+
+    "variables": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Stage 0.5 的变量归纳。**四类自变量过一遍防漏；三层因变量——第三层「模式」是 IYPT 的分水岭。**",
+      "properties": {
+        "independent": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "四类过一遍。某一类空着，先问自己「真的没有吗」。",
+          "properties": {
+            "system":             { "type": "array", "items": { "type": "string" }, "description": "系统参数：磁化强度、质量、几何尺寸、材料常数" },
+            "configuration":      { "type": "array", "items": { "type": "string" }, "description": "构型参数：间距、个数、排列方式、角度" },
+            "initial_conditions": { "type": "array", "items": { "type": "string" }, "description": "初始条件：初速、初角、释放位置" },
+            "environment":        { "type": "array", "items": { "type": "string" }, "description": "环境参数：温度、介质、重力、外场" }
+          }
+        },
+        "dependent": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scalars":   { "type": "array", "items": { "type": "string" }, "description": "终速、频率、幅度、效率" },
+            "functions": { "type": "array", "items": { "type": "string" }, "description": "x(t)、v(x)、F(d)、U(x)" },
+            "modes": {
+              "type": "array", "items": { "type": "string" },
+              "description": "★ **最容易漏、也最值钱的一层。** 周期/准周期/混沌；同向模/反向模；加速/减速/卡住；单稳/多稳。\n\n新手把 \"study the movement\" 理解成「测 x(t) 然后拟合」。**高分答案回答的是：有哪几种运动模式？它们怎么随参数转变？边界在哪？**"
+            }
+          }
+        }
+      }
+    },
+
+    "model_validation_checks": {
+      "type": "array",
+      "description": "★ **验证「中间量」，不只验证最终结果。**\n\n> **「最终结果对了」不代表「模型对了」——两个错误可以互相抵消，而你永远不会知道。**\n\n真实做法（磁铁加速器的报告）：\"在中心轴线上取若干点，使用**高斯计**测量磁感应强度，**反推印证磁化强度**\"、\"**阵列磁铁磁场验证**\"。\n\n**他们没有直接去测末速度然后宣布模型对了。他们去测了模型链条中间的那个量（B 场）。** 因为末速度是一长串环节的乘积：磁化强度 → B 场 → 力 → 势能 → 运动方程 → 末速度。任何一环错了末速度都错；但末速度对了，不等于每一环都对。\n\n**与 risky_assumption_checks 的区别**：\n  · risky_assumption_checks 验的是「**这个简化站不站得住**」（物理）\n  · model_validation_checks 验的是「**这个中间量算对了没有**」（实现 + 物理链条）",
+      "items": {
+        "type": "object",
+        "required": ["id", "intermediate_quantity", "why_it_can_fail_silently", "independent_checks"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^V-[0-9]+$" },
+          "intermediate_quantity": {
+            "type": "string",
+            "description": "要验的中间量。挑那些**可以独立验证**的：场分布 B(r)、势能景观 U(x)、力曲线 F(d)、本征频率、守恒量、无量纲数"
+          },
+          "why_it_can_fail_silently": {
+            "type": "string",
+            "description": "为什么它错了而最终结果可能仍然「对」（哪两个错误会抵消）"
+          },
+          "independent_checks": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "description": "★ **至少两条互不依赖的验证路径。** 如：① 轴上闭式解；② 远场极限（必须退化成偶极子/点源）；③ 对称性；④ 与另一条完全不同的推导路径对拍。\n\n只有一条路 = 没有交叉验证。"
+          },
+          "experimental_check": {
+            "type": "string",
+            "description": "实验上怎么独立测这个中间量（高斯计 / 拉力计 / 热电偶 / PIV / 频谱仪）。**这是给人去做的。**"
+          },
+          "figure": { "type": "string", "description": "对应的图 id（如 V-1）" }
         }
       }
     },
@@ -149,25 +257,34 @@
 
     "figures": {
       "type": "array",
-      "description": "期望的图。这既是给 Skill 2 的任务书，也是验收标准——算出来的曲线和 expected_shape 矛盾时，不是把图改好看，是回头查模型或查代码。",
+      "description": "期望的图。这既是给 Skill 2 的任务书，也是验收标准——算出来的曲线和 expected_shape 矛盾时，不是把图改好看，是回头查模型或查代码。\n\n★ **每张图必须回答至少一条 task**（answers_task）。反过来：**每条 task 也必须被至少一张图（或 target）回答** —— check_analysis.py 双向检查。\n\n★ **essence.one_sentence 里的每个关键词，都要有一张对应的图**：说了「非对称转换」就得有势能景观；说了「非线性多体耦合」就得有相图/频谱/Lyapunov；题面里有 \"under certain conditions\" 就得有**参数空间相图**。",
       "items": {
         "type": "object",
-        "required": ["id", "purpose", "x", "y", "expected_shape"],
+        "required": ["id", "purpose", "x", "y", "expected_shape", "answers_task"],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^F-[0-9]+$" },
+          "id": { "type": "string", "pattern": "^[FV]-[0-9]+$", "description": "F-n = 回答任务的图；V-n = model_validation_checks 的验证图" },
           "purpose": { "type": "string", "description": "这张图要证明什么？(不能是\"展示结果\")" },
+          "answers_task": {
+            "type": "string",
+            "pattern": "^T-[0-9]+$",
+            "description": "★ 这张图回答哪一条 task。**没有任务归属的图 = 装饰。**（V-n 的验证图归属到它服务的那条任务。）"
+          },
           "x": { "type": "string" },
           "y": { "type": "string" },
           "series": { "type": "string", "description": "多曲线时按什么分系列" },
           "kind": {
             "type": "string",
-            "enum": ["line", "scatter", "loglog", "semilogx", "semilogy", "heatmap", "phase-portrait", "collapse", "animation", "interactive"],
-            "description": "collapse=无量纲坍缩图，杀伤力最大的那一张；animation/interactive 交给 JS 页面"
+            "enum": ["line", "scatter", "loglog", "semilogx", "semilogy", "heatmap",
+                     "collapse", "animation", "interactive",
+                     "phase-portrait", "potential-landscape", "spectrum", "mode-shape",
+                     "poincare", "bifurcation", "lyapunov-map", "regime-map", "basin",
+                     "field-map"],
+            "description": "**前 9 个是「回答任务」用的；后 9 个是「阐释本质」用的**（见 iypt-simulation/references/essence-toolkit.md）。\n\n· collapse = 无量纲坍缩图，依赖关系型题里杀伤力最大的那一张\n· phase-portrait = 状态空间轨迹。**只画一条轨迹 = 没画相图**，要画一族初始条件\n· potential-landscape = 势能景观 U(x)。「势能驱动」类题的核心（磁铁加速器：\"磁势能沿前进方向呈波动中下降趋势，形成加速\"）\n· spectrum = FFT 频谱。**判周期性最便宜的手段，先做它再做 Lyapunov**。离散锐峰=准周期；连续宽带=混沌\n· mode-shape = 简正模。小振幅极限下数值解必须回到它 —— **这同时是一道验证门**\n· poincare = Poincaré 截面。闭曲线=准周期；散点云=混沌\n· bifurcation = 分岔图。直接展示「模式如何随参数转变」\n· lyapunov-map = λ 在参数平面上的二维热图。**一张图给出整个混沌相图**\n· **regime-map = 参数空间相图。这是 \"under certain conditions\" 那条任务的答案，也是 IYPT 报告里最值钱的一张图**\n· basin = 吸引域。多稳态系统，按「最终落到哪个吸引子」上色\n· field-map = 场分布。**通常是 model_validation_checks 的载体**（如高斯计实测 B 场对拍）"
           },
           "expected_shape": {
             "type": "string",
-            "description": "必填。预期的定性形状：单调递减？幂律斜率 -2？有个峰在 x=3 附近？两条曲线坍缩成一条？这是验收标准。"
+            "description": "必填。预期的定性形状：单调递减？幂律斜率 -2？有个峰在 x=3 附近？两条曲线坍缩成一条？**频谱是离散峰还是宽带？λ 在哪片参数区里 > 0？势能是单调下降还是有局部极小？**\n\n这是验收标准 —— 算出来和它矛盾时，不是把图改好看，是回头查模型或查代码。"
           },
           "compare_with": { "type": "string", "description": "要不要和解析解/实验/文献叠在一起画" }
         }

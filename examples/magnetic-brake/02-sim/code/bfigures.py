@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""S-1 … S-3：均匀磁化圆柱磁体的 B 场。
+"""V-1 … V-4  ·  model_validation_checks[V-1]：验证「中间量」B 场：均匀磁化圆柱磁体的 B 场。
 
 这三张图的作用是把 **A-1（点偶极子近似）的崩溃**从"间接推断"变成"直接看见"。
 
@@ -87,7 +87,7 @@ def make_all():
     Err = np.where(inside, np.nan, Err)
 
     # ================================================== S-1
-    with fk.Figure("S-1", STAMP, OUT_FIG, figsize=(13.2, 6.9), ncols=2) as (fig, (ax1, ax2)):
+    with fk.Figure("V-1", STAMP, OUT_FIG, figsize=(13.2, 6.9), ncols=2) as (fig, (ax1, ax2)):
         # ---- (a) |B| + 磁力线
         im = ax1.pcolormesh(x * MM, z * MM, Bmag, cmap=CMAP_B, shading="gouraud",
                             norm=LogNorm(vmin=1e-3, vmax=1.0), zorder=1, rasterized=True)
@@ -150,14 +150,14 @@ def make_all():
                           "dipole model is off by 102% at $z=0$." "\n"
                           "This is the same A-1 breakdown that F-2 sees as an exponent of 3.44 "
                           "instead of 4.00 — now visible directly.")
-    print("  [S-1] |B| + 磁力线 + 偶极子误差图")
+    print("  [V-1] |B| + 磁力线 + 偶极子误差图")
 
     # ================================================== S-2
     zz = np.linspace(-25e-3, 25e-3, 601)
     br_w, bz_w = cylinder_field(np.full_like(zz, A_TUBE), zz)
     brd_w, bzd_w = dipole_field(np.full_like(zz, A_TUBE), zz)
 
-    with fk.Figure("S-2", STAMP, OUT_FIG, figsize=(13.2, 6.6), ncols=2) as (fig, (ax1, ax2)):
+    with fk.Figure("V-2", STAMP, OUT_FIG, figsize=(13.2, 6.6), ncols=2) as (fig, (ax1, ax2)):
         for ax, exact, dip, lab, ttl in (
             (ax1, br_w, brd_w, r"$B_r$",
              "(a)   Radial field at the wall  —  this IS the eddy-current driver"),
@@ -215,7 +215,8 @@ def make_all():
                           r"= v \cdot 2\pi a \cdot B_r$." "\n"
                           r"So panel (a) IS the eddy-current profile of F-5 — and its peak sits on "
                           r"the magnet's end face, not at $a/2$.")
-    print("  [S-2] 管壁上的 B_r 与 B_z")
+    G["V-2_zpk"] = float(abs(zz[ipk]) * MM)
+    print("  [V-2] 管壁上的 B_r 与 B_z")
 
     # ================================================== S-3
     za = np.linspace(0.6e-3, 60e-3, 500)
@@ -223,7 +224,7 @@ def make_all():
     bz_cf = onaxis_exact(za)
     _, bzd_a = dipole_field(np.zeros_like(za), za)
 
-    with fk.Figure("S-3", STAMP, OUT_FIG, figsize=(8.6, 6.6)) as (fig, ax):
+    with fk.Figure("V-3", STAMP, OUT_FIG, figsize=(8.6, 6.6)) as (fig, ax):
         ax.loglog()
         ax.plot(za * MM, np.abs(bz_num), color=fk.SLOTS[0]["color"], lw=3.0, zorder=3,
                 label="finite magnet  (numerical, 400-node Gauss)")
@@ -267,7 +268,7 @@ def make_all():
             ("G-A", "numerical vs textbook closed form", f"{G['G-A']['err']:.1e}", True),
             ("pred", "B_z(0,0) predicted before computing", f"{G['G-A']['b_center']:.4f} T", True),
         ])
-    print("  [S-3] 轴上的 B_z：数值 vs 闭式 vs 偶极子")
+    print("  [V-3] 轴上的 B_z：数值 vs 闭式 vs 偶极子")
 
     # ================================================== S-4  ·「管子要多大才够用」
     #
@@ -301,7 +302,7 @@ def make_all():
                    dipole_field=True, m_dip=M_DIP)
     err_here = abs(b_d - b_e) / b_e * 100
 
-    with fk.Figure("S-4", STAMP, OUT_FIG, figsize=(9.0, 6.8)) as (fig, ax):
+    with fk.Figure("V-4", STAMP, OUT_FIG, figsize=(9.0, 6.8)) as (fig, ax):
         ax.loglog()
         fk.plot_model(ax, ratios, err_b, 0,
                       r"error in $v_t$ if you use the point-dipole model", every=2)
@@ -359,12 +360,12 @@ def make_all():
                           f"For 10% accuracy in $v_t$ you need " r"$a/L$" f" > {q10:.1f}.  "
                           f"This experiment runs at {A_TUBE/L_MAG:.2f} — "
                           r"roughly $\mathbf{" f"{q10/(A_TUBE/L_MAG):.0f}" r"\times}$ too small.")
-    print(f"  [S-4] 「a >> L」到底是多少：v_t 要 10% 精度需 a/L > {q10:.1f}；"
+    print(f"  [V-4] 「a >> L」到底是多少：v_t 要 10% 精度需 a/L > {q10:.1f}；"
           f"本实验 a/L={A_TUBE/L_MAG:.2f} 处 A-1 单独的误差 {err_here:.1f}%")
     print(f"        分解：A-1 x{r1:.4f} · A-2 x{r2:.4f} = x{r1*r2:.4f} "
           f"-> v_t 偏差 +{(r1*r2-1)*100:.1f}%  （与实测的 +82.7% 逐位吻合）")
 
-    G["S-4"] = dict(q10=float(q10), q30=float(q30), a_over_L=A_TUBE / L_MAG,
+    G["V-4"] = dict(q10=float(q10), q30=float(q30), a_over_L=A_TUBE / L_MAG,
                     err_here=float(err_here))
     return G
 
