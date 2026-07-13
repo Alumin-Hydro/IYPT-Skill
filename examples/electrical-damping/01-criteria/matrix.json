@@ -1,0 +1,91 @@
+{
+  "generated_by": "01-criteria/criterion_matrix.py",
+  "purpose": "★★ 判据 × 模型的**双向**表。只跑「正确模型」那一列 = 换了一把新的失明的锁（r2 真实翻车）。",
+  "wrong_models": [
+    {
+      "id": "naive-A 磁通最大处阻尼最大",
+      "statement": "磁通最大处阻尼最大",
+      "why_a_student_writes_it": "**最常见的直觉，也是本题的头号陷阱**：磁通在中心最大 ⟹ 阻尼在中心最大。错在把「磁通 λ」当成了「磁通的**梯度** G = dλ/dz」。**这个错误正是本题的全部内容。**"
+    },
+    {
+      "id": "naive-B 常数阻尼 b=b(z_pk)",
+      "statement": "常数阻尼 b=b(z_pk)",
+      "why_a_student_writes_it": "**题面自己诱导出来的**：\"the damping\" —— 说「the」就预设了阻尼是**一个数**。任何把阻尼当成一个标量的模型，都长这样。"
+    },
+    {
+      "id": "bug-C  β 错 +30%",
+      "statement": "β 错 +30%",
+      "why_a_student_writes_it": "**最容易犯的实现 bug**：G'(0) 的解析式 (7) 漏一个因子（如那个 3/2），或者用了标称 B_r（公差 ±5% ⟹ b 偏 ±10%）而不是实测的 G。"
+    },
+    {
+      "id": "bug-D  漏了线圈自阻 R_c",
+      "statement": "漏了线圈自阻 R_c",
+      "why_a_student_writes_it": "**naive 电路模型**：b ∝ 1/R，R→0 时发散。（真值：线圈自阻设了天花板 b_max = G²/R_c。）"
+    },
+    {
+      "id": "★ bug-E 中心阻尼不为零 b₀=0.1b_pk",
+      "statement": "bug-E 中心阻尼不为零 b₀=0.1b_pk",
+      "why_a_student_writes_it": "**最难抓的一个**：模型的**形状**全对，但多了一个常数偏置（线圈绕得不对称、骨架有涡流、磁体倾斜…）。**它的曲率和正确模型一模一样 —— 只有「顶点值」那条判据看得见它。**★ 它就是这张表存在的理由：没有它，P1b 会显得多余。"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "P1a",
+      "statement": "P1a 中心是极小【结构】",
+      "passes_correct": true,
+      "correct_model_detail": "Γ(0)=0.041  Γ(±4mm)=0.598/0.598",
+      "catches": [
+        "naive-A 磁通最大处阻尼最大",
+        "naive-B 常数阻尼 b=b(z_pk)"
+      ]
+    },
+    {
+      "id": "P1b",
+      "statement": "P1b 顶点 = γ_oc【零参】",
+      "passes_correct": true,
+      "correct_model_detail": "顶点=0.0409 (γ_oc=0.0413, -1%)",
+      "catches": [
+        "naive-A 磁通最大处阻尼最大",
+        "naive-B 常数阻尼 b=b(z_pk)",
+        "★ bug-E 中心阻尼不为零 b₀=0.1b_pk"
+      ]
+    },
+    {
+      "id": "P1c",
+      "statement": "P1c 曲率 = c₂【零参】",
+      "passes_correct": true,
+      "correct_model_detail": "c₂=0.0348 (预言 0.0344, +1.2%)",
+      "catches": [
+        "naive-A 磁通最大处阻尼最大",
+        "naive-B 常数阻尼 b=b(z_pk)",
+        "bug-C  β 错 +30%",
+        "bug-D  漏了线圈自阻 R_c"
+      ]
+    },
+    {
+      "id": "P3a",
+      "statement": "P3a Q ∝ A₀²【结构+零参】",
+      "passes_correct": true,
+      "correct_model_detail": "Q∝A₀² 斜率=1.333e+06(预言1.328e+06, +0%) 截距=-0.02  Γ=0.0413(γ_oc=0.0413)",
+      "catches": [
+        "naive-A 磁通最大处阻尼最大",
+        "naive-B 常数阻尼 b=b(z_pk)",
+        "bug-C  β 错 +30%",
+        "bug-D  漏了线圈自阻 R_c",
+        "★ bug-E 中心阻尼不为零 b₀=0.1b_pk"
+      ]
+    },
+    {
+      "id": "P3b",
+      "statement": "P3b 长时回到 γ_oc【结构】",
+      "passes_correct": true,
+      "correct_model_detail": "Γ=0.0413 vs γ_oc=0.0413 (-0%)",
+      "catches": [
+        "naive-A 磁通最大处阻尼最大",
+        "naive-B 常数阻尼 b=b(z_pk)",
+        "★ bug-E 中心阻尼不为零 b₀=0.1b_pk"
+      ]
+    }
+  ],
+  "verdict": "PASS"
+}

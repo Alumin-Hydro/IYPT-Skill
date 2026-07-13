@@ -832,6 +832,239 @@ def check_number_desync(md: str, spec: dict) -> None:
                      f"        {_DESYNC_NOTE}")
 
 
+# ---------------------------------------------------------------- ★★ 修订传播
+#
+#  `CLAUDE.md` 血泪教训 4 白纸黑字写着：
+#
+#     「修订必须传播到「结论」和「契约」，不能只落在「推导」上。
+#       **目前没有机械检查能发现这种脱钩。**」
+#
+#  **这两道门就是那个「没有」。**
+#
+#  它们之所以**可能**，是因为归档链 `handoff/model-spec-r{n}.json` 是强制的 ——
+#  **旧值是有物证的。** 于是「修订有没有传播」这件事，从「靠人读」变成「拿旧值 grep 新文档」。
+#
+#  **实测（electrical-damping r2）**：一次审稿抓出 **13 处** r1 旧值还活着 ——
+#  包括 `targets[]` 的三个 baseline、`(26).latex` 里**同一个方程 LHS 用 M、阻尼项用 M_eff**、
+#  以及一个改名后无人认领的孤儿符号 `\gamma_0`。**而 checker 报的是零 ERROR。**
+
+def _spec_values(spec: dict) -> dict[str, tuple[float, str]]:
+    """契约里所有「有名字的数」：(值, 单位)。**单位是必须的** —— 它是 STALE-VALUE 消误报的唯一手段。"""
+    out: dict[str, tuple[float, str]] = {}
+    for p in spec.get("parameters", []):
+        v = p.get("value")
+        if isinstance(v, (int, float)) and p.get("symbol"):
+            out[p["symbol"]] = (float(v), str(p.get("unit") or ""))
+    for t in spec.get("targets", []):
+        v = t.get("baseline_value")
+        if isinstance(v, (int, float)) and t.get("symbol"):
+            out["target:" + t["symbol"]] = (float(v), str(t.get("unit") or ""))
+    return out
+
+
+#: 契约存 SI（0.000765 m），正文写工程单位（0.765 mm）。同一个数，两种写法。
+_SCALE_BY_UNIT: dict[str, list[float]] = {
+    "m": [1.0, 1e3, 1e2],          # m / mm / cm
+    "kg": [1.0, 1e3],              # kg / g
+    "s": [1.0, 1e3],               # s / ms
+    "H": [1.0, 1e3],               # H / mH
+    "T": [1.0, 1e3],               # T / mT
+}
+
+
+def _literals(v: float, unit: str = "") -> set[str]:
+    """一个数在正文里可能被写成的样子。
+
+    ★ **只生成 3–5 位有效数字。绝不生成 2 位。**
+      `0.1361` 在 2 位下是 `0.14` —— 而 `0.14 s`、`0.14 mm` 满世界都是。
+      **一个总是响的警报，等于没有警报，而且它会训练人无视所有警报。**
+      3 位起步就没有这个问题：`0.136` 只可能是那个数。
+
+    ★ 同时按单位做换算：契约存 SI，正文写工程单位。
+    """
+    out: set[str] = set()
+    for scale in _SCALE_BY_UNIT.get(unit.strip(), [1.0]):
+        x = v * scale
+        if x == 0 or abs(x) < 1e-6 or abs(x) > 1e7:
+            continue
+        for sig in (3, 4, 5):
+            s = f"{x:.{sig}g}"
+            if "e" in s or "E" in s:
+                continue
+            if len(s.lstrip("-0.")) >= 3:      # ★ 至少三位有效数字
+                out.add(s)
+    return out
+
+
+def _cited(lines: list[str], i: int, tag: str) -> bool:
+    """第 i 行（1-based）引用旧值时，**点名版本了吗**？
+
+    ★ 点名可以出现在三个地方 —— 这三条都不是宽容，是**为了不和「零号规则」打架**：
+
+      ① **行内**：`r1 报的是 0.765 mm`
+      ② **上文三行内**：`r1 的验收方式是（逐字）：` 后面跟一个 blockquote。
+         **逐字引文里不许塞任何标记**（那会污染引文，而引文必须是原文的子串），
+         所以标记只能落在引导句上。
+      ③ **节标题里**：`## 11 · r1 → r2 修订记录` —— 整节都在谈旧值，这是它的职责。
+
+    ⟹ **「我在修订记录里引用旧值」合法，「我忘了改」不合法 —— 两者在语法上被区分开了。**
+    """
+    if tag in lines[i - 1]:
+        return True
+    for j in range(max(0, i - 4), i - 1):                      # 上文三行
+        if tag in lines[j]:
+            return True
+    # 往上走，**沿途每一级标题都算** —— 子标题继承父节的豁免。
+    # （`## 11 · r1 → r2 修订记录` 下面的 `### 三条被改动的结论`，当然还在修订记录里。）
+    for j in range(i - 1, -1, -1):
+        m = re.match(r"(#{1,6})\s", lines[j])
+        if not m:
+            continue
+        if tag in lines[j]:
+            return True
+        if len(m.group(1)) <= 2:                               # 走到 h2/h1 就到顶了
+            return False
+    return False
+
+
+def check_stale_values(ws: Path, md: str, problem_md: str, spec: dict) -> None:
+    """★★ 拿归档里的**旧值**，去 grep 新文档。还搜得到 = 修订没传播干净。"""
+    if not spec:
+        return
+    archives = sorted((ws / "handoff").glob("model-spec-r*.json"))
+    if not archives:
+        return
+
+    new = _spec_values(spec)
+    spec_txt = json.dumps(spec, ensure_ascii=False, indent=2)
+    docs = [("01-analysis.md", md.splitlines()),
+            ("00-problem.md", problem_md.splitlines()),
+            ("handoff/model-spec.json", spec_txt.splitlines())]
+
+    for arc in archives:
+        m = re.search(r"model-spec-(r\d+)\.json", arc.name)
+        if not m:
+            continue
+        tag = m.group(1)                                   # "r1"
+        try:
+            old_spec = json.loads(arc.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        old = _spec_values(old_spec)
+
+        # ---- ① 值变了，但旧值还在文档里
+        for sym, (ov, unit) in old.items():
+            if sym not in new:
+                continue                                   # 符号没了 —— 归 ② 管
+            nv = new[sym][0]
+            if abs(ov - nv) <= 1e-12 * max(abs(ov), 1.0):
+                continue
+            for lit in _literals(ov, unit):
+                if lit in _literals(nv, unit):
+                    continue                               # 舍入后撞车，不算
+                pat = re.compile(rf"(?<![0-9.]){re.escape(lit)}(?![0-9])")
+                for fname, lines in docs:
+                    for i, line in enumerate(lines, 1):
+                        if not pat.search(line):
+                            continue
+                        if _cited(lines, i, tag):
+                            continue                       # ★ 点了名的引用 —— 放行
+                        err("STALE-VALUE",
+                            f"{fname}:{i} 还写着 `{lit}` —— 那是 **{tag} 的 {sym}**"
+                            f"（{tag}: {ov:g} → 现在: {nv:g}）。\n"
+                            f"        **修订没传播到这里。** 一个数住在四个地方：推导 / 机制预算表 / "
+                            f"**预测表** / **model-spec.json** —— 后两处才是下游真正读的。\n"
+                            f"        若这一行是**故意**引用旧值（修订记录里对比新旧），"
+                            f"**在同一行里写上 `{tag}`** —— 引用必须点名版本。\n"
+                            f"        > {line.strip()[:100]}")
+
+        # ---- ② ★ 符号被改名了，但旧名字还在（孤儿符号）
+        gone = {s for s in old if not s.startswith("target:")} - {
+            s for s in new if not s.startswith("target:")}
+        for sym in sorted(gone):
+            if len(sym) < 3:
+                continue
+            for fname, lines in docs:
+                for i, line in enumerate(lines, 1):
+                    if sym not in line or _cited(lines, i, tag):
+                        continue
+                    err("STALE-SYMBOL",
+                        f"{fname}:{i} 还在用 `{sym}` —— 它在 {tag} 里存在，"
+                        f"**在当前契约的 symbols/parameters 里已经没有了**。\n"
+                        f"        改名（如 γ_0 → γ_oc）必须**全文**传播。"
+                        f"一个无人认领的孤儿符号，下游会当成一个新的量去找它的定义。\n"
+                        f"        > {line.strip()[:100]}")
+
+
+# ---------------------------------------------------------------- ★★ 判据不许失明
+#
+#  **r2 的血泪教训（这一条是全套 skill 里最贵的一课）**：
+#
+#  r1 的一条判据在极值点**结构性失明**（一阶判据用在 |G| 的峰上 ⟹ 分子恒为零
+#  ⟹ 对任何振幅都报「线性 ✓」）。审稿抓到了，我把它拆了 —— **然后换上了三把新的失明的锁。**
+#
+#  **为什么没发现？因为我只跑了一个方向。**
+#  我验证了「新判据在**正确模型**上通过」（R² = 1.000000，看着真漂亮），
+#  **从没验证「它在**错的模型**上会不会照样通过」。**
+#
+#  > **一条判据，只在正确模型上跑过 —— 那不叫验证，那叫「换了一把新的失明的锁」。**
+#
+#  ⟹ 契约必须带一张 `criterion_matrix`（判据 × 模型），而且它必须是**跑出来的**，不是写出来的。
+
+def check_criterion_matrix(spec: dict) -> None:
+    """★★ 判据 × 模型的双向表：正确模型不许被误杀；每条判据必须至少抓到一个错模型。"""
+    if not spec:
+        return
+    cm = spec.get("criterion_matrix")
+    if not cm:
+        err("CRIT-MATRIX-MISSING",
+            "契约里没有 `criterion_matrix` —— **每一条可证伪判据都必须双向跑过**：\n"
+            "        ① 在**正确模型**上：它会不会**误杀**？\n"
+            "        ② 在几个**错模型**上：它抓不抓得到？\n"
+            "        **只跑第①个方向 = 换了一把新的失明的锁。**（这是 r2 真实翻车的地方。）\n"
+            "        错模型必须是「学生真的会写出来的东西」，不是稻草人。\n"
+            "        见 SKILL.md「Stage 8.5 · 判据的双向验证」。")
+        return
+
+    wrong = {w.get("id") for w in cm.get("wrong_models", []) if w.get("id")}
+    crits = cm.get("criteria", [])
+    if len(wrong) < 3:
+        err("CRIT-TOO-FEW-MODELS",
+            f"只列了 {len(wrong)} 个错模型 —— **至少 3 个**，而且每个都得是"
+            f"「学生真的会写出来的东西」（如「磁通最大处阻尼最大」、「常数阻尼」、"
+            f"「某个系数错 30%」），**不是稻草人**。\n"
+            f"        （r2 真实翻车：我给的对照模型是个稻草人，它和正确模型给出**相同**的截距。）")
+    if not crits:
+        err("CRIT-MATRIX-EMPTY", "criterion_matrix.criteria 是空的")
+        return
+
+    for w in wrong:
+        if not any(w in _as_list(c.get("catches")) for c in crits):
+            err("CRIT-MODEL-UNCAUGHT",
+                f"错模型 `{w}` **没有任何一条判据抓得到它** —— 它会一路走到评委面前。")
+
+    for c in crits:
+        cid = c.get("id", "?")
+        if not c.get("passes_correct"):
+            err("CRIT-FALSEKILL",
+                f"判据 `{cid}` 在**正确模型**上不通过 —— **它会误杀一个正确的模型。**\n"
+                f"        （r1/r2 各翻车一次：P1 的原判据被 ±0.5 mm 定位误差判死；"
+                f"r2 的抛物线顶点判据被 G 的非线性判死 +27.7%。）\n"
+                f"        **判据的适用区间由物理定**（如「G 的线性度 <1% 的那段 z₀」），"
+                f"**不是随手画的。**")
+        caught = _as_list(c.get("catches"))
+        if not caught:
+            err("CRIT-BLIND",
+                f"判据 `{cid}` **在所有错模型上都通过** —— **它是一把失明的锁。**\n"
+                f"        一条从来抓不到任何东西的判据，和一条**不存在**的判据，行为上完全一样。\n"
+                f"        **要么找到它真能判别的东西，要么删掉它。**")
+        for w in caught:
+            if w not in wrong:
+                err("CRIT-CATCH-DANGLING",
+                    f"判据 `{cid}` 声称抓得到 `{w}`，但 wrong_models 里没有这个 id —— "
+                    f"**编出来的 id 是非空的。**")
+
+
 def check_residue(md: str) -> None:
     """TODO / [GAP] 残留：允许存在，但必须在文首声明。"""
     head = md[:1500]
@@ -888,6 +1121,7 @@ def selftest() -> int:
     这个自检把**已知的坑**钉死。它拦不住下一个未知的坑 ——
     **拦下一个坑的，是「在第二道题上真的跑一遍」。**
     """
+    global ERRORS, WARNINGS               # ← 必须在**任何**使用之前声明
     fails: list[str] = []
 
     def eq(name: str, got, want):
@@ -933,6 +1167,68 @@ def selftest() -> int:
     # ★ 引用计数也必须锚死：A-6 不许从 A-6a 里被数出来
     eq("A-6 不会被 A-6a 冒名顶替",
        len(re.findall(r"\bA-6(?![0-9a-z])", "见 A-6a 与 A-6b，另见 A-6a。")), 0)
+
+    print()
+    print("=" * 72)
+    print("②b ★★ STALE-VALUE：拿归档的旧值 grep 新文档（教训 4 的机械化）")
+    print("=" * 72)
+    # ★ 3 位有效数字起步 —— 2 位会让 0.1361 生成 "0.14"，而 `0.14 s`/`0.14 mm` 满世界都是。
+    #   **一个总是响的警报，等于没有警报，而且它会训练人无视所有警报。**
+    eq("0.03217 (1/s) → 生成 '0.0322'",   "0.0322" in _literals(0.03217, "1/s"), True)
+    eq("0.1361 (1) → **不**生成 '0.14'",  "0.14" in _literals(0.1361, "1"),      False)
+    eq("0.1361 (1) → 生成 '0.136'",       "0.136" in _literals(0.1361, "1"),     True)
+    eq("0.000765 m → 生成 '0.765'（mm）",  "0.765" in _literals(0.000765, "m"),   True)
+    eq("0.00589 kg → 生成 '5.89'（g）",    "5.89" in _literals(0.00589, "kg"),    True)
+    # ★ 引用旧值必须**点名版本** —— 三种点名方式（行内 / 上文三行 / 节标题）
+    _L = ["## 11 · r1 → r2 修订记录", "", "值从 0.0322 改到 0.0413", "",
+          "## 12 · 别的", "", "γ_oc = 0.0322", "",
+          "r1 报的是（逐字）：", "", "> γ_0 = 0.0322", ""]
+    eq("节标题里点名 r1 ⟹ 放行",        _cited(_L, 3, "r1"), True)
+    eq("★ 换了一节，没点名 ⟹ **抓住**",  _cited(_L, 7, "r1"), False)
+    eq("上文三行内点名 ⟹ 放行（逐字引文里不许塞标记）", _cited(_L, 11, "r1"), True)
+
+    print()
+    print("=" * 72)
+    print("②c ★★ CRIT-BLIND / CRIT-FALSEKILL：判据不许失明，也不许误杀")
+    print("=" * 72)
+
+    def _crit(spec):
+        ERRORS.clear()
+        check_criterion_matrix(spec)
+        return [e.split("]")[0].lstrip("[") for e in ERRORS]
+
+    good = {"criterion_matrix": {
+        "wrong_models": [{"id": "n-A"}, {"id": "n-B"}, {"id": "bug-C"}],
+        "criteria": [{"id": "K1", "passes_correct": True, "catches": ["n-A", "n-B"]},
+                     {"id": "K2", "passes_correct": True, "catches": ["bug-C"]}],
+        "verdict": "PASS"}}
+    eq("合格的表 ⟹ 无 ERROR", _crit(good), [])
+
+    import copy
+    blind = copy.deepcopy(good)
+    blind["criterion_matrix"]["criteria"][1]["catches"] = []
+    # ★ 一条判据失明，会**连带**让它本该抓的那个错模型漏网 —— 两个 ERROR 一起报才是对的
+    eq("★ 判据失明 ⟹ CRIT-BLIND（+ 连带 MODEL-UNCAUGHT）",
+       sorted(_crit(blind)), ["CRIT-BLIND", "CRIT-MODEL-UNCAUGHT"])
+
+    fk = copy.deepcopy(good)
+    fk["criterion_matrix"]["criteria"][0]["passes_correct"] = False
+    eq("★ 判据误杀正确模型 ⟹ CRIT-FALSEKILL", _crit(fk), ["CRIT-FALSEKILL"])
+
+    uncaught = copy.deepcopy(good)
+    uncaught["criterion_matrix"]["wrong_models"].append({"id": "bug-D"})
+    eq("★ 一个错模型没人抓 ⟹ CRIT-MODEL-UNCAUGHT", _crit(uncaught), ["CRIT-MODEL-UNCAUGHT"])
+
+    dang = copy.deepcopy(good)
+    dang["criterion_matrix"]["criteria"][0]["catches"] = ["编出来的-id"]
+    # ★ 一个**编出来的** id 是「非空」的 —— 它同时掩盖了「n-A / n-B 没人抓」这个更糟的事实
+    eq("★ 编出来的 id ⟹ CRIT-CATCH-DANGLING（非空 ≠ 有效）",
+       sorted(_crit(dang)),
+       ["CRIT-CATCH-DANGLING", "CRIT-MODEL-UNCAUGHT", "CRIT-MODEL-UNCAUGHT"])
+
+    eq("契约里没有 criterion_matrix ⟹ CRIT-MATRIX-MISSING",
+       _crit({"tasks": [{"id": "T-1"}]}), ["CRIT-MATRIX-MISSING"])
+    ERRORS.clear()
 
     print()
     print("=" * 72)
@@ -993,7 +1289,6 @@ def selftest() -> int:
     #
     #  > **为了消误报而削弱一条检查，是最容易犯、也最贵的错。**
     #  > 从今往后，任何人想动 NUM-DESYNC，**必须先过这一关**。
-    global ERRORS, WARNINGS
     _e, _w = ERRORS, WARNINGS
     ERRORS, WARNINGS = [], []
     fake_spec = {
@@ -1057,6 +1352,9 @@ def main() -> int:
         ("check_silent_neglect",   lambda: check_silent_neglect(md)),
         ("check_symbols",          lambda: check_symbols(md, spec or {})),
         ("check_number_desync",    lambda: check_number_desync(md, spec or {})),
+        # ★★ 这两道是 CLAUDE.md 教训 4 说「目前没有机械检查能发现」的那两件事
+        ("check_stale_values",     lambda: check_stale_values(workspace, md, problem_md, spec or {})),
+        ("check_criterion_matrix", lambda: check_criterion_matrix(spec or {})),
         ("check_residue",          lambda: check_residue(md)),
         ("check_sections",         lambda: check_sections(md)),
     ]

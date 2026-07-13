@@ -690,5 +690,79 @@
       "experimental_check": "高斯计沿管轴与离轴若干点实测 B，**反推印证磁化强度 M_s**（而不是用标称 B_r）。这同时闭合了 P12：m 必须独立测定，不能用标称值反推——否则预测退化为拟合。",
       "figure": "V-1"
     }
-  ]
+  ],
+  "criterion_matrix": {
+    "generated_by": "01-criteria/criterion_matrix.py",
+    "purpose": "★★ 判据 × 模型的**双向**表。只跑「正确模型」那一列 = 换了一把新的失明的锁。",
+    "wrong_models": [
+      {
+        "id": "naive-A 用了 Φ 而不是 dΦ/dz",
+        "statement": "用了 Φ 而不是 dΦ/dz",
+        "why_a_student_writes_it": "**本题的头号陷阱**：涡流由**磁通的变化率**驱动（dΦ/dt = v·dΦ/dz），不是磁通本身。量纲上它甚至能自洽（只要凑一个前因子）—— **所以只有「a 的指数」抓得到它。**"
+      },
+      {
+        "id": "naive-B b 与壁厚 w 无关",
+        "statement": "b 与壁厚 w 无关",
+        "why_a_student_writes_it": "「管壁只是个导体，厚不厚无所谓」—— 直觉上很自然，而且薄壁时 b 确实近似 ∝ w，**一个只在基准点标定过的模型，看不出区别。**"
+      },
+      {
+        "id": "bug-C  前因子 45/1024 → 1/16",
+        "statement": "前因子 45/1024 → 1/16",
+        "why_a_student_writes_it": "**最容易犯的实现 bug**：那个 45/1024 是一个不平凡的积分结果，很容易做错。**所有标度律都对，只有绝对值错。**"
+      },
+      {
+        "id": "bug-D  a 的指数错成 3",
+        "statement": "a 的指数错成 3",
+        "why_a_student_writes_it": "球坐标 vs 柱坐标搞混，或者积分漏了一维。**指数错 1 —— 而指数是这道题的招牌。**"
+      },
+      {
+        "id": "★ bug-E 多一个恒定摩擦",
+        "statement": "bug-E 多一个恒定摩擦",
+        "why_a_student_writes_it": "**最难抓的一个**：磁体蹭到管壁 ⟹ 多一个与 v 无关的摩擦力 f。**所有标度律一字不差地保持**（b 的 a、w 依赖全对），只有 v_t 的**绝对值**偏了 15%。**⇒ 只有 K3（绝对值）看得见它。而没有 bug-E，K3 就会显得多余。**"
+      }
+    ],
+    "criteria": [
+      {
+        "id": "K1",
+        "statement": "K1 v_t ∝ a⁴【结构】",
+        "passes_correct": true,
+        "correct_model_detail": "k = 4.000（预言 4.000）",
+        "catches": [
+          "naive-A 用了 Φ 而不是 dΦ/dz",
+          "bug-D  a 的指数错成 3"
+        ]
+      },
+      {
+        "id": "K2",
+        "statement": "K2 v_t ∝ 1/w【结构】",
+        "passes_correct": true,
+        "correct_model_detail": "p = -1.000（预言 −1.000）",
+        "catches": [
+          "naive-B b 与壁厚 w 无关"
+        ]
+      },
+      {
+        "id": "K3",
+        "statement": "K3 v_t 的绝对值【零参】",
+        "passes_correct": true,
+        "correct_model_detail": "v_t = 2.74 cm/s（预言 2.74）",
+        "catches": [
+          "bug-C  前因子 45/1024 → 1/16",
+          "bug-D  a 的指数错成 3",
+          "★ bug-E 多一个恒定摩擦"
+        ]
+      },
+      {
+        "id": "K4",
+        "statement": "K4 b/w 与 w 无关【结构】",
+        "passes_correct": true,
+        "correct_model_detail": "b/w 的离散度 = 0.0%",
+        "catches": [
+          "naive-B b 与壁厚 w 无关"
+        ]
+      }
+    ],
+    "verdict": "PASS",
+    "script": "01-criteria/criterion_matrix.py"
+  }
 }
