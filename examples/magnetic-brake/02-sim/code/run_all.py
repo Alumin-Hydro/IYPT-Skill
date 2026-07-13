@@ -70,7 +70,7 @@ def main() -> int:
     print("=" * 86)
     print("模型验证：中间量 B 场（model_validation_checks[V-1]）")
     print("=" * 86)
-    BG = BFIG.make_all()          # V-1 … V-4
+    BG = BFIG.make_all(AS)        # V-1 … V-4（AS 传进去，V-4 的断言要画在图上）
     print()
 
     # ================================================== status 判定
@@ -147,21 +147,30 @@ def main() -> int:
         if a.get("figure_ref"):
             fig_as.setdefault(a["figure_ref"], []).append(a["id"])
 
-    figures = []
-    for fid in ("F-1", "F-2", "F-3", "F-4"):
-        ids = fig_as.get(fid, [])
+    def _verdict(ids: list[str]) -> str:
         v = [x["verdict"] for x in AS if x["id"] in ids]
-        figures.append(dict(
-            id=fid, path=rel(figs[fid]["png"]), path_svg=rel(figs[fid]["svg"]),
-            assertion_ids=ids,
-            verdict=("FAIL-CODE" if "FAIL-CODE" in v else
-                     "FAIL-MODEL" if "FAIL-MODEL" in v else
-                     "PRESCRIBED" if "PRESCRIBED" in v else "PASS"),
-            simulation_stamped=True, caption=caps[fid]))
-    figures.append(dict(
-        id="F-5", path=rel(figs["F-1"]["png"]), path_svg=rel(figs["F-1"]["svg"]),
-        path_interactive=rel(f5), assertion_ids=fig_as.get("F-5", []),
-        verdict="PASS", simulation_stamped=True, caption=caps["F-5"]))
+        return ("FAIL-CODE" if "FAIL-CODE" in v else
+                "FAIL-MODEL" if "FAIL-MODEL" in v else
+                "PRESCRIBED" if "PRESCRIBED" in v else "PASS")
+
+    figures = []
+    # ★ F-5 有**自己的**静止帧了。
+    #
+    #   此前这里写的是 `path=rel(figs["F-1"]["png"])` —— 因为 F-5 的 kind 是 animation，
+    #   没有静态 PNG，于是拿 F-1 的顶上。后果：**两张图共用一个文件**，Skill 3 照 `path`
+    #   取图会把幂律图配上涡流的 caption 摆进 PPT。没有任何检查会发现 —— F-1.png 确实存在。
+    #
+    #   **动画也必须出一张静止帧**（PPT/PDF 印不出动画；Skill 4 要打开 PNG 看；
+    #   SIMULATION 戳在 SVG 里 grep）。交互页是**加分项**，不是替代品。
+    #   check_sim.py 现已机械检查：FIG-PATH-DUP + FIG-NOSTILL。
+    for fid in ("F-1", "F-2", "F-3", "F-4", "F-5"):
+        ids = fig_as.get(fid, [])
+        f = dict(id=fid, path=rel(figs[fid]["png"]), path_svg=rel(figs[fid]["svg"]),
+                 assertion_ids=ids, verdict=_verdict(ids),
+                 simulation_stamped=True, caption=caps[fid])
+        if fid == "F-5":
+            f["path_interactive"] = rel(f5)
+        figures.append(f)
 
     # ---- V-1 … V-4：模型验证图（中间量 B 场）
     vcaps = {
@@ -172,14 +181,30 @@ def main() -> int:
                f"B_z 在 z=0 处被偶极子高估 2 倍。与 F-5 的涡流峰位是同一个数。",
         "V-3": f"轴上 B_z：数值积分与教科书闭式解**完全重合**（误差 {BG['G-A']['err']:.1e}）。"
                f"磁体中心 B_z(0,0) = {BG['G-A']['b_center']:.3f} T = μ₀M_s/√2 —— **算之前就预言了这个数**。",
+        # 每个数都从 BG 里来，一个都不许硬编码 —— caption 会被 Skill 3 **逐字**抄进 PPT，
+        # 硬编码的数字会和结果悄悄漂移（这正是设计审查 D12 要抓的）。
         "V-4": f"把「a ≫ L」变成一个数：v_t 要 10% 精度需 a/L > {BG['V-4']['q10']:.1f}，"
-               f"本实验 0.60 —— 差约 2 倍。（全程薄壁，**只隔离 A-1**：40%，"
-               f"**不是** Model-2 vs Model-0 的 +82.7%——后者含 A-1×A-2 两条，且是相乘的。）",
+               f"本实验 {BG['V-4']['a_over_L']:.2f} —— 差约 2 倍。"
+               f"（全程薄壁，**只隔离 A-1**：{BG['V-4']['err_here']:.0f}%，"
+               f"**不是** Model-2 vs Model-0 的 +{(BG['V-4']['f_total']-1)*100:.1f}%"
+               f"——后者含 A-1×A-2 两条，且是**相乘**的。）",
     }
+    # ★ assertion_ids 从 fig_as 来 —— **不许编 id**。
+    #
+    #   此前这里写的是 `assertion_ids=[f"AS-V{vid[-1]}"]`，即 AS-V1…AS-V4 ——
+    #   **这四个 id 在 assertions[] 里一个都不存在。**
+    #
+    #   为什么它能活到今天：FIG-NOASSERT 只查「assertion_ids 非空」，而一个编出来的
+    #   id 是非空的，于是它大摇大摆走了过去。**非空 ≠ 有效。**
+    #   连带掩盖了一个更糟的事实：**V-4 一条真断言都没有** —— 而 FIG-NOASSERT
+    #   本来就是为了抓这个而写的。（V-4 现在有 AS-32…AS-35 了。）
+    #
+    #   check_sim.py 现已加 FIG-ASSERT-DANGLING：**凡是 id 之间的引用，都必须解析一遍。**
     for vid in ("V-1", "V-2", "V-3", "V-4"):
+        ids = fig_as.get(vid, [])
         figures.append(dict(
             id=vid, path=f"02-sim/figures/{vid}.png", path_svg=f"02-sim/figures/{vid}.svg",
-            assertion_ids=[f"AS-V{vid[-1]}"], verdict="PASS",
+            assertion_ids=ids, verdict=_verdict(ids),
             simulation_stamped=True, caption=vcaps[vid]))
 
     # ================================================== risky checks

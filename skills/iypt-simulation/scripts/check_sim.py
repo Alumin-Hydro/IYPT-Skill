@@ -260,20 +260,68 @@ def check_coverage(spec: dict, res: dict, workspace: Path) -> None:
             warn("FIG-EXTRA", f"results.json 里的 {fid} 不在 model-spec 的 figures[] 里 —— "
                               f"没有 expected_shape 的图没有验收标准，它只是装饰")
 
+    # ★ 断言 id 的全集 —— 下面要用它查悬空引用
+    all_as_ids = {a.get("id") for a in res.get("assertions", [])}
+    seen_paths: dict[str, str] = {}
+
     for fid, f in res_figs.items():
         if not f.get("assertion_ids"):
             err("FIG-NOASSERT", f"{fid} 没有对应的断言 —— **一张没有验收标准的图就是装饰**")
         if not f.get("simulation_stamped"):
             err("FIG-NOSTAMP", f"{fid} 的 simulation_stamped 不是 true")
 
+        # ---- ★ assertion_ids 里的 id 必须**真的存在**于 assertions[]
+        #
+        #  FIG-NOASSERT 只查了「非空」。而一个**编出来的** id（"AS-V1"）是非空的 ——
+        #  它从 FIG-NOASSERT 底下大摇大摆走了过去，图看上去有验收标准，其实一条都没有。
+        #
+        #  **实测（magnetic-brake）**：V-1…V-4 的 assertion_ids 全是 `AS-V{n}`，
+        #  四个 id 在 assertions[] 里一个都不存在。连带掩盖了一个更糟的事实：
+        #  **V-4 一条真断言都没有** —— 而 FIG-NOASSERT 本来就是为了抓这个而写的。
+        #
+        #  **非空 ≠ 有效。凡是 id 之间的引用，都必须解析一遍。**
+        dangling = [i for i in (f.get("assertion_ids") or []) if i not in all_as_ids]
+        if dangling:
+            err("FIG-ASSERT-DANGLING",
+                f"{fid} 的 assertion_ids 里有**不存在**的断言 id：{', '.join(dangling)}\n"
+                f"        assertions[] 里根本没有它们。**一张挂着假 id 的图 = 一张没有验收标准的图**，"
+                f"只是伪装成有。\n"
+                f"        （典型踩法：图的 id 是 V-4，就顺手写 `assertion_ids=[\"AS-V4\"]` —— "
+                f"而真正的断言叫 AS-31。）")
+
+        # ---- ★ 两张图不许指向同一个文件
+        #
+        #  **实测（magnetic-brake）**：F-5 是 kind: animation，没有静态 PNG，
+        #  于是 run_all.py 拿 F-1 的 PNG 顶了上去。后果：Skill 3 照 `path` 取图，
+        #  会把**幂律图**配上**涡流的 caption** 摆进 PPT —— 而没有任何检查会发现，
+        #  因为 F-1.png 确实存在（FIG-NOFILE 过）。
         p = f.get("path")
         if p:
+            if p in seen_paths:
+                err("FIG-PATH-DUP",
+                    f"{fid} 和 {seen_paths[p]} 指向**同一个文件**：{p}\n"
+                    f"        两张图共用一个 PNG = 其中至少一张是**冒名顶替**的。"
+                    f"下游（Skill 3）会照 `path` 取图，把它配上另一张图的 caption 摆进 PPT。")
+            seen_paths[p] = fid
+
             fp = workspace / p if not Path(p).is_absolute() else Path(p)
             if not fp.is_file():
                 # results.json 里的路径可能相对工作区，也可能相对 repo 根
                 alt = Path(p)
                 if not alt.is_file():
                     err("FIG-NOFILE", f"{fid} 的产出文件不存在: {p}")
+        else:
+            # ---- ★ 每张图都必须有一张静态 PNG —— **包括动画**。
+            #
+            #  **PPT 和 PDF 印不出动画。** Physics Fight 上你面对的是投影和评委手里的讲义。
+            #  交互页面是**加分项**，不是**替代品**：
+            #    · Skill 3 必须能往幻灯片上放一张静止帧
+            #    · Skill 4 的铁律 0 要求「真的打开 PNG 用眼睛看」—— 没有 PNG 就没法审
+            #    · SIMULATION 戳是在 SVG 里 grep 的（见 check_stamps）；没有 SVG 就没有戳
+            err("FIG-NOSTILL",
+                f"{fid} 没有 `path`（静态 PNG）。**动画也必须出一张静止帧。**\n"
+                f"        PPT 和 PDF **印不出动画**，Skill 4 也没法「打开 PNG 用眼睛看」。\n"
+                f"        `path_interactive` 是**加分项**，不是**替代品** —— 两个都要有。")
 
     # --- 目标量
     spec_t = {t.get("symbol") for t in spec.get("targets", [])}

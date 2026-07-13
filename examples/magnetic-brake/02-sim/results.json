@@ -83,7 +83,7 @@
       "scipy": "1.18.0",
       "matplotlib": "3.11.0"
     },
-    "timestamp": "2026-07-12T16:51:13+00:00"
+    "timestamp": "2026-07-13T04:28:46+00:00"
   },
   "status": "PRESCRIBED-REVISION",
   "status_reason": "AS-20, AS-22 判 PRESCRIBED —— 命中 Skill 1 在 pass_criterion 里**预先注册**的分支，已照办。这不是失败：动作在数据出现之前就写在 spec 里了（归档 model-spec-r1.json 是物证），**这是预注册，不是事后合理化（P16）**。\n  · A-1：|k−4| = 0.5608 > 0.3 ⇒ P5 降级（仅在 a ≫ L 时成立）。\n  · A-2：基准点偏差 23.42%，落在预期区间 (15%, 26%) 内 ⇒ P2 适用域收窄到 w/a ≲ 0.03（该处偏差 5.1%）。\n  两条 RISKY 假设都**如预期地不成立** —— 模型边界被正确定位，这正是它们被标为 RISKY 的意义。\n  （历史：r1 那次运行判 MODEL-CHALLENGED，见 02-sim/results-r1.json 与 model-challenge-r1.md。Skill 1 已按物理理由修订至 r3——A-2 的一阶系数漏了个 2。）",
@@ -607,6 +607,58 @@
       "verdict": "PASS",
       "interpretation": "验的是**中间量**（B 场），不是最终结果。**「最终结果对了」不代表「模型对了」**：b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分——场整体错一个常数因子 c、而 M_s 反推又漏 1/c，b 仍然「对」，终速也「对」，但 v_t 对 a 的指数会错、涡流峰位也会错。**用末速度反证模型，正好看不见这类错误。** 故三条**互不依赖**的路都要走。",
       "figure_ref": "V-1"
+    },
+    {
+      "id": "AS-32",
+      "source": "V-4",
+      "source_kind": "figure",
+      "quoted_expectation": "单调下降的幂律。v_t 要 10% 精度需要 a/L > 约 1；本实验 a/L = 0.60，误差约 40%（**这一条只含 A-1**——全程用薄壁近似隔离它）。**注意：40% 不该等于 Model-2 vs Model-0 的 +82.7%，后者含 A-1 和 A-2 两条，且两者是相乘的（1.3993 x 1.3059 = 1.8273）。**",
+      "assert_kind": "monotonic",
+      "expect": "点偶极子模型给 v_t 的误差随 a/L **严格单调下降**（多极展开：磁体相对 a 越小，偶极子越准）",
+      "tolerance": "严格单调",
+      "measured": "单调下降: True（最大增量 -0.0177 pp）",
+      "verdict": "PASS",
+      "interpretation": "契约给了三个可判的数（「约 1」「约 40%」「不该等于 82.7%」）加一条形状（单调下降）。两个「约」需要一个读法，**读法必须在看数之前定死**：「约 1」取 (0.7, 1.5)，「约 40%」取 ±5 个百分点。**而第三条不需要读法** —— 契约自己把陷阱值写成了 82.7%，这是白送的 must_not。\n为什么它值钱：这条曲线全程用薄壁近似，隔离的是 **A-1 一条**假设。**隔离出来的效应本来就不该等于总效应。** 若它真的给出 82.7%，说明 thin_wall 这个隔离开关根本没起作用，A-2 的误差漏了进来 —— 那是代码错。\n**这正是设计审查 D12「伪吻合」那条血泪教训的机械版**：当年差点交付出去的一句话是「40%，and indeed v_t came out +82.7%」—— **40 和 82.7 差着一倍，根本不吻合**，而含糊过去的那条路，读起来和「验证成功」一模一样。现在它是一条断言，不再靠人眼。",
+      "figure_ref": "V-4"
+    },
+    {
+      "id": "AS-33",
+      "source": "V-4",
+      "source_kind": "figure",
+      "quoted_expectation": "单调下降的幂律。v_t 要 10% 精度需要 a/L > 约 1；本实验 a/L = 0.60，误差约 40%（**这一条只含 A-1**——全程用薄壁近似隔离它）。**注意：40% 不该等于 Model-2 vs Model-0 的 +82.7%，后者含 A-1 和 A-2 两条，且两者是相乘的（1.3993 x 1.3059 = 1.8273）。**",
+      "assert_kind": "value",
+      "expect": "v_t 要 10% 精度所需的 a/L 落在「约 1」= (0.7, 1.5) 内",
+      "tolerance": "「约 1」读作 (0.7, 1.5)",
+      "measured": "a/L > 1.11",
+      "verdict": "PASS",
+      "interpretation": "契约给了三个可判的数（「约 1」「约 40%」「不该等于 82.7%」）加一条形状（单调下降）。两个「约」需要一个读法，**读法必须在看数之前定死**：「约 1」取 (0.7, 1.5)，「约 40%」取 ±5 个百分点。**而第三条不需要读法** —— 契约自己把陷阱值写成了 82.7%，这是白送的 must_not。\n为什么它值钱：这条曲线全程用薄壁近似，隔离的是 **A-1 一条**假设。**隔离出来的效应本来就不该等于总效应。** 若它真的给出 82.7%，说明 thin_wall 这个隔离开关根本没起作用，A-2 的误差漏了进来 —— 那是代码错。\n**这正是设计审查 D12「伪吻合」那条血泪教训的机械版**：当年差点交付出去的一句话是「40%，and indeed v_t came out +82.7%」—— **40 和 82.7 差着一倍，根本不吻合**，而含糊过去的那条路，读起来和「验证成功」一模一样。现在它是一条断言，不再靠人眼。",
+      "figure_ref": "V-4"
+    },
+    {
+      "id": "AS-34",
+      "source": "V-4",
+      "source_kind": "figure",
+      "quoted_expectation": "单调下降的幂律。v_t 要 10% 精度需要 a/L > 约 1；本实验 a/L = 0.60，误差约 40%（**这一条只含 A-1**——全程用薄壁近似隔离它）。**注意：40% 不该等于 Model-2 vs Model-0 的 +82.7%，后者含 A-1 和 A-2 两条，且两者是相乘的（1.3993 x 1.3059 = 1.8273）。**",
+      "assert_kind": "value",
+      "expect": "本实验 a/L = 0.60 处，**A-1 单独**的代价落在「约 40%」= (35%, 45%) 内",
+      "tolerance": "「约 40%」读作 ±5 个百分点",
+      "measured": "39.9%",
+      "verdict": "PASS",
+      "interpretation": "契约给了三个可判的数（「约 1」「约 40%」「不该等于 82.7%」）加一条形状（单调下降）。两个「约」需要一个读法，**读法必须在看数之前定死**：「约 1」取 (0.7, 1.5)，「约 40%」取 ±5 个百分点。**而第三条不需要读法** —— 契约自己把陷阱值写成了 82.7%，这是白送的 must_not。\n为什么它值钱：这条曲线全程用薄壁近似，隔离的是 **A-1 一条**假设。**隔离出来的效应本来就不该等于总效应。** 若它真的给出 82.7%，说明 thin_wall 这个隔离开关根本没起作用，A-2 的误差漏了进来 —— 那是代码错。\n**这正是设计审查 D12「伪吻合」那条血泪教训的机械版**：当年差点交付出去的一句话是「40%，and indeed v_t came out +82.7%」—— **40 和 82.7 差着一倍，根本不吻合**，而含糊过去的那条路，读起来和「验证成功」一模一样。现在它是一条断言，不再靠人眼。",
+      "figure_ref": "V-4"
+    },
+    {
+      "id": "AS-35",
+      "source": "V-4",
+      "source_kind": "figure",
+      "quoted_expectation": "单调下降的幂律。v_t 要 10% 精度需要 a/L > 约 1；本实验 a/L = 0.60，误差约 40%（**这一条只含 A-1**——全程用薄壁近似隔离它）。**注意：40% 不该等于 Model-2 vs Model-0 的 +82.7%，后者含 A-1 和 A-2 两条，且两者是相乘的（1.3993 x 1.3059 = 1.8273）。**",
+      "assert_kind": "must_not",
+      "expect": "NOT (|err_A1_alone − 82.7%| < 5 pp) —— 若隔离出的 A-1 单独效应等于 A-1×A-2 的总偏差，说明薄壁隔离开关没起作用，A-2 的误差漏了进来",
+      "tolerance": "5 个百分点（40 与 82.7 相距 42.8 pp，这个带宽绰绰有余）",
+      "measured": "39.9%（距陷阱值 82.7% 有 42.8 pp）",
+      "verdict": "PASS",
+      "interpretation": "契约给了三个可判的数（「约 1」「约 40%」「不该等于 82.7%」）加一条形状（单调下降）。两个「约」需要一个读法，**读法必须在看数之前定死**：「约 1」取 (0.7, 1.5)，「约 40%」取 ±5 个百分点。**而第三条不需要读法** —— 契约自己把陷阱值写成了 82.7%，这是白送的 must_not。\n为什么它值钱：这条曲线全程用薄壁近似，隔离的是 **A-1 一条**假设。**隔离出来的效应本来就不该等于总效应。** 若它真的给出 82.7%，说明 thin_wall 这个隔离开关根本没起作用，A-2 的误差漏了进来 —— 那是代码错。\n**这正是设计审查 D12「伪吻合」那条血泪教训的机械版**：当年差点交付出去的一句话是「40%，and indeed v_t came out +82.7%」—— **40 和 82.7 差着一倍，根本不吻合**，而含糊过去的那条路，读起来和「验证成功」一模一样。现在它是一条断言，不再靠人眼。",
+      "figure_ref": "V-4"
     }
   ],
   "targets": [
@@ -697,9 +749,8 @@
     },
     {
       "id": "F-5",
-      "path": "02-sim/figures/F-1.png",
-      "path_svg": "02-sim/figures/F-1.svg",
-      "path_interactive": "02-sim/interactive/F-5-eddy-currents.html",
+      "path": "02-sim/figures/F-5.png",
+      "path_svg": "02-sim/figures/F-5.svg",
       "assertion_ids": [
         "AS-15",
         "AS-16",
@@ -707,14 +758,15 @@
       ],
       "verdict": "PASS",
       "simulation_stamped": true,
-      "caption": "涡流是反对称双峰（机器精度：4.2e-15），峰值落在 |z| = 5.03 mm ≈ L/2 = 5.0 mm——**磁体的端面上**，而不是点偶极子预言的 a/2 = 3.00 mm。因为 ∂Φ/∂z 就是两个安培端面电流环之差。这是 A-1 崩溃的第三个独立证人。"
+      "caption": "涡流是反对称双峰（机器精度：4.2e-15），峰值落在 |z| = 5.03 mm ≈ L/2 = 5.0 mm——**磁体的端面上**，而不是点偶极子预言的 a/2 = 3.00 mm。因为 ∂Φ/∂z 就是两个安培端面电流环之差。这是 A-1 崩溃的第三个独立证人。",
+      "path_interactive": "02-sim/interactive/F-5-eddy-currents.html"
     },
     {
       "id": "V-1",
       "path": "02-sim/figures/V-1.png",
       "path_svg": "02-sim/figures/V-1.svg",
       "assertion_ids": [
-        "AS-V1"
+        "AS-31"
       ],
       "verdict": "PASS",
       "simulation_stamped": true,
@@ -725,7 +777,7 @@
       "path": "02-sim/figures/V-2.png",
       "path_svg": "02-sim/figures/V-2.svg",
       "assertion_ids": [
-        "AS-V2"
+        "AS-30"
       ],
       "verdict": "PASS",
       "simulation_stamped": true,
@@ -736,7 +788,8 @@
       "path": "02-sim/figures/V-3.png",
       "path_svg": "02-sim/figures/V-3.svg",
       "assertion_ids": [
-        "AS-V3"
+        "AS-28",
+        "AS-29"
       ],
       "verdict": "PASS",
       "simulation_stamped": true,
@@ -747,11 +800,14 @@
       "path": "02-sim/figures/V-4.png",
       "path_svg": "02-sim/figures/V-4.svg",
       "assertion_ids": [
-        "AS-V4"
+        "AS-32",
+        "AS-33",
+        "AS-34",
+        "AS-35"
       ],
       "verdict": "PASS",
       "simulation_stamped": true,
-      "caption": "把「a ≫ L」变成一个数：v_t 要 10% 精度需 a/L > 1.1，本实验 0.60 —— 差约 2 倍。（全程薄壁，**只隔离 A-1**：40%，**不是** Model-2 vs Model-0 的 +82.7%——后者含 A-1×A-2 两条，且是相乘的。）"
+      "caption": "把「a ≫ L」变成一个数：v_t 要 10% 精度需 a/L > 1.1，本实验 0.60 —— 差约 2 倍。（全程薄壁，**只隔离 A-1**：40%，**不是** Model-2 vs Model-0 的 +82.7%——后者含 A-1×A-2 两条，且是**相乘**的。）"
     }
   ],
   "risky_checks": [
@@ -782,7 +838,7 @@
   },
   "reproduce": {
     "command": "python 02-sim/code/run_all.py",
-    "runtime_seconds": 14.4,
+    "runtime_seconds": 15.3,
     "notes": "需要 numpy / scipy / matplotlib。参数全部从 handoff/model-spec.json 载入，无硬编码。"
   },
   "spec_defects": [

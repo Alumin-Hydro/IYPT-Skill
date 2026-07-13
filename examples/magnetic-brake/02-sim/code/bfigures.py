@@ -61,7 +61,23 @@ def _geometry(ax, *, mirror=True):
         ax.axvline(s * (a + w), color=fk.STATUS["fail"], lw=1.4, zorder=5)
 
 
-def make_all():
+#: V-4 的断言在**图上**的英文短标（权威版本在 acceptance.md / results.json）。
+#  图上文字一律英文 —— figkit 的 _assert_no_cjk 会拦下中文。
+EN_V = {
+    "AS-32": "error decreases monotonically with a/L",
+    "AS-33": "a/L needed for 10% accuracy  in (0.7, 1.5)",
+    "AS-34": "A-1 alone at a/L = 0.60  in (35%, 45%)",
+    "AS-35": "must_not: A-1 alone == 82.7% (the total)",
+}
+
+
+def make_all(AS: list[dict] | None = None):
+    """V-1 … V-4。
+
+    AS: acceptance.run() 的断言表。给了就把 V-4 的验收结果画在图上
+        （**读者不该需要翻 results.json 才知道这张图过没过**）。
+    """
+    A = {a["id"]: a for a in (AS or [])}
     G = gates(verbose=False)
 
     # ================================================== 网格
@@ -261,7 +277,7 @@ def make_all():
                     arrowprops=dict(arrowstyle="->", color=fk.STATUS["fail"], lw=1.8))
         ax.set_xlabel(r"$z$   on the axis   (mm)")
         ax.set_ylabel(r"$|B_z|$   (T)")
-        ax.set_title(r"S-3   On-axis field  —  and where the dipole starts to work",
+        ax.set_title(r"V-3   On-axis field  —  and where the dipole starts to work",
                      fontsize=14)
         ax.legend(loc="lower left", fontsize=11, framealpha=0.97)
         fk.assertions(fig, [
@@ -276,31 +292,19 @@ def make_all():
     #
     # 而且要问对量：真正要紧的不是"场"错多少，是 **v_t 错多少**。
     # 阻尼 b ∝ ∫(∂Φ/∂z)² —— 是场的**平方**，所以 v_t 的误差大约是场误差的两倍。
-    # 直接算 b（等价于 v_t）用点偶极子场时错多少。
     #
     # 全程用薄壁近似 —— 这样隔离出的是 **A-1 一条假设**的效应（把 A-2 排除在外）。
-    from model2 import damping as _damping
+    #
+    # ★ 数字来自 model2.v4_scan() —— **和 acceptance.py 的 AS-32..AS-35 读的是同一个函数**。
+    #   若这里再算一遍，两边迟早会漂开一点点，于是**图上的数字和 results.json 对不上**
+    #   —— 那正是设计审查 D12 要抓的东西。**凡是既要断言又要画的数，只许算一次。**
+    from model2 import v4_scan
 
-    ratios = np.logspace(np.log10(0.55), np.log10(10.0), 34)
-    err_b = []
-    for q in ratios:
-        a_q = q * L_MAG
-        b_exact = _damping(R_MAG, L_MAG, MS, a_q, W_WALL, 1.0, thin_wall=True)
-        b_dip = _damping(R_MAG, L_MAG, MS, a_q, W_WALL, 1.0, thin_wall=True,
-                         dipole_field=True, m_dip=M_DIP)
-        err_b.append(abs(b_dip - b_exact) / b_exact * 100)
-    err_b = np.array(err_b)
-
-    def crit(t):
-        m = err_b < t
-        return float(ratios[m][0]) if m.any() else np.nan
-    q10, q30 = crit(10.0), crit(30.0)
-
-    # 自洽对拍：a/L = 0.60 处应当给出 ~83%，与已测到的 v_t 偏差 +82.7% 一致
-    b_e = _damping(R_MAG, L_MAG, MS, A_TUBE, W_WALL, 1.0, thin_wall=True)
-    b_d = _damping(R_MAG, L_MAG, MS, A_TUBE, W_WALL, 1.0, thin_wall=True,
-                   dipole_field=True, m_dip=M_DIP)
-    err_here = abs(b_d - b_e) / b_e * 100
+    V4 = v4_scan(R_MAG, L_MAG, MS, A_TUBE, W_WALL, SIGMA, M_DIP)
+    ratios, err_b = V4["ratios"], V4["err_b"]
+    q10, q30 = V4["q10"], V4["q30"]
+    err_here = V4["err_here"]
+    r1, r2 = V4["f_a1"], V4["f_a2"]
 
     with fk.Figure("V-4", STAMP, OUT_FIG, figsize=(9.0, 6.8)) as (fig, ax):
         ax.loglog()
@@ -330,7 +334,9 @@ def make_all():
 
         ax.set_xlabel(r"$a / L$      (tube inner radius  /  magnet length)")
         ax.set_ylabel(r"relative error in $v_t$   (%)")
-        ax.set_title(r"S-4   ‘$a \gg L$’ is not a number.  Here is the number.", fontsize=14)
+        # 图上的编号必须和 results.json 的 figure id 一致 —— PPT 会引用 "V-4"，
+        # 图上写 "S-4" 读者就对不上了。（旧编号的遗留。）
+        ax.set_title(r"V-4   ‘$a \gg L$’ is not a number.  Here is the number.", fontsize=14)
         ax.legend(loc="lower left", fontsize=11.5, framealpha=0.97)
         fk.log_ticks(ax.xaxis, [0.6, 1, 2, 3, 5, 10])
         fk.log_ticks(ax.yaxis, [1, 3, 10, 30, 100, 300], fmt="{:g}%")
@@ -338,11 +344,7 @@ def make_all():
         ax.set_ylim(0.8, 300)
         # A-1 与 A-2 的失效是**相乘**的，不是相加的 —— 这条要说清楚，
         # 否则读者会拿 S-4 的 40% 去对 Model-2 的 +82.7%，然后以为哪里错了。
-        b00 = _damping(R_MAG, L_MAG, MS, A_TUBE, W_WALL, SIGMA, thin_wall=True,
-                       dipole_field=True, m_dip=M_DIP)
-        b10 = _damping(R_MAG, L_MAG, MS, A_TUBE, W_WALL, SIGMA, thin_wall=True)
-        b11 = _damping(R_MAG, L_MAG, MS, A_TUBE, W_WALL, SIGMA)
-        r1, r2 = b00 / b10, b10 / b11
+        # （r1 / r2 来自 v4_scan —— 与 AS-35 读同一个数。）
         ax.text(0.975, 0.955,
                 "the two failures COMPOUND\n"
                 f"  A-1  x {r1:.3f}\n"
@@ -354,6 +356,23 @@ def make_all():
                 family="monospace", color=fk.INK, linespacing=1.45,
                 bbox=dict(fc="white", ec=fk.INK_MUTED, lw=1.2, alpha=0.97,
                           boxstyle="round,pad=0.45"))
+        # ★ V-4 曾经**一条断言都没有** —— 它挂着一个编出来的 id（AS-V4），
+        #   而 FIG-NOASSERT 只查「非空」。现在它有 AS-32..AS-35，画在轴外。
+        #
+        #   `measured` 在 results.json 里是**中文**的，不能直接喂给图（DejaVu 没有 CJK
+        #   字形 -> 豆腐块 □□□，而 matplotlib 一声不吭）。figkit 的 _assert_no_cjk
+        #   在存图前把它拦了下来 —— **这个守卫刚刚真的救了一次**。
+        #   给图一个英文版，数字**全部从 V4 算**，不许硬编码。
+        meas_v = {
+            "AS-32": f"monotonic: {V4['monotone']}",
+            "AS-33": f"a/L > {q10:.2f}",
+            "AS-34": f"{err_here:.1f}%",
+            "AS-35": f"{err_here:.1f}%  ({abs(err_here - 82.73):.0f} pp from the trap 82.7%)",
+        }
+        if A:
+            fk.assertions(fig, [(i, EN_V[i], meas_v[i],
+                                 A[i]["verdict"] in ("PASS", "PRESCRIBED"))
+                                for i in ("AS-32", "AS-33", "AS-34", "AS-35") if i in A])
         fk.fit_range_note(fig,
                           r"Thin wall throughout — so this curve isolates $\bf{A}$-$\bf{1}$ "
                           r"$\bf{alone}$ (the point-dipole assumption)." "\n"
@@ -366,7 +385,8 @@ def make_all():
           f"-> v_t 偏差 +{(r1*r2-1)*100:.1f}%  （与实测的 +82.7% 逐位吻合）")
 
     G["V-4"] = dict(q10=float(q10), q30=float(q30), a_over_L=A_TUBE / L_MAG,
-                    err_here=float(err_here))
+                    err_here=float(err_here), f_a1=float(r1), f_a2=float(r2),
+                    f_total=float(V4["f_total"]))
     return G
 
 

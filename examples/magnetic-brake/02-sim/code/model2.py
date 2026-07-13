@@ -70,3 +70,56 @@ def vt_model2(R: float, L: float, Ms: float, a: float, w: float, sigma: float,
               M: float, g: float, **kw) -> float:
     """终速 v_t = M g / b。"""
     return M * g / damping(R, L, Ms, a, w, sigma, **kw)
+
+
+def v4_scan(R: float, L: float, Ms: float, a: float, w: float, sigma: float,
+            m_dip: float) -> dict:
+    """V-4：「a ≫ L」到底是多少？—— 用点偶极子模型算 v_t，错多少（作为 a/L 的函数）。
+
+    **acceptance.py（断言）和 bfigures.py（出图）共用这一个函数。**
+
+    为什么必须共用：如果断言算一遍、图再算一遍，两边迟早会漂开一点点，
+    于是**图上的数字和 results.json 对不上** —— 那正是设计审查 D12 要抓的东西。
+    **凡是既要断言又要画的数，只许算一次。**
+
+    全程 thin_wall=True —— 这样隔离出的是 **A-1 一条假设**的效应，把 A-2 排除在外。
+    这个隔离是本函数的全部意义，也是 must_not（AS-35）要守的东西：
+    **隔离出来的效应本来就不该等于总效应**（40% vs +82.7%）。
+    """
+    ratios = np.logspace(np.log10(0.55), np.log10(10.0), 34)
+    err_b = []
+    for q in ratios:
+        a_q = q * L
+        b_exact = damping(R, L, Ms, a_q, w, 1.0, thin_wall=True)
+        b_dip = damping(R, L, Ms, a_q, w, 1.0, thin_wall=True,
+                        dipole_field=True, m_dip=m_dip)
+        err_b.append(abs(b_dip - b_exact) / b_exact * 100.0)
+    err_b = np.array(err_b)
+
+    def crit(t: float) -> float:
+        m = err_b < t
+        return float(ratios[m][0]) if m.any() else float("nan")
+
+    # 本实验这一点：A-1 **单独**的代价
+    b_e = damping(R, L, Ms, a, w, 1.0, thin_wall=True)
+    b_d = damping(R, L, Ms, a, w, 1.0, thin_wall=True, dipole_field=True, m_dip=m_dip)
+    err_here = abs(b_d - b_e) / b_e * 100.0
+
+    # ---- 两条假设的失效是**相乘**的，不是相加的。把它拆开：
+    #        b00 = 偶极子场 + 薄壁   （A-1 崩 + A-2 崩）
+    #        b10 = 真实场   + 薄壁   （只有 A-2 崩）
+    #        b11 = 真实场   + 径向积分（都不崩 —— 这就是 Model-2）
+    #      于是 A-1 的因子 = b00/b10，A-2 的因子 = b10/b11，
+    #      **两者之积必须精确等于 Model-2 vs Model-0 的总偏差** —— 一次真正的独立对拍。
+    b00 = damping(R, L, Ms, a, w, sigma, thin_wall=True, dipole_field=True, m_dip=m_dip)
+    b10 = damping(R, L, Ms, a, w, sigma, thin_wall=True)
+    b11 = damping(R, L, Ms, a, w, sigma)
+    f_a1, f_a2 = b00 / b10, b10 / b11
+
+    monotone = bool(np.all(np.diff(err_b) < 0))
+
+    return dict(ratios=ratios, err_b=err_b,
+                q10=crit(10.0), q30=crit(30.0),
+                a_over_L=a / L, err_here=float(err_here),
+                f_a1=float(f_a1), f_a2=float(f_a2), f_total=float(f_a1 * f_a2),
+                monotone=monotone)

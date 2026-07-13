@@ -127,12 +127,29 @@ function drawProfile() {
     stroke: css.getPropertyValue('--neg'), 'stroke-width':2.8, 'stroke-linecap':'round'}));
 
   // 峰位标记
-  for (const [z, col, lab] of [[D.zpk, css.getPropertyValue('--neg'), 'L/2'],
-                               [D.zpk_dip, MUT, 'a/2']]) {
+  //
+  // ★ 两条线只差 2 mm。第一版把两个标签画在**同一个 y**、**同一个方向**上 ——
+  //   它们叠印成一团糊字（`a/2 = 3.00 4.99 mm`），而那两个数**正是这张图的全部结论**。
+  //
+  //   这个 bug 活了很久，因为**在此之前没有人能看见它** —— 交互页渲染不成 PNG，
+  //   于是它从来没被设计审查过。（现在有 render_html.py 了。）
+  //
+  //   修法两件事：
+  //     ① 让两个标签**往相反方向发散**（a/2 向左，L/2 向右），再错开一行 ——
+  //        两条线离得再近也撞不上。
+  //     ② 放在**底部**。两个峰都在 z > 0 的**上**半边（正峰），所以 z > 0 的**下**半边
+  //        是这张图唯一一块真正空的地方。放顶部的话，标签会直接压在峰上 —— 而峰位
+  //        正是这张图要证明的东西。
+  for (const [z, col, lab, anchor, dx, dy] of
+       [[D.zpk,     css.getPropertyValue('--neg'), 'L/2', 'start',  7, -10],
+        [D.zpk_dip, MUT,                           'a/2', 'end',   -7, -28]]) {
     g.appendChild(mk('line', {x1:zx(z), x2:zx(z), y1:PT, y2:PH-PB, stroke:col,
       'stroke-width':1.4, 'stroke-dasharray':'3 3', opacity:0.9}));
-    g.appendChild(mk('text', {x:zx(z)+5, y:PT+14, fill:col, 'font-size':12,
-      'font-weight':600})).textContent = `${lab} = ${z.toFixed(2)} mm`;
+    // 白色描边光晕：曲线从字底下穿过时，字仍然读得出来（等价于 matplotlib 的 bbox）
+    g.appendChild(mk('text', {x:zx(z)+dx, y:PH-PB+dy, fill:col, 'font-size':12,
+      'font-weight':600, 'text-anchor':anchor,
+      stroke:'#ffffff', 'stroke-width':4, 'paint-order':'stroke'})).textContent =
+        `${lab} = ${z.toFixed(2)} mm`;
   }
 }
 
