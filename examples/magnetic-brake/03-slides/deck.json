@@ -1,0 +1,515 @@
+{
+  "problem_slug": "magnetic-brake",
+  "title": "磁刹车 · 磁体在导电管中的下落",
+  "language": "zh",
+  "duration_budget_s": 720,
+  "slides": [
+    {
+      "id": "S-01",
+      "section": "problem",
+      "layout": "title",
+      "takeaway": "磁刹车：磁体在导电管中为什么会「飘」下来",
+      "duration_s": 20,
+      "notes": "开场。不要念题面 —— 直接给出物理本质，然后说「接下来 12 分钟，我用四条任务把它拆开」。",
+      "body": [
+        {
+          "kind": "lead",
+          "text": "{{essence.one_sentence}}"
+        },
+        {
+          "kind": "note",
+          "text": "IYPT Physics Fight · Reporter · 全部结果为**数值仿真**（实验方案见附录，尚未执行）"
+        }
+      ]
+    },
+    {
+      "id": "S-02",
+      "section": "problem",
+      "layout": "table",
+      "takeaway": "题面里没有一个字叫「任务」—— 任务是**挖**出来的",
+      "duration_s": 55,
+      "answers_task": [
+        "T-1",
+        "T-2",
+        "T-3",
+        "T-4"
+      ],
+      "notes": "★ 全场的地图。四条任务，后面每一页都挂在其中一条上。挖的过程：「趋于终速」→ 本质是什么；「定量依赖」→ 幂律指数；「哪些参数相关」→ 无量纲化 + 数据坍缩；「运动」→ 模式（因变量的第三层）。新手把「研究运动」理解成「测 x(t) 然后拟合」—— 那只答了四分之一。",
+      "body": [
+        {
+          "kind": "table",
+          "head": [
+            "任务",
+            "挖自题面的哪个词",
+            "答案的**形态**"
+          ],
+          "rows": [
+            [
+              "T-1",
+              "「为什么减速」",
+              "一条能量链 + 两个竞争效应"
+            ],
+            [
+              "T-2",
+              "「研究运动」",
+              "**幂律指数** —— 零自由参数的可证伪预测"
+            ],
+            [
+              "T-3",
+              "「参数」",
+              "**无量纲组 + 数据坍缩图**"
+            ],
+            [
+              "T-4",
+              "「运动」",
+              "**模式**：恒速？加速？振荡？—— 因变量的第三层"
+            ]
+          ]
+        },
+        {
+          "kind": "note",
+          "text": "**每个限定词都是一条任务的种子。** 题面是一段话，不是任务清单。"
+        }
+      ]
+    },
+    {
+      "id": "S-03",
+      "section": "picture",
+      "layout": "figure-left",
+      "takeaway": "涡流是**反对称双峰**：前方排斥、后方吸引 —— 两者都阻碍下落",
+      "duration_s": 60,
+      "answers_task": [
+        "T-1"
+      ],
+      "notes": "先讲定性图像，再上公式。指着图说：电流在磁体前后**反向**。这就是 Lenz 定律画出来的样子。而峰值落在磁体的端面上 —— 这一点后面会变成一件大事。机制预算已排除空气阻力、摩擦、磁滞、管壁磁化（铜的磁化率 {{χ_m ≈ -1e-5 @ tasks_answered.T-3.answer}}）。",
+      "figure": {
+        "figure_id": "F-5"
+      },
+      "body": [
+        {
+          "kind": "text",
+          "text": "能量链：**{{essence.energy_chain}}**"
+        },
+        {
+          "kind": "note",
+          "text": "机制预算已排除：空气阻力、摩擦、磁滞、管壁自身磁化。"
+        }
+      ]
+    },
+    {
+      "id": "S-04",
+      "section": "theory",
+      "layout": "equation",
+      "takeaway": "驱动力与 v 无关，阻尼 ∝ v —— **所以必然存在唯一终速**",
+      "duration_s": 55,
+      "answers_task": [
+        "T-1",
+        "T-2"
+      ],
+      "notes": "这是 Model-0：点偶极子 + 薄壁。**零自由参数** —— 每一个符号都是量出来的或查出来的，没有一个是拟合出来的。这一点是 IYPT 的分水岭：一个带拟合参数的「预测」不是预测。",
+      "body": [
+        {
+          "kind": "eq",
+          "tex": "M g - b\\,v = M\\dot{v} \\quad\\Longrightarrow\\quad v_t = Mg/b",
+          "label": "(12)"
+        },
+        {
+          "kind": "eq",
+          "tex": "b = \\frac{45}{1024}\\,\\frac{\\mu_0^2 m^2 \\sigma w}{a^4}",
+          "label": "(10)"
+        },
+        {
+          "kind": "kv",
+          "k": "基准设定",
+          "v": "a = {{parameters.a.value|1e3*.0f}} mm，L = {{parameters.L.value|1e3*.0f}} mm，w = {{parameters.w.value|1e3*.0f}} mm，σ = {{parameters.\\sigma.value|1e-7*.2f}}e7 S/m（铜）"
+        },
+        {
+          "kind": "kv",
+          "k": "Model-0 预测",
+          "v": "v_t = {{targets.v_t.value_analytical|100*.2f}} cm/s —— **零自由参数**"
+        }
+      ]
+    },
+    {
+      "id": "S-05",
+      "section": "theory",
+      "layout": "table",
+      "takeaway": "两条假设被**事先**标为 RISKY —— 我们接下来就去打它们",
+      "duration_s": 50,
+      "answers_task": [
+        "T-2"
+      ],
+      "notes": "★ 关键的一页。RISKY 不是「可能有问题」，而是「我们已经写下了它的成立判据，并且**承诺**会用数值去验它」。标出来的 RISKY + 一个验过它的数值实验 = 满分；藏起来的 RISKY = 被 Opponent 一击致命。注意 A-1 的判据是 a ≫ L，而本设定里 a 比 L 还小 —— 这条假设从一开始就在悬崖边上。",
+      "body": [
+        {
+          "kind": "table",
+          "head": [
+            "假设",
+            "陈述",
+            "分级"
+          ],
+          "rows": [
+            [
+              "A-1",
+              "{{assumptions.A-1.statement}}",
+              "**{{assumptions.A-1.grade}}**"
+            ],
+            [
+              "A-2",
+              "{{assumptions.A-2.statement}}",
+              "**{{assumptions.A-2.grade}}**"
+            ],
+            [
+              "A-5",
+              "{{assumptions.A-5.statement}}",
+              "{{assumptions.A-5.grade}}"
+            ],
+            [
+              "A-3/4/6",
+              "准静态、无趋肤效应、管壁不磁化",
+              "SAFE"
+            ]
+          ]
+        },
+        {
+          "kind": "note",
+          "text": "A-1 的判据是 **a ≫ L**。而本设定 a = {{parameters.a.value|1e3*.0f}} mm、L = {{parameters.L.value|1e3*.0f}} mm —— **a 比 L 还小。**"
+        }
+      ]
+    },
+    {
+      "id": "S-06",
+      "section": "numerics",
+      "layout": "bullets",
+      "takeaway": "先证明**代码是对的**，再谈物理对不对",
+      "duration_s": 50,
+      "answers_task": [
+        "T-2"
+      ],
+      "notes": "★ 最容易被跳过、但最不该跳过的一页。没有 Gate 0，后面每一个不符都是糊涂账 —— 你永远不知道该改代码还是改模型，于是你会改图。Gate 0 是纯数学恒等式，与物理对错无关：它不过 = 代码错；它过了 = 代码被证明是对的，此后任何不符都指向物理。",
+      "body": [
+        {
+          "kind": "disclosure"
+        },
+        {
+          "kind": "kv",
+          "k": "Gate 0 · 极限对拍",
+          "v": "整个磁体等比缩小时，数值解必须回到闭式解 —— {{assertions.AS-1.measured}} ✓"
+        },
+        {
+          "kind": "kv",
+          "k": "Gate 1 · 收敛门",
+          "v": "容差 ×10、截断 ×2，**在扫描端点上各做一遍** —— {{assertions.AS-24.measured}} ✓"
+        },
+        {
+          "kind": "text",
+          "text": "**Gate 0 过了 = 代码被证明是对的。此后任何不符，都指向物理。**"
+        }
+      ]
+    },
+    {
+      "id": "S-07",
+      "section": "numerics",
+      "layout": "figure-left",
+      "takeaway": "我们验的是链条**中间**的那个量（B 场），不是最终结果",
+      "duration_s": 60,
+      "answers_task": [
+        "T-1"
+      ],
+      "notes": "★★ IYPT 的分数在这一页。「最终结果对了」不代表「模型对了」—— 两个错误可以互相抵消，而你永远不会知道。因为 b ∝ ∫(∂Φ/∂z)² 是场的**平方**的积分：场整体错一个常数因子、而 M_s 的反推又恰好漏掉它的倒数，b 仍然「对」、终速也「对」—— 但 v_t 对 a 的指数会错。用末速度反证模型，正好看不见这类错误。所以我们拿三条互不依赖的路去验 B 场。实验上对应：拿高斯计沿轴测 B，反推印证 M_s。",
+      "figure": {
+        "figure_id": "V-3"
+      },
+      "body": [
+        {
+          "kind": "text",
+          "text": "**「最终结果对了」不代表「模型对了」——两个错误可以互相抵消。**"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-28"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-30"
+        },
+        {
+          "kind": "note",
+          "text": "AS-30 最有分量：**两条推导路径毫无共同之处**（Biot–Savart + 椭圆积分 vs 互感 + Leibniz）。**这才叫验证。**"
+        }
+      ]
+    },
+    {
+      "id": "S-08",
+      "section": "numerics",
+      "layout": "figure-full",
+      "takeaway": "σ 的 −1 次方**精确站住** —— 一个零自由参数预测被证实了",
+      "duration_s": 45,
+      "answers_task": [
+        "T-2"
+      ],
+      "notes": "先给好消息。σ 只是 b 的线性前因子，与场的空间分布无关 —— 所以它不受 A-1 影响。两个模型都给出 {{−1.0000 @ tasks_answered.T-2.answer}}。",
+      "figure": {
+        "figure_id": "F-1"
+      },
+      "body": [
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-2"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-3"
+        },
+        {
+          "kind": "text",
+          "text": "但 w 的 −1 次方**没有**站住：Model-2 在大 w 端向上偏离 —— 薄壁近似 A-2 崩了。"
+        }
+      ]
+    },
+    {
+      "id": "S-09",
+      "section": "numerics",
+      "layout": "figure-left",
+      "takeaway": "最激进的预测 v_t ∝ a⁴ **站不住**：指数是 {{assertions.AS-8.measured|.2f}}，不是 {{assertions.AS-7.measured|.2f}}",
+      "duration_s": 55,
+      "answers_task": [
+        "T-2"
+      ],
+      "notes": "★ 转折点。这不是失败 —— 这是模型边界被**定量地**定位了。而且请注意：这个降级动作是**预先注册**的，写在 spec 的 pass_criterion 里，写在看到任何数据之前。",
+      "figure": {
+        "figure_id": "F-2"
+      },
+      "body": [
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-8"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-9"
+        },
+        {
+          "kind": "quote",
+          "text": "这不是失败——是 A-1（点偶极子，判据 a≫L，实际 a/L=0.60）的崩溃被定量地定位了",
+          "src": "figures.F-2.caption"
+        }
+      ]
+    },
+    {
+      "id": "S-10",
+      "section": "boundary",
+      "layout": "figure-full",
+      "takeaway": "**管壁正坐在偶极子近似错得最厉害的地方** —— 误差 {{assertions.AS-31.measured}}",
+      "duration_s": 50,
+      "answers_task": [
+        "T-1",
+        "T-2"
+      ],
+      "notes": "★ 把 A-1 的崩溃从「间接推断」变成「直接看见」。指着右图那条红色的管壁：它正好落在误差 > {{50% @ assertions.AS-31.expect}} 的深色区里。这不是巧合 —— {{a/L=0.60 @ figures.F-2.caption}}，判据 a ≫ L 根本不满足。",
+      "figure": {
+        "figure_id": "V-1"
+      },
+      "body": [
+        {
+          "kind": "text",
+          "text": "指数从 {{assertions.AS-7.measured|.2f}} 掉到 {{assertions.AS-8.measured|.2f}} 是**间接证据**。这张图是**直接证据**。"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-31"
+        },
+        {
+          "kind": "note",
+          "text": "涡流峰位在说同一件事：它落在磁体的**端面**，不在偶极子预言的 a/2。**三个互相独立的证人。**"
+        }
+      ]
+    },
+    {
+      "id": "S-11",
+      "section": "boundary",
+      "layout": "figure-left",
+      "takeaway": "「a ≫ L」不是一个数。**这才是那个数**：要 {{10% 精度 @ assertions.AS-33.expect}}，需 {{assertions.AS-33.measured}}",
+      "duration_s": 55,
+      "answers_task": [
+        "T-3"
+      ],
+      "notes": "★★ 最值钱、也最容易讲错的一页。务必说清：这条曲线**全程用薄壁近似**，隔离的是 A-1 **一条**假设，给出 {{assertions.AS-34.measured}}。**它不该等于** Model-2 vs Model-0 的 {{targets.v_t.relative_deviation|%+.1f}} —— 后者含 A-1 和 A-2 两条，而且两者是**相乘**的。把这两个数说成「吻合」，是一个读起来和「验证成功」一模一样的错误。",
+      "figure": {
+        "figure_id": "V-4"
+      },
+      "body": [
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-34"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-35"
+        },
+        {
+          "kind": "text",
+          "text": "**两条假设的失效是「相乘」的，不是相加的。** A-1 单独 {{assertions.AS-34.measured}}；总偏差 {{targets.v_t.relative_deviation|%+.1f}}。"
+        }
+      ]
+    },
+    {
+      "id": "S-12",
+      "section": "boundary",
+      "layout": "bullets",
+      "takeaway": "两条 RISKY 假设都**如预期地**不成立 —— 而应对动作写在**看到数据之前**",
+      "duration_s": 60,
+      "answers_task": [
+        "T-2",
+        "T-3"
+      ],
+      "notes": "★★★ 这一页决定裁判怎么看这份报告。关键词：**预注册（pre-registration）**。「若 {{|k-4| > 0.3 @ risky_checks.A-1.quoted_pass_criterion}}，则把 P5 降级」这句话写在 spec 里，写在跑任何数值之前。执行一条**预先注册**的应对动作，和「看到数据之后编一个解释」是完全不同的两件事 —— 前者是临床试验的金标准，后者是学术不端。归档的 model-spec-r1.json 是物证。",
+      "body": [
+        {
+          "kind": "quote",
+          "text": "若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明",
+          "src": "risky_checks.A-1.quoted_pass_criterion"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-20"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-22"
+        },
+        {
+          "kind": "text",
+          "text": "**这不是事后合理化。** 触发条件和应对动作都写在数据出现**之前**。"
+        }
+      ]
+    },
+    {
+      "id": "S-13",
+      "section": "boundary",
+      "layout": "figure-left",
+      "takeaway": "**坍缩失败本身就是结论** —— 它证明我们漏了一个无量纲组：L/a",
+      "duration_s": 50,
+      "answers_task": [
+        "T-3"
+      ],
+      "notes": "杀伤力最大的一张图。Model-0 的五组参数**精确**堆到同一条水平线上（散布 {{assertions.AS-12.measured}}）—— 标度结构本身是对的。而 Model-2 **不**坍缩（散布 {{assertions.AS-14.measured}}）。**不要把它当成 bug 去修**：它在告诉你，磁体长度 L 其实是相关的，而 Model-0 的标度分析看不见它。把它判成 FAIL 再回头去修，就毁掉了本题最有价值的结论。",
+      "figure": {
+        "figure_id": "F-4"
+      },
+      "body": [
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-12"
+        },
+        {
+          "kind": "verdict",
+          "assertion_id": "AS-14"
+        },
+        {
+          "kind": "text",
+          "text": "**相关**：σ、w、a、m、M。**不相关**：管长、管材磁化率。**但「磁体长度 L」是相关的** —— 而这一点只有在坍缩**失败**时才暴露出来。"
+        }
+      ]
+    },
+    {
+      "id": "S-14",
+      "section": "summary",
+      "layout": "checklist",
+      "takeaway": "四条任务，逐条打勾",
+      "duration_s": 50,
+      "answers_task": [
+        "T-1",
+        "T-2",
+        "T-3",
+        "T-4"
+      ],
+      "notes": "★ 最后一页。逐条念。特别强调 T-4 ——「全程恒速」这个近似是被**证明**的，不是被默认的。然后停在这里：**一个知道自己哪里有洞的分析，比一个假装没洞的分析强得多。**",
+      "body": [
+        {
+          "kind": "note",
+          "text": "status = **{{status}}** —— 两条 RISKY 假设都如预期地不成立。**模型边界被正确定位，这是结论的一部分，不是失败。**"
+        }
+      ]
+    },
+    {
+      "id": "S-15",
+      "section": "appendix",
+      "layout": "figure-full",
+      "takeaway": "附录 · T-4：启动瞬态只占 {{assertions.AS-10.measured}} —— 「全程恒速」是**被证明的**",
+      "answers_task": [
+        "T-4"
+      ],
+      "notes": "一阶弛豫，无过冲、无振荡、无多稳、无混沌。1 m 管中 {{99.97% @ figures.F-3.caption}} 的行程处于终速。",
+      "figure": {
+        "figure_id": "F-3"
+      }
+    },
+    {
+      "id": "S-16",
+      "section": "appendix",
+      "layout": "bullets",
+      "takeaway": "附录 · 实验方案（**尚未执行**）",
+      "notes": "如果 Opponent 问「你们做实验了吗」—— 翻到这一页，诚实回答：没有，这是仿真；但方案在这里，而且它验的是**中间量**。",
+      "body": [
+        {
+          "kind": "disclosure"
+        },
+        {
+          "kind": "bullet",
+          "text": "**测 B 场，不是测末速度。** 高斯计沿轴取点，**反推印证 M_s**（而不是用标称剩磁）。"
+        },
+        {
+          "kind": "bullet",
+          "text": "**扫 a/L。** 换不同内径的管 —— 这是对 A-1 崩溃的直接检验。"
+        },
+        {
+          "kind": "bullet",
+          "text": "**扫 w。** 检验 A-2 的适用域边界 {{w/a ≲ 0.03 @ risky_checks.A-2.prescribed_action}}。"
+        },
+        {
+          "kind": "bullet",
+          "text": "误差来源：磁体不共轴（A-5，LOAD-BEARING）、电导率的温度依赖、磁体牌号公差。"
+        }
+      ]
+    },
+    {
+      "id": "S-17",
+      "section": "appendix",
+      "layout": "bullets",
+      "takeaway": "附录 · 我们自己发现并修掉的三处契约缺陷",
+      "notes": "如果被问到「你们的模型改过几次」—— 这一页就是答案。全部有归档，全部有物证。",
+      "body": [
+        {
+          "kind": "bullet",
+          "text": "**极限对拍配方取错了极限。** 原配方只令 L→0 而 R 保持不变，得到的是一个薄圆盘，不是点偶极子。**纯几何即可证明，不需要任何数值结果。**"
+        },
+        {
+          "kind": "bullet",
+          "text": "**瞬态距离算错了。** 审稿早就抓到过，但**修订只落到了正文，没同步进契约** —— 而下游只读契约。"
+        },
+        {
+          "kind": "bullet",
+          "text": "**A-2 的一阶系数漏了个 2。** 径向积分的被积函数是 ∝ r⁻⁴，额外的 1/r 来自权重。"
+        },
+        {
+          "kind": "note",
+          "text": "**一个知道自己哪里有洞的分析，比一个假装没洞的分析强得多。**"
+        }
+      ]
+    },
+    {
+      "id": "S-18",
+      "section": "appendix",
+      "layout": "figure-full",
+      "takeaway": "附录 · 管壁处的 B_r **就是**涡流的驱动源",
+      "answers_task": [
+        "T-1"
+      ],
+      "notes": "EMF = v · 2πa · B_r。所以 V-2 的 (a) 面板就是 F-5 的涡流剖面 —— 两张图必须给出同一个峰位，不一致就是代码错。",
+      "figure": {
+        "figure_id": "V-2"
+      }
+    }
+  ]
+}

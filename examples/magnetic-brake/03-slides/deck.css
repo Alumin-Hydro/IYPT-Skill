@@ -1,0 +1,331 @@
+/* IYPT Physics Fight 幻灯片样式。
+ *
+ * 产出环境和图**完全一样**（figure-style.md）：
+ *   会议厅投影（后排要读）+ 可能被打印成灰度 + 观众里有色盲
+ * 所以：大字号、高对比、身份不靠颜色单独承担。
+ *
+ * ★ 色板与 iypt.mplstyle **逐色对齐** —— 幻灯片上的蓝，就是图里那条曲线的蓝。
+ *   两套色板 = 观众得在脑子里做一次转换，而他们只有 12 分钟。
+ *
+ * ★ .slide 是 overflow:hidden 的。
+ *   这不是为了好看 —— 是为了让**溢出变得可测**：内容塞不下时
+ *   scrollHeight > clientHeight，render_html.py 的 --audit 在浏览器里量得到。
+ *   **文字溢出是生成式幻灯片的头号 bug，而人最容易看漏它。**
+ */
+
+:root {
+  /* --- 与 figkit.py 的 SLOTS / INK / STATUS 逐个对齐 --- */
+  --blue:   #2a78d6;   /* SLOTS[0] */
+  --green:  #008300;   /* SLOTS[1] */
+  --violet: #4a3aa7;   /* SLOTS[2] */
+  --red:    #e34948;   /* SLOTS[3] */
+  --orange: #eb6834;   /* SLOTS[4] */
+
+  --ink:       #0b0b0b;   /* 19.68:1 */
+  --ink-soft:  #52514e;   /*  7.94:1 */
+  --ink-muted: #898781;   /*  3.59:1 */
+  --grid:      #e1e0d9;
+  --paper:     #ffffff;
+  --paper-2:   #faf9f5;
+
+  --pass: #0ca30c;
+  --fail: #d03b3b;
+  --warn: #fab219;
+
+  /* 中文字形：Windows 上 微软雅黑 是保底的。DejaVu 没有 CJK 字形（图上的豆腐块
+   * 就是这么来的）—— 但浏览器有，所以幻灯片上可以放心写中文。 */
+  --sans: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Noto Sans SC",
+          "Source Han Sans SC", "Hiragino Sans GB", sans-serif;
+  --mono: "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace;
+
+  --W: 1600px;
+  --H: 900px;
+  --pad: 62px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--grid);
+  font-family: var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------- 幻灯片 */
+
+.slide {
+  position: relative;
+  width: var(--W);
+  height: var(--H);
+  padding: var(--pad) var(--pad) 54px;
+  background: var(--paper);
+  overflow: hidden;                 /* ← 溢出可测。见文件头。 */
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto 22px;
+}
+
+body.solo { background: var(--paper); }
+body.solo .slide { margin: 0; }
+
+/* ---------------------------------------------------------------- 页眉 */
+
+header { flex: 0 0 auto; margin-bottom: 22px; }
+
+.eyebrow {
+  display: inline-block;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+/* h2 是**这一页要说的那一句话**（takeaway），不是一个名词性的标题。
+ * 「v_t ∝ a⁴ 站不住」 >> 「终速的标度律」。
+ * 一页只能有一个 takeaway —— 有两个，就该拆成两页。 */
+h2 {
+  font-size: 40px;
+  line-height: 1.28;
+  font-weight: 700;
+  color: var(--ink);
+  border-left: 7px solid var(--blue);
+  padding-left: 20px;
+}
+
+.sec-boundary h2 { border-left-color: var(--orange); }
+.sec-summary  h2 { border-left-color: var(--green); }
+.sec-appendix h2 { border-left-color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- 正文 */
+
+/* 内容不满一页时**垂直居中**，而不是顶在上面、底下空一大块。
+ * （实测：第一版所有的短页都在下半部分留了一片惨白。） */
+.body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+        gap: 16px; justify-content: center; }
+.body.split { flex-direction: row; gap: 34px; align-items: stretch;
+              justify-content: flex-start; }
+.body.split > * { flex: 1 1 50%; min-width: 0; }
+/* 整页图：**图**居中（.figwrap 自己会做），但图下的正文要**满宽左对齐** ——
+ * align-items:center 会把每一个文字块都缩成一条居中的窄条，很难看。 */
+.body.full { align-items: stretch; }
+
+/* 分栏时文字列和图**顶对齐** —— 眼睛是横着扫的，两栏从同一高度开始才不别扭。 */
+.txt { display: flex; flex-direction: column; gap: 14px; justify-content: flex-start; }
+
+ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+li {
+  position: relative;
+  padding-left: 30px;
+  font-size: 26px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+li::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: .58em;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+
+p.text { font-size: 26px; line-height: 1.55; }
+p.lead { font-size: 30px; line-height: 1.45; font-weight: 600; }
+p.note { font-size: 20px; line-height: 1.5; color: var(--ink-soft); }
+
+b    { font-weight: 700; }
+i    { font-style: italic; }
+code { font-family: var(--mono); font-size: .92em;
+       background: var(--paper-2); border: 1px solid var(--grid);
+       border-radius: 4px; padding: 1px 6px; }
+
+/* 逐字引文。**check_slides.py 校验它确实是原文的子串。** */
+blockquote {
+  border-left: 5px solid var(--ink-muted);
+  background: var(--paper-2);
+  padding: 14px 20px;
+  font-size: 23px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+blockquote .src {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------------- 公式 */
+
+/* ★ 公式的尺寸由 deckkit 按 SVG 的**内禀大小**写进 style —— CSS 不许写死高度。
+ *
+ * 写死 `height: 62px` 的后果：一个带 \frac 的公式（本身就高）会被压到和单行公式
+ * 一样高，于是**它里面的字比旁边那个小一圈**。实测：(12) 和 (10) 摆在一起，
+ * (10) 看起来像张缩略图。
+ *
+ * 所有公式在同一字号下渲染、按同一倍数放大 —— 高的公式就该占更多高度。 */
+.eqrow { display: flex; align-items: center; gap: 18px; justify-content: center;
+         padding: 4px 0; }
+img.eq { max-width: 100%; }
+.eqlab { font-family: var(--mono); font-size: 19px; color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- 图 */
+
+.fig { display: flex; flex-direction: column; gap: 11px; min-height: 0; flex: 1 1 auto; }
+.figwrap { flex: 1 1 auto; min-height: 0;
+           display: flex; align-items: center; justify-content: center; }
+/* .figbox **收缩到图的实际大小** —— SIMULATION 角标要贴在图上，不是贴在整栏上。
+ *
+ * ★ 不能用 `object-fit: contain`：它只是**在元素内部**留白，元素本身仍然是满宽的。
+ *   于是 .figbox 裹住的是那个满宽的元素，角标照样飘到图的右**外**侧，落在一片白底上
+ *   —— 看起来像是给这一页盖的戳，而不是给这张图盖的戳。（实测：S-15 就是这样。）
+ *
+ * 正确做法：`width/height: auto` + 双向 max 约束 —— 浏览器**保持长宽比**地缩放，
+ * 元素本身就是图的实际大小。 */
+.figbox { position: relative; display: inline-flex; max-width: 100%; max-height: 100%; }
+.fig img { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block;
+           border: 1px solid var(--grid); border-radius: 5px; background: #fff; }
+
+/* SIMULATION 角标。**每一张图都有，关不掉。**
+ * 这不是排版问题 —— 一张没标注的仿真图进了 PPT，在 Physics Fight 上会被当作
+ * 伪造实验数据（pipeline.md §7）。check_slides.py 机械检查它。
+ *
+ * ★ 它在**图注里**，不浮在图上 —— 浮在图上的两版都撞了（见 deckkit._figure 的注释）。 */
+.simbadge {
+  display: inline-block; vertical-align: 2px;
+  font-family: var(--mono); font-size: 14px; font-weight: 700;
+  letter-spacing: .1em;
+  color: #fff; background: var(--orange);
+  padding: 2px 8px; border-radius: 3px;
+  margin-right: 10px;
+}
+
+/* figcaption 写的是「这张图**证明了什么**」—— 逐字来自 results.json。 */
+figcaption { font-size: 20px; line-height: 1.5; color: var(--ink-soft); }
+.figid { font-family: var(--mono); font-weight: 700; color: var(--blue);
+         margin-right: 9px; }
+.live  { font-size: 16px; color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- 表 / kv */
+
+table { width: 100%; border-collapse: collapse; font-size: 22px; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--grid); }
+th { font-weight: 700; color: var(--ink-soft); font-size: 19px;
+     letter-spacing: .04em; border-bottom: 2px solid var(--ink-muted); }
+tbody tr:nth-child(even) { background: var(--paper-2); }
+
+.kv { display: flex; gap: 18px; align-items: baseline; font-size: 24px;
+      line-height: 1.45; }
+.kv .k { flex: 0 0 210px; color: var(--ink-soft); }
+.kv .v { flex: 1 1 auto; font-weight: 600; }
+
+/* ---------------------------------------------------------------- 断言 */
+
+/* 一条断言的「期望 → 实测 → 判定」。数字全部从 results.json 长出来。
+ * 身份不靠颜色单独承担：左边框 + 文字标签，灰度打印下照样读得出来。
+ *
+ * ★ 用 grid，不用 flex。
+ *   横排 flex 的后果：断言的 `expect` 往往很长（它是一句完整的、机械可判的话），
+ *   把它和 `measured` 挤在同一行里，两边都会换行，然后**互相错位**。
+ *   实测 AS-35 就是这样糊掉的。
+ *   实测值单独占一行 —— **它是这一条最该被看见的东西。** */
+.verdict {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 5px 14px;
+  font-size: 21px; padding: 10px 14px;
+  border-left: 5px solid var(--ink-muted);
+  background: var(--paper-2);
+}
+.verdict .aid  { grid-area: 1 / 1; font-family: var(--mono); font-weight: 700; }
+.verdict .exp  { grid-area: 1 / 2; color: var(--ink-soft); line-height: 1.4; }
+.verdict .tag  { grid-area: 1 / 3; align-self: start; }
+.verdict .meas { grid-area: 2 / 2 / 2 / 4;
+                 font-family: var(--mono); font-weight: 700; font-size: 22px;
+                 color: var(--ink); }
+.verdict .meas::before { content: "→ "; color: var(--ink-muted); }
+/* 投影到会议厅大屏，后排要读 —— 状态标签也不例外。check_slides 的 FONT-SMALL
+ * 就是冲这个来的（下限 18px），而它抓到的第一个东西正是这里。 */
+.verdict .tag  { font-family: var(--mono); font-size: 18px; font-weight: 700;
+                 letter-spacing: .06em; padding: 2px 8px; border-radius: 3px;
+                 color: #fff; }
+.verdict.pass { border-left-color: var(--pass); }
+.verdict.pass .tag { background: var(--pass); }
+.verdict.warn { border-left-color: var(--warn); }
+.verdict.warn .tag { background: #a06f00; }
+.verdict.fail { border-left-color: var(--fail); }
+.verdict.fail .tag { background: var(--fail); }
+
+/* ---------------------------------------------------------------- 仿真披露 */
+
+/* ★ 文字由 deckkit 写死，作者改不了 —— 和 figkit 的 SIMULATION 戳同一个道理。
+ * 凡是可以被措辞软化的底线，迟早会被措辞软化。（pipeline.md §7） */
+.disclosure {
+  border: 2px solid var(--orange);
+  border-left-width: 8px;
+  background: #fdf3ec;
+  padding: 16px 22px;
+  font-size: 23px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.disclosure .why {
+  display: block;
+  margin-top: 8px;
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- 任务打勾 */
+
+/* ★ 真实 IYPT 报告的最后一页就是这张表。5/13 份有专门的「题目任务」页。 */
+.checklist { display: flex; flex-direction: column; gap: 11px; }
+.task {
+  display: flex; align-items: baseline; gap: 15px;
+  font-size: 23px; line-height: 1.4;
+  padding: 12px 16px;
+  background: var(--paper-2);
+  border-left: 5px solid var(--pass);
+}
+.task.open { border-left-color: var(--warn); }
+.task .mark { font-size: 26px; font-weight: 700; color: var(--pass); flex: 0 0 22px; }
+.task.open .mark { color: #a06f00; }
+.task .tid  { font-family: var(--mono); font-weight: 700; flex: 0 0 52px; }
+.task .stm  { flex: 1 1 auto; }
+.task .by   { font-family: var(--mono); font-size: 18px; color: var(--ink-muted);
+              flex: 0 0 auto; }
+
+/* ---------------------------------------------------------------- 封面 / 章节页 */
+
+.titlebox, .sectionbox {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; justify-content: center; gap: 24px;
+}
+.titlebox h1 { font-size: 62px; line-height: 1.22; font-weight: 700; }
+.sectionbox h1 { font-size: 54px; line-height: 1.25; font-weight: 700;
+                 border-left: 9px solid var(--blue); padding-left: 26px; }
+.lay-section .slide, .slide.lay-section { background: var(--paper-2); }
+
+/* ---------------------------------------------------------------- 页脚 */
+
+footer {
+  position: absolute; left: var(--pad); right: var(--pad); bottom: 20px;
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 15px; color: var(--ink-muted);
+  border-top: 1px solid var(--grid); padding-top: 9px;
+}
+
+/* ---------------------------------------------------------------- 打印 / PDF */
+
+@page { size: 1600px 900px; margin: 0; }
+
+@media print {
+  body { background: #fff; }
+  .slide { margin: 0; page-break-after: always; break-after: page;
+           box-shadow: none; }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+}

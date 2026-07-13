@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IYPT deck.json —— Skill 3 的唯一产出契约",
+  "description": "★ 铁律：PPT 上凡是来自 results.json 的数字，一律写指针 {{ptr|fmt}}，不许手打字面值。渲染时由 deckkit 取值代入，于是数字漂移在**结构上**不可能发生。check_slides.py 的 NUM-UNCITED 会机械拦截：任何带小数点/百分号/科学计数的数字，只要没被 {{}} 包住 -> ERROR。",
+  "type": "object",
+  "required": ["problem_slug", "title", "duration_budget_s", "slides"],
+  "additionalProperties": false,
+
+  "properties": {
+    "problem_slug": { "type": "string" },
+    "title": { "type": "string", "description": "封面标题。也是浏览器标签页的标题。" },
+    "language": { "type": "string", "enum": ["zh", "en"], "default": "zh" },
+
+    "duration_budget_s": {
+      "type": "integer",
+      "description": "讲的时间预算（秒）。IYPT 的 Reporter 是 12 分钟 = 720 s。主线页 duration_s 之和不许超过它（附录不计）—— check_slides.py 的 TIME-OVER。**12 分钟讲 40 页 = 每页 18 秒 = 没人听得懂。**",
+      "default": 720
+    },
+
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/slide" }
+    }
+  },
+
+  "definitions": {
+
+    "slide": {
+      "type": "object",
+      "required": ["id", "section", "layout", "takeaway"],
+      "additionalProperties": false,
+      "properties": {
+
+        "id": {
+          "type": "string",
+          "pattern": "^S-[0-9]{2}$",
+          "description": "S-01、S-02 …… 截图文件名和 render_html.py 的 ?only= 都用它。"
+        },
+
+        "section": {
+          "type": "string",
+          "enum": ["problem", "picture", "theory", "numerics", "boundary", "summary", "appendix"],
+          "description": "★ 骨架来自 13 份真实 IYPT 报告，但第 2/4 节**必须改名**：这条流水线用数值仿真替代实验（pipeline.md §7），所以没有「预实验」也没有「实验探究」。picture = 定性图像（机制候选与排除）；numerics = 数值探究；boundary = 模型边界（哪条 RISKY 假设崩了）。**boundary 是加分项，不是要藏的东西。**"
+        },
+
+        "layout": {
+          "type": "string",
+          "enum": ["title", "section", "bullets", "figure-full", "figure-left",
+                   "figure-right", "equation", "table", "checklist"],
+          "description": "checklist 不需要 body —— 它直接从 results.json 的 tasks_answered[] 长出来（真实报告的最后一页就是这张表）。"
+        },
+
+        "takeaway": {
+          "type": "string",
+          "description": "★★ **这一页要说的那一句话** —— 它是页标题，但必须是一个**判断**，不是一个名词。\n\n  ✓ 「v_t ∝ a⁴ 站不住：实测指数 {{assertions.AS-8.measured|.2f}}」\n  ✗ 「终速的标度律」\n\n**一页只能有一个 takeaway。有两个 = 该拆成两页。** 没有 takeaway -> NO-TAKEAWAY ERROR。"
+        },
+
+        "answers_task": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "这一页在回答哪条 task（results.json 的 tasks_answered[].task_id）。主线页应当挂在某条 task 上 —— 挂不上，问一句它为什么在这份 PPT 里。"
+        },
+
+        "duration_s": {
+          "type": "integer",
+          "minimum": 5,
+          "description": "打算讲多久。主线页之和不许超 duration_budget_s。"
+        },
+
+        "notes": {
+          "type": "string",
+          "description": "讲稿（汇出到 script.md）。**这里的 {{}} 一样会被代入，也一样受 NUM-UNCITED 管** —— 讲的人念出来的数字，同样必须能追回 results.json。"
+        },
+
+        "body": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/block" }
+        },
+
+        "figure": {
+          "type": "object",
+          "required": ["figure_id"],
+          "additionalProperties": false,
+          "properties": {
+            "figure_id": {
+              "type": "string",
+              "description": "**必须是 results.json 的 figures[].id。** 不在里面 -> FIG-UNKNOWN ERROR：**禁止夹带任何非仿真产出的装饰图**。"
+            },
+            "caption": {
+              "type": "string",
+              "description": "**不填就是最安全的** —— 渲染时整段取 results.json 的 figures[].caption（它写的是「这张图**证明了什么**」，Skill 2 已经把最难的那句话写好了）。\n\n真要缩短，可以填，但 check_slides.py 会校验它是原文的**逐字子串**（CAPTION-DRIFT）。**你只能删字，不能改字** —— 一改字，走样的方向永远是对自己有利的。"
+            }
+          }
+        }
+      }
+    },
+
+    "block": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["bullet", "text", "lead", "note"] },
+            "text": {
+              "type": "string",
+              "description": "支持 **粗**、*斜*、`码`。数字写 {{ptr|fmt}}。\n\n格式串是 Python 的 format spec，外加一条：以 % 开头 = 乘 100 再补 %（results.json 里的相对偏差都是分数：0.827333 -> {{...|%+.1f}} -> +82.7%）。"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "text", "src"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "quote" },
+            "text": { "type": "string", "description": "**逐字抄写**被引对象的原文。" },
+            "src": {
+              "type": "string",
+              "description": "引文出处的指针，如 figures.F-2.caption、assertions.AS-8.quoted_expectation。check_slides.py 校验 text 是它的**逐字子串**（QUOTE-DRIFT）—— 和 check_sim.py 的 quoted_expectation 是同一副药。"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "tex"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "eq" },
+            "tex": {
+              "type": "string",
+              "description": "LaTeX。构建时用 matplotlib 的 mathtext 渲成 SVG（字形转路径，无字体依赖），**和图是同一个渲染引擎**。\n\n注意 mathtext 只支持 LaTeX 的一个子集：没有 \\text{}（用 \\mathrm{}）、没有 \\begin{}。**公式里不许写中文。**"
+            },
+            "display": { "type": "boolean", "default": true },
+            "label": { "type": "string", "description": "公式右边的编号/说明，如 (11)。" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "k", "v"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "kv" },
+            "k": { "type": "string" },
+            "v": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "head", "rows"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "table" },
+            "head": { "type": "array", "items": { "type": "string" } },
+            "rows": {
+              "type": "array",
+              "items": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "assertion_id"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "verdict" },
+            "assertion_id": {
+              "type": "string",
+              "description": "一条断言的「期望 → 实测 → 判定」，**整条从 results.json 长出来** —— 一个字都不用你打，因此一个字都不会走样。\n\n**这是把 PRESCRIBED / FAIL-MODEL 诚实摆上台面的最省力的方式。**"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

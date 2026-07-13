@@ -339,6 +339,27 @@ def main() -> int:
     results = dict(
         problem_slug=SPEC["problem"]["slug"],
         model_spec_version="r4",
+
+        # ================================================== ★ 契约透传
+        #
+        #  **results.json 必须自足** —— Skill 3 不该去读 model-spec.json。
+        #
+        #  这和「Skill 2 只读契约、不读散文」是同一条原则的下一环：
+        #  **如果 results.json 里的信息不够 Skill 3 做出 PPT，那是 results.json 的缺陷。**
+        #
+        #  实测（就是这次）：给 magnetic-brake 做 PPT，第一页「问题设定」要写
+        #  a = 6 mm、σ = 5.96e7 S/m、a/L = 0.60 —— 而 results.json 里**根本没有参数**。
+        #  Skill 3 只好跑去读 model-spec.json，于是「PPT 上每个数字都必须能追回
+        #  results.json」这条铁律**当场破功**。
+        #
+        #  透传三样，一样都不能少：
+        #    parameters  —— 设定页的每个数字（**它们也必须能被追溯**）
+        #    essence     —— ★ 定性分析页的核心；它同时决定了该画哪些图
+        #    assumptions —— 假设台账（含 RISKY 分级）= 理论页 + 模型边界页的骨架
+        parameters=SPEC["parameters"],
+        essence=SPEC["essence"],
+        assumptions=SPEC["assumptions"],
+
         tasks_answered=tasks_answered,
         validation_checks=validation_checks,
         generated_by=dict(

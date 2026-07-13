@@ -551,6 +551,63 @@ def check_matlab(res: dict, workspace: Path) -> None:
 
 # ---------------------------------------------------------------- 可复现
 
+def check_passthrough(spec: dict, res: dict) -> None:
+    """★ `results.json` 必须**自足** —— Skill 3 不该去读 `model-spec.json`。
+
+    这和「Skill 2 只读契约、不读散文」是同一条原则的下一环：
+
+    > **如果 `results.json` 里的信息不够 Skill 3 做出 PPT，那是 `results.json` 的缺陷。**
+
+    **实测（magnetic-brake，做 PPT 时才发现）**：第一页「问题设定」要写
+    `a = 6 mm`、`σ = 5.96e7 S/m`、`a/L = 0.60` —— 而 `results.json` 里**根本没有参数**。
+    于是 Skill 3 只有两条路：跑去读 `model-spec.json`（那「PPT 上每个数字都必须能追回
+    `results.json`」这条铁律当场破功），或者**手打**那几个数（那就是谎的种子）。
+
+    **两条都不行。所以透传。**
+    """
+    need = {
+        "parameters": "PPT 的「问题设定」页要写 a = 6 mm、σ = 5.96e7 S/m —— "
+                      "**这些数字也必须能被追溯**，不能靠 Skill 3 手打",
+        "essence": "★ `essence.one_sentence` 是**定性分析页的核心** —— "
+                   "「说不出物理本质 = 不知道该画什么图」，对 PPT 同样成立",
+        "assumptions": "假设台账（含 RISKY 分级）= **理论模型页 + 模型边界页**的骨架。"
+                       "藏起来的 RISKY 会被 Opponent 一击致命",
+    }
+    for field, why in need.items():
+        if not res.get(field):
+            err("PASSTHROUGH-MISSING",
+                f"results.json 里没有 `{field}` —— 必须从 model-spec.json **原样透传**过来。\n"
+                f"        为什么：{why}\n"
+                f"        **`results.json` 是 Skill 3 的唯一输入。它不自足，"
+                f"下游就只能去别处找补，或者手打。两条都是谎的种子。**")
+            continue
+
+        # 透传就得是**原样**的 —— 不许在路上悄悄改
+        if field == "parameters":
+            a = {p.get("symbol") for p in spec.get("parameters", [])}
+            b = {p.get("symbol") for p in res["parameters"]}
+            if a != b:
+                err("PASSTHROUGH-DRIFT",
+                    f"results.json 的 parameters 和 model-spec 对不上：\n"
+                    f"        少了 {sorted(a - b) or '—'}；多了 {sorted(b - a) or '—'}\n"
+                    f"        **透传就是原样搬过来。改了，就是给下游埋一个查不出来的错。**")
+        elif field == "assumptions":
+            a = {x.get("id") for x in spec.get("assumptions", [])}
+            b = {x.get("id") for x in res["assumptions"]}
+            if a != b:
+                err("PASSTHROUGH-DRIFT",
+                    f"results.json 的 assumptions 和 model-spec 对不上："
+                    f"少了 {sorted(a - b) or '—'}；多了 {sorted(b - a) or '—'}")
+        elif field == "essence":
+            if norm(spec.get("essence", {}).get("one_sentence", "")) \
+                    != norm(res["essence"].get("one_sentence", "")):
+                err("PASSTHROUGH-DRIFT",
+                    f"essence.one_sentence 和 model-spec **对不上**：\n"
+                    f"        契约：{spec.get('essence', {}).get('one_sentence', '')[:70]}\n"
+                    f"        实际：{res['essence'].get('one_sentence', '')[:70]}\n"
+                    f"        **这句话是 Skill 1 的结论，不是你的。逐字搬。**")
+
+
 def check_reproduce(res: dict) -> None:
     rp = res.get("reproduce") or {}
     if not rp.get("command"):
@@ -583,6 +640,7 @@ def main() -> int:
     spec, res, acc, spec_path = load(workspace)
 
     check_quotes(spec, res)
+    check_passthrough(spec, res)
     check_tasks_and_validation(spec, res)
     check_coverage(spec, res, workspace)
     check_assertions(res)

@@ -3,7 +3,7 @@
 一套 Claude Code skill 流水线，让 Claude 按序完整攻下一道 IYPT 题。远端：https://github.com/Alumin-Hydro/IYPT-Skill（`main`，git 凭据已缓存可直接 push；本机**没有** gh CLI）。
 
 ```
-Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Skill 4 (美学审查)  →  Skill 3 (PPT) ⇄ Skill 4
+Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Skill 4 (美学审查)  →  Skill 3 (幻灯片) ⇄ Skill 4
                        ▲                    │
                        └────────────────────┘  反向边：数值打脸模型时回送修订（docs/pipeline.md §5）
 ```
@@ -12,9 +12,11 @@ Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Sk
 |---|---|---|
 | 1 | `iypt-analysis` | ✅ |
 | 1R | `iypt-physics-review` | ✅（16 条错误模式） |
-| 2 | `iypt-simulation` | ✅ |
-| 3 | `iypt-slides` | 🚧 **下一个**（唯一还没做的） |
-| 4 | `iypt-design-review` | ✅（14 条设计失败模式） |
+| 2 | `iypt-simulation` | ✅（六道验证门 + 中间量验证） |
+| 3 | `iypt-slides` | ✅（**溯源即结构**：数字不许手打，只许写指针） |
+| 4 | `iypt-design-review` | ✅（16 条设计失败模式；**HTML 也是图**） |
+
+**四个 skill 都做完了。** 接下来的工作是**在新题目上跑**，把踩到的坑回填进 skill（见下面的铁律）。
 
 ## 动手前先读
 
@@ -65,26 +67,62 @@ Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Sk
 4. **修订必须传播到「结论」和「契约」，不能只落在「推导」上。** 实测：审稿抓到的一个错误，修订只改了正文的推导，**漏掉了预测表和 model-spec.json**——而那两处恰恰是下游真正读的。**目前没有机械检查能发现这种脱钩。**
 5. **`SPEC-DEFECT` 是个逃生舱，门槛必须画死**：**要引用仿真数字才能说明"契约写错了"的，一律不是 SPEC-DEFECT**，而是模型被数据打脸了。
 
-## 做 Skill 3 时的硬约束
+6. **非空 ≠ 有效。凡是 id 之间的引用，都必须解析一遍。** 实测：`figures[].assertion_ids` 曾经是编出来的 `AS-V1`…`AS-V4`，四个 id 一个都不存在 —— 而 `FIG-NOASSERT` 只查「非空」，**一个编出来的 id 是非空的**。它顺带掩盖了「V-4 一条真断言都没有」这个更糟的事实。
 
-Skill 3 读 `01-analysis.md` + `02-sim/results.json` + `02-sim/figures/`。
+7. **契约必须自足，否则下游只能去别处找补、或者手打。** 实测：做 PPT 时才发现 `results.json` 里**没有参数** —— 而第一页「问题设定」要写 `a = 6 mm`。于是 Skill 3 要么去读 model-spec（「每个数字都能追回 results.json」当场破功），要么手打。**两条都是谎的种子。**（现在 `parameters`/`essence`/`assumptions` 强制透传。）
 
-- **`results.json` 里每个数字都有出处**（哪道门、哪条断言、哪次运行）。PPT 上引用的每个数字都必须能追回去。
-- **`results.json` 的 `status` 不是 `PASS` 时，PPT 必须诚实反映**——`MODEL-CHALLENGED` 意味着某条结论已被数值证伪，不许当作没发生。
-- **仿真结果必须标注为仿真**，绝不伪装成实验数据。这是底线。
-- `figures[].caption` 写的是"这张图**证明了什么**"，不是"展示了什么"——直接用它。
+8. **「名字出现」不等于「结论被汇报」。** `FALSIFIED-DROPPED` 的第一版查的是「A-1 这个名字有没有在 deck 里出现过」—— 然后冒烟测试**删掉了整个「模型边界」节**，它照样通过了。因为 **A-1 是一条假设的名字，它在理论页的台账里本来就会出现**。现在要求：被证伪的断言**必须以 `verdict` 块出现**（那种形式无法被措辞软化）。
+
+9. **渲染不出来的产出，等于没有被审过。** `02-sim/interactive/*.html` 上两个峰值标注**叠印成一团糊字**，而那两个数正是那张图的全部结论。**这个 bug 活了很久 —— 不是没人想审，是根本渲染不出来。** 现在有 `render_html.py`（headless Edge/Chrome）。**HTML 也是图。**
+
+10. **机械检查全绿 ≠ 可以交付。** 幻灯片 12 道门全绿之后，**用眼睛看又打出了 3 个 REVISE** —— 角标压住图的标题、公式字号不一致、宽图被挤到读不了。**这三个在语法上、在包围盒上、在字号上全都合法。**
+    > **机械检查负责「不可能撒谎」；眼睛负责「看得见」。两个都要。**
+
+## Skill 3 的核心：**数字不许手打，只许写指针**
+
+```json
+✗  "text": "有限长磁体给出的指数是 3.44"
+✓  "text": "有限长磁体给出的指数是 {{assertions.AS-8.measured|.2f}}"
+```
+
+第二种写法里，**3.44 这个数字在 `deck.json` 里根本不存在** —— 渲染时从 `results.json` 取值代入。
+于是仿真一重跑，幻灯片**自动跟着变**，**而不是变成一个谎**。
+
+> **弱的做法是「写完之后核对一遍」。你不会核的。**
+> **强的做法是「根本没有那个入口」。**
+
+阈值这类**只以散文形式存在**的数字（「若 `|k-4| > 0.3` 则降级」），走**行内引文**：
+`{{|k-4| > 0.3 @ risky_checks.A-1.quoted_pass_criterion}}` —— 写得出那个数，
+但**必须一字不差地是契约原文的子串**。**编的数字不可能是原文的子串。**
+
+其余三条硬约束（全部有机械门）：
+
+- **被证伪 / 被降级的断言必须以 `verdict` 块出现**（`FALSIFIED-DROPPED`）——
+  它的期望 / 实测 / 判定全从 `results.json` 长出来，**你无法在展示它的同时把它说成一次成功**。
+- **`status` 不是 `PASS` 时必须有 `boundary` 一节**（`STATUS-HIDDEN`）。
+  **这是加分项，不是要藏的东西。**
+- **必须有 `disclosure` 块**（`DISCLOSURE-MISSING`）—— 它**不接受任何参数**，
+  文字由渲染器写死。**凡是可以被措辞软化的底线，迟早会被措辞软化。**
 
 ## 工程约定
 
 - 输出：中文正文 + 英文物理术语 + LaTeX 公式。**但图上的文字一律英文**（IYPT 是英文赛事，图直接进英文 PPT；而且 DejaVu Sans 没有中文字形，中文会渲染成豆腐块）。
 - 联网查文献允许，但必须给引用，并严格区分"文献结论"与"自己推导"。
   **红线：不许去查"答案应该是多少"然后回来调代码去凑**——那是拟合，不是计算。
-- 改完 Skill 1/2 相关的东西，跑：
+- 改完东西，全跑一遍（**零 ERROR**）：
   ```bash
-  python skills/iypt-analysis/scripts/check_analysis.py examples/magnetic-brake   # 零 ERROR
-  python skills/iypt-simulation/scripts/check_sim.py examples/magnetic-brake      # 零 ERROR
-  python examples/magnetic-brake/02-sim/code/run_all.py                           # 一键复现
-  python examples/magnetic-brake/02-sim/code/smoke_test.py                        # 四个注入全被抓到
+  python skills/iypt-analysis/scripts/check_analysis.py examples/magnetic-brake
+  python skills/iypt-simulation/scripts/check_sim.py   examples/magnetic-brake
+  python skills/iypt-slides/scripts/check_slides.py    examples/magnetic-brake
+
+  python examples/magnetic-brake/02-sim/code/run_all.py       # 仿真一键复现
+  python examples/magnetic-brake/02-sim/code/smoke_test.py    # 4 个注入全被抓到
+  python examples/magnetic-brake/03-slides/build.py           # 幻灯片一键重渲
+  python examples/magnetic-brake/03-slides/smoke_test.py      # 9 个注入全被抓到
   ```
-- 环境：Python 3.12 + numpy/scipy/matplotlib，node v24。**没有 MATLAB/Octave**（所以 MATLAB 只做"带自检的移植"，`matlab_port.verified` 必须是 `false`）。**没有 ffmpeg**（动画走自包含 HTML）。
+  **改了 `skills/iypt-slides/templates/` 里的东西，记得同步到 `examples/magnetic-brake/03-slides/`**
+  （和 `figkit.py` 一样是「拷进工作区」的模板）。
+- **然后用眼睛看**：`Read examples/magnetic-brake/03-slides/png/S-*.png`。
+  **机械检查全绿 ≠ 可以交付**（见「已经吃过的亏」第 10 条）。
+- 环境：Python 3.12 + numpy/scipy/matplotlib，node v24。**没有 MATLAB/Octave**（所以 MATLAB 只做"带自检的移植"，`matlab_port.verified` 必须是 `false`）。**没有 ffmpeg**（动画走自包含 HTML）。**没有 python-pptx / Marp / LibreOffice** —— 幻灯片走 **HTML → headless Edge/Chrome → 每页 PNG + PDF**（`render_html.py`）。选它的理由不是省事：**只有渲得出 PNG，Skill 4 才能「真的打开用眼睛看」，设计审查回路才成立**；python-pptx 直出 .pptx 会在这里断掉。
 - Windows 注意：Python 从 stdin 读中文源码会按 GBK 解码而乱码——脚本写成文件再跑；控制台输出中文要 `sys.stdout.reconfigure(encoding="utf-8")`。

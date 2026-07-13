@@ -25,3 +25,7 @@ desktop.ini
 # 编辑器
 .vscode/
 .idea/
+
+# 幻灯片渲染产物（一条命令可重现：python 03-slides/build.py）
+examples/*/03-slides/slides.html
+examples/*/03-slides/deck.pdf

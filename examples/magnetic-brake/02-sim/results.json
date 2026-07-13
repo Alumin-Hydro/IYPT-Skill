@@ -1,6 +1,173 @@
 {
   "problem_slug": "magnetic-brake",
   "model_spec_version": "r4",
+  "parameters": [
+    {
+      "symbol": "M",
+      "meaning": "磁体质量",
+      "value": 0.00589,
+      "unit": "kg",
+      "source": "derived",
+      "ref": null
+    },
+    {
+      "symbol": "R",
+      "meaning": "磁体半径",
+      "value": 0.005,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "L",
+      "meaning": "磁体长度",
+      "value": 0.01,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "B_r",
+      "meaning": "剩磁 (N42)",
+      "value": 1.3,
+      "unit": "T",
+      "source": "literature",
+      "ref": "NdFeB N42 供应商牌号规格，公差 ±5%；实验中应实测 m 而非用标称值",
+      "sweep_range": [
+        1.17,
+        1.45
+      ],
+      "sweep_scale": "linear"
+    },
+    {
+      "symbol": "m",
+      "meaning": "磁偶极矩 = (B_r/mu_0)·V",
+      "value": 0.8125,
+      "unit": "A m^2",
+      "source": "derived"
+    },
+    {
+      "symbol": "a",
+      "meaning": "管内半径",
+      "value": 0.006,
+      "unit": "m",
+      "source": "setting",
+      "sweep_range": [
+        0.0055,
+        0.012
+      ],
+      "sweep_scale": "log"
+    },
+    {
+      "symbol": "w",
+      "meaning": "管壁厚",
+      "value": 0.001,
+      "unit": "m",
+      "source": "setting",
+      "sweep_range": [
+        0.0002,
+        0.003
+      ],
+      "sweep_scale": "log"
+    },
+    {
+      "symbol": "\\sigma",
+      "meaning": "管材电导率(铜)",
+      "value": 59600000.0,
+      "unit": "S/m",
+      "source": "literature",
+      "ref": "CRC Handbook of Chemistry and Physics, @20degC；温度系数约 0.4%/K",
+      "sweep_range": [
+        15000000.0,
+        59600000.0
+      ],
+      "sweep_scale": "log"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度",
+      "value": 9.81,
+      "unit": "m/s^2",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\mu_0",
+      "meaning": "真空磁导率",
+      "value": 1.25663706e-06,
+      "unit": "T m/A",
+      "source": "literature",
+      "ref": "CODATA"
+    },
+    {
+      "symbol": "n",
+      "meaning": "叠放磁体颗数",
+      "value": 1,
+      "unit": "1",
+      "source": "setting",
+      "sweep_range": [
+        1,
+        4
+      ],
+      "sweep_scale": "linear"
+    }
+  ],
+  "essence": {
+    "one_sentence": "重力驱动与涡流耗散的竞争达到平衡：驱动力恒为 Mg（与 v 无关），而涡流阻尼 ∝ v，故系统必然收敛到唯一的终速 v_t = Mg/b",
+    "system_type": "耗散-驱动平衡（趋于定态）—— 线性一阶弛豫，无振荡、无多稳、无混沌",
+    "energy_chain": "重力势能 → 磁体动能 → 管壁涡流的焦耳耗散（不可逆）",
+    "competing_effects": "重力 Mg vs 涡流阻尼 bv。比值 = v/v_t，故 v_t 就是「两者相等」的那个速度。弛豫时间 tau = M/b = v_t/g。"
+  },
+  "assumptions": [
+    {
+      "id": "A-1",
+      "statement": "磁体均匀磁化，且远场可等效为点偶极子",
+      "criterion": "a >> L (工程上 a > 3L 时误差 <10%)",
+      "criterion_check": "a/L = 0.60 —— 判据严重不满足；扫描上限 a=12mm 处也只有 a/L=1.2，全程不成立",
+      "breaks_when": "管壁离磁体足够近时，高阶多极矩(四极、八极)贡献不可忽略",
+      "grade": "RISKY",
+      "impact_if_false": "不影响 v_t 对 sigma/w/M/B_r 的幂律指数(它们来自感应链条的线性结构，与场的空间分布无关)；但严重影响 v_t ∝ a^4——该指数完全来自偶极子场的 r^-3 衰减。有限长磁体近场衰减更慢，预期实测指数 < 4。注意：崩掉的是「点」偶极子，不是「均匀磁化」——后者对硬磁材料仍是好近似。"
+    },
+    {
+      "id": "A-2",
+      "statement": "薄壁：管壁内电流密度沿径向均匀",
+      "criterion": "w << a 且 w << delta",
+      "criterion_check": "w/a = 0.167；一阶修正是 **2(w/a) ≈ 33%**，闭式精确值 **25.95%**。w/delta = 0.025（极宽裕，趋肤不是问题）。【r3 修订】原来写的是「一阶修正 O(w/a) ≈ 17%」—— **漏了系数 2**。系数 2 的来历（纯代数，不需要任何数值）：b = sigma * ∫_a^{a+w} g(r) dr/(2*pi*r)，其中 g(r) = ∫(dPhi/dz)^2 dz ∝ r^-3（点偶极子场），故被积函数 ∝ r^-4。积分得 b_full/b_thin = (1/(3*eps)) * [1 - (1+eps)^-3] = 1 - 2*eps + O(eps^2)，eps = w/a。代入 eps = 1/6 得 0.74052 ⇒ **偏差 25.95%**。数值验证：用点偶极子场做径向积分，b_full/b_thin = 0.74052，与闭式吻合到 0.0000%。",
+      "breaks_when": "扫描到 w=3mm 时 w/a=0.5，径向均匀性明显破坏，外层壁耦合弱于内层",
+      "grade": "RISKY",
+      "impact_if_false": "【r3 修订】按修正后的估计，**A-2 在基准点就站不住**：闭式给出 25.95%，远超结论所需的 15%。后果：(1) Model-0 的闭式解 (11) 在基准点就带有约 26% 的薄壁误差 —— 这是**独立于 A-1 的另一份误差**；(2) P2（v_t ∝ w^-1）的适用域必须收窄到 w/a ≲ 0.03（该处偏差 5.7%）；(3) log v_t 对 log w 的曲线在右端向上弯曲。**注意 A-1 与 A-2 的失效是「相乘」的，不是相加的**：A-1 使 b 高估 x1.3993，A-2 再高估 x1.3059，合计 x1.8273 ⇒ v_t 偏差 +82.7%。"
+    },
+    {
+      "id": "A-3",
+      "statement": "准静态：涡流瞬时跟随磁体位置（忽略回路自感）",
+      "criterion": "tau_m << L/v_t，等价于 Re_m = mu_0*sigma*v*w << 1",
+      "criterion_check": "tau_m=0.22ms vs L/v_t=365ms ⇒ 比值 6.2e-4；Re_m=2.1e-3。极宽裕满足",
+      "breaks_when": "极高电导率(低温铜、超导)或磁体极快时",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-4",
+      "statement": "忽略趋肤效应：电流沿壁厚均匀",
+      "criterion": "w << delta = sqrt(2/(sigma*mu_0*omega))，omega ≈ 2*pi*v_t/L",
+      "criterion_check": "f_eff=2.74Hz ⇒ delta=39mm，w=1mm ⇒ w/delta=0.025，宽裕满足",
+      "breaks_when": "v_t 增大约 4000 倍才能使 delta 降至 1mm——本题不可能达到",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-5",
+      "statement": "磁体保持共轴、不接触管壁（无摩擦）",
+      "criterion": "mu_s * N << M*g；共轴时 N = 0",
+      "criterion_check": "由实验设定 S-8(PTFE 导向套)保证。注意：轴对称位置对横向扰动是不稳定平衡，磁体会被吸向最近的壁",
+      "breaks_when": "无导向措施时磁体倾斜贴壁，引入干摩擦",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "额外摩擦力使净驱动力减小 ⇒ 实测 v_t 系统性偏低，且重复性变差。这会污染每一个预测——实验上必须用导向套。"
+    },
+    {
+      "id": "A-6",
+      "statement": "忽略管壁自身的磁化（铜为非磁性）",
+      "criterion": "|chi_m| << 1",
+      "criterion_check": "铜 chi_m ≈ -1e-5，宽裕满足",
+      "breaks_when": "换用铁磁性管材时完全失效",
+      "grade": "SAFE"
+    }
+  ],
   "tasks_answered": [
     {
       "task_id": "T-1",
@@ -83,7 +250,7 @@
       "scipy": "1.18.0",
       "matplotlib": "3.11.0"
     },
-    "timestamp": "2026-07-13T04:28:46+00:00"
+    "timestamp": "2026-07-13T05:21:49+00:00"
   },
   "status": "PRESCRIBED-REVISION",
   "status_reason": "AS-20, AS-22 判 PRESCRIBED —— 命中 Skill 1 在 pass_criterion 里**预先注册**的分支，已照办。这不是失败：动作在数据出现之前就写在 spec 里了（归档 model-spec-r1.json 是物证），**这是预注册，不是事后合理化（P16）**。\n  · A-1：|k−4| = 0.5608 > 0.3 ⇒ P5 降级（仅在 a ≫ L 时成立）。\n  · A-2：基准点偏差 23.42%，落在预期区间 (15%, 26%) 内 ⇒ P2 适用域收窄到 w/a ≲ 0.03（该处偏差 5.1%）。\n  两条 RISKY 假设都**如预期地不成立** —— 模型边界被正确定位，这正是它们被标为 RISKY 的意义。\n  （历史：r1 那次运行判 MODEL-CHALLENGED，见 02-sim/results-r1.json 与 model-challenge-r1.md。Skill 1 已按物理理由修订至 r3——A-2 的一阶系数漏了个 2。）",
@@ -838,7 +1005,7 @@
   },
   "reproduce": {
     "command": "python 02-sim/code/run_all.py",
-    "runtime_seconds": 15.3,
+    "runtime_seconds": 14.5,
     "notes": "需要 numpy / scipy / matplotlib。参数全部从 handoff/model-spec.json 载入，无硬编码。"
   },
   "spec_defects": [
