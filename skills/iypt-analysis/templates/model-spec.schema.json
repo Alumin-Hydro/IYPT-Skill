@@ -266,9 +266,15 @@
           "id": { "type": "string", "pattern": "^[FV]-[0-9]+$", "description": "F-n = 回答任务的图；V-n = model_validation_checks 的验证图" },
           "purpose": { "type": "string", "description": "这张图要证明什么？(不能是\"展示结果\")" },
           "answers_task": {
-            "type": "string",
-            "pattern": "^T-[0-9]+$",
-            "description": "★ 这张图回答哪一条 task。**没有任务归属的图 = 装饰。**（V-n 的验证图归属到它服务的那条任务。）"
+            "description": "★ 这张图回答哪些 task。**没有任务归属的图 = 装饰。**（V-n 的验证图归属到它服务的那条任务。）\n\n**一张图可以答不止一条任务** —— 写成数组。一张 (z_0, A_0) 平面上的 regime-map 同时答「哪些因素」和「有哪些模式」，硬拆成两张图只会更糟。\n\n单条任务也可以直接写字符串（旧格式，仍然合法）。",
+            "oneOf": [
+              { "type": "string", "pattern": "^T-[0-9]+$" },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "pattern": "^T-[0-9]+$" }
+              }
+            ]
           },
           "x": { "type": "string" },
           "y": { "type": "string" },

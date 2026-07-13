@@ -13,6 +13,7 @@
 import json
 import re
 import sys
+import textwrap
 from pathlib import Path
 
 # Windows 控制台默认 GBK，中文报告和 ✓/✗ 会直接抛 UnicodeEncodeError
@@ -32,6 +33,30 @@ def err(code: str, msg: str) -> None:
 
 def warn(code: str, msg: str) -> None:
     WARNINGS.append(f"[{code}] {msg}")
+
+
+def _as_list(v) -> list:
+    """契约里「一个或多个」的字段，统一归一化成 list。
+
+    ★ **为什么需要它**：`answers_task` 这类字段天然是「一个或多个」——
+    一张图答一条任务，写字符串很自然；一张 regime-map 同时答两条任务，写数组也很自然。
+    契约同时接受两种形式（见 model-spec.schema.json 的 `oneOf`）。
+
+    **血泪教训**：`check_analysis.py` 原本假定它**只可能是字符串**，把它直接塞进 set ——
+    换一道题，遇到数组就是 `TypeError: unhashable type: 'list'`，**整个检查器当场崩溃**。
+
+    > **一个崩溃的检查器，比一个漏报的检查器更糟：它什么信息都不给。**
+
+    **凡是「一个或多个」的字段，都从这里过一遍。** 类型不对时不崩，而是报错。
+    """
+    if v is None or v == "":
+        return []
+    if isinstance(v, str):
+        return [v]
+    if isinstance(v, (list, tuple, set)):
+        return [x for x in v if x]
+    err("FIELD-TYPE", f"字段的类型不对：期望 string 或 list，拿到 {type(v).__name__}（{v!r}）")
+    return []
 
 
 # ---------------------------------------------------------------- 载入
@@ -157,18 +182,36 @@ def check_tasks(spec: dict) -> None:
              f"        **题面里每一个限定词都要被追问一次。**")
 
     # ---- 每条任务必须被至少一张图或一个 target 回答
-    answered = {f.get("answers_task") for f in spec.get("figures", []) if f.get("answers_task")}
+    #
+    #  ★ answers_task 可以是**字符串**（一张图答一条任务）或**数组**（答多条）。
+    #
+    #  **血泪教训（electrical-damping 的第一次运行，checker 当场崩溃）**：
+    #  这里原本写的是 `{f.get("answers_task") for f in ...}` —— 把值直接塞进 set。
+    #  magnetic-brake 的 9 张图**恰好每张只答一条任务**（全是字符串），所以它一直活着。
+    #  换一道题，一张 (z_0, A_0) 平面上的 regime-map **同时**答「哪些因素」和「有哪些模式」，
+    #  写成数组 —— **`TypeError: unhashable type: 'list'`，整个检查器崩了。**
+    #
+    #  > **一个崩溃的检查器比一个漏报的检查器更糟：它什么信息都不给。**
+    #
+    #  **两条回填**：① schema 改成接受 string | array；② 这里统一归一化。
+    #  **而抓到它的是「第二道题」本身** —— 一个只在一道题上跑过的检查器，
+    #  它的每一个隐式假设都还没被证伪过。
+    answered: set[str] = set()
+    for f in spec.get("figures", []):
+        for tid in _as_list(f.get("answers_task")):
+            answered.add(tid)
+
     for t in tasks:
         tid = t.get("id")
         if tid not in answered:
             err("TASK-UNANSWERED",
                 f"{tid}（{(t.get('statement') or '')[:40]}）**没有任何一张图回答它**。\n"
                 f"        没有图回答的任务 = 空头支票。给它安排一张图"
-                f"（figures[].answers_task = {tid}）。")
+                f"（figures[].answers_task 里加上 {tid}）。")
 
     # ---- 反向：没有任务归属的图 = 装饰
     for f in spec.get("figures", []):
-        if not f.get("answers_task"):
+        if not _as_list(f.get("answers_task")):
             warn("FIG-NOTASK",
                  f"图 {f.get('id')} 没有 answers_task —— **没有任务归属的图是装饰**")
 
@@ -431,10 +474,23 @@ def check_equations(md: str) -> None:
         warn("EQ-GAP", f"公式编号不连续，缺: {missing}")
 
 
+#: markdown 的强调标记。ID 写成 `| **S-1** |` 或 `### **A-1**` 都是**完全正常**的写法。
+#
+#  **血泪教训（electrical-damping）**：这两条正则原本写死成 `\|\s*(S-\d+)\s*\|` ——
+#  只认**裸的** `| S-1 |`。我在设定书表格里给 ID 加了粗（`| **S-1** |`），
+#  于是 7 条设定**一条都没被认出来**，检查器报 `NO-SPEC-SHEET`：「你没写设定书」。
+#
+#  **它就在那儿，写了整整一张表。**
+#
+#  magnetic-brake 的 ID 恰好都没加粗，所以这条正则一直活着。
+#  > **正则写死一种排版，等于在契约里偷偷加了一条没人知道的格式规定。**
+_EMPH = r"(?:\*\*|__|\*|`)?"
+
+
 def check_ids(md: str, problem_md: str, spec: dict) -> None:
     """S-n / A-n：定义了就要被引用；台账要和 spec 对齐。"""
-    defined_s = set(re.findall(r"\|\s*(S-\d+)\s*\|", problem_md))
-    defined_a = set(re.findall(r"###\s*(A-\d+)", md))
+    defined_s = set(re.findall(rf"\|\s*{_EMPH}(S-\d+){_EMPH}\s*\|", problem_md))
+    defined_a = set(re.findall(rf"###\s*{_EMPH}(A-\d+){_EMPH}", md))
 
     if not defined_s:
         err("NO-SPEC-SHEET", "00-problem.md 里没有设定书条目（S-n）——IYPT 题目是欠定的，"
@@ -476,12 +532,26 @@ def check_silent_neglect(md: str) -> None:
         r"|\d\s*%"                      # 百分比
         r"|(?:^|\|)\s*0\s*(?:\||$)"     # 表格里独立的 0（如"无接触，比值恰为 0"）
     )
+    # ★★ **否定**：「这**不可忽略**」是最负责任的一句话 —— 而它被这条检查判成了「口头忽略」。
+    #
+    #  **血泪教训（electrical-damping）**：A-5 的台账里写「地磁力矩 4.1e-5 N·m，
+    #  这**不可忽略**（它会让磁体缓慢转向）⟹ 必须机械约束」——
+    #  **一句把「不能忽略」明确说出口的话，被判成了「你忽略了却没给数」。**
+    #
+    #  这和 `check_essence` 里那个「**无**混沌不需要画 Lyapunov 图」是**同一个病**：
+    #  > **正则看得见关键词，看不见否定。**
+    #  那里修过一次；**这里没有。同一课，只学了一半。**
+    negated = re.compile(r"(?:不[可能得容]?|无法|不能|绝不|决不|cannot|can't|must not|"
+                         r"non-negligible|not\s+negligible)\s*(?:被)?\s*"
+                         r"(?:忽略|略去|neglect|ignor)", re.I)
+
     # 这些行谈的是"忽略"这件事本身，不是在做一次忽略决策：
     #   标题行、引用块、失效边界的描述、表头单元格、以及规则条文本身
     skip = re.compile(r"^\s*#"                       # 标题
                       r"|^\s*>"                      # 引用块
                       r"|失效边界|breaks_when"        # 假设台账里描述"何时会崩"
                       r"|全程可忽略|一端可忽略"        # 端点检查表的表头
+                      r"|被忽略项"                    # 端点检查表的表头（列名）
                       r"|硬规则|口头忽略|未纳入的机制")  # 规则条文/小节名)
 
     for i, line in enumerate(md.splitlines(), 1):
@@ -489,10 +559,28 @@ def check_silent_neglect(md: str) -> None:
             continue
         if skip.search(line):
             continue
+        if negated.search(line):
+            continue                                  # ★ 它在说「不能忽略」—— 放行
         if not has_magnitude.search(line):
             warn("SILENT-NEGLECT", f"L{i}: 提到\"忽略\"但这一行没有给出任何量级 —— "
                                    f"每个忽略都要给出「被略去项/主项」的数值比（审稿模式 P2）：\n"
                                    f"        {line.strip()[:90]}")
+
+
+#: 这几个 LaTeX 宏**按压倒性的惯例是「算符」或「单位」，不是物理符号**。
+#
+#  \Delta  —— 差量算符（ΔE、ΔT、ΔR_c）。**它不是一个量，它是「……的变化」。**
+#  \Omega  —— 欧姆（单位）。`R_c = 3.72\ \Omega` 里的 Ω 是单位，不是符号。
+#
+#  **血泪教训（electrical-damping）**：一篇有电阻（Ω）、有能量审计（ΔE）的分析里，
+#  这条检查会对着每一个 ΔE 和每一个 Ω 喊「你没声明这个符号」——
+#  **而作者能做的只有：要么在符号表里给「变化量」和「欧姆」编个词条（荒谬），
+#  要么学会无视这条警告（更糟 —— 它会连带训练人无视所有警告）。**
+#
+#  > **一个总是响的警报，等于没有警报。**
+#
+#  （真要把 Ω 当符号用——立体角、角速度——照常在符号表里声明它就是了，这里只是不再唠叨。）
+_NOT_SYMBOLS = {"Delta", "Omega"}
 
 
 def check_symbols(md: str, spec: dict) -> None:
@@ -515,16 +603,61 @@ def check_symbols(md: str, spec: dict) -> None:
     greek = set(re.findall(r"\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|kappa|lambda"
                            r"|mu|nu|xi|rho|sigma|tau|phi|chi|psi|omega|Gamma|Delta|Theta"
                            r"|Lambda|Xi|Pi|Sigma|Phi|Psi|Omega)\b", body))
-    for g in sorted(greek):
+    for g in sorted(greek - _NOT_SYMBOLS):
         if not any(g in s for s in table):
             warn("SYM-UNDECLARED", f"正文用了 \\{g} 但符号表里没有——"
                                     f"注意一符多义：ρ(密度/电阻率)、σ(电导率/表面张力)、μ(磁导率/黏度)")
 
 
 #: "0.35 mm" / "$0.28$ mm" / "2.74 cm/s" / "2.80 ms" …
+#: ★ `(?![eE][-+]?[0-9])` —— **拒绝科学计数法的尾数。**
+#
+#  **血泪教训（electrical-damping）**：正文里写 `B_E ≈ 5e-5 T`（地磁），
+#  这条正则读出来是 **`5 T`** —— **静默地错了 10⁵ 倍**，然后拿去和契约对质，
+#  报出一个完全莫名其妙的 NUM-NOT-IN-PROSE。
+#
+#  magnetic-brake 全篇用 `5\times10^{-5}` 的 LaTeX 写法（那种恰好不匹配），
+#  所以这个 bug 一直没被看见。**换一种同样合法的写法，它就炸了。**
+#
+#  > **一个把 5e-5 读成 5 的数字提取器，比没有数字提取器更危险 ——
+#  > 它会用一个凭空捏造的数字去指控你。**
+#  科学计数法要挡**两头**（第一版只挡了一头，被自检当场抓住）：
+#    · `(?![eE][-+]?[0-9])` —— 挡**尾数**：`5e-5 T` 里的头一个 `5`
+#    · `(?<![0-9.eE])(?<![eE][-+])` —— 挡**指数**：`5e-5 T` 里的**第二个** `5`
+#      （只挡尾数是不够的：正则会往后挪，从指数里再抠一个 `5` 出来配上 ` T`。
+#       `1.2e-3 mm` 更离谱 —— 它读出来是 `3 mm`。）
 _NUMUNIT = re.compile(
-    r"([0-9]+(?:\.[0-9]+)?)\s*\$?\s*(?:\\[,; ])?\s*(?:\\mathrm\{)?"
+    r"(?<![0-9.eE])(?<![eE][-+])"
+    r"([0-9]+(?:\.[0-9]+)?)(?![eE][-+]?[0-9])"
+    r"\s*\$?\s*(?:\\[,; ])?\s*(?:\\mathrm\{)?"
     r"(cm/s|m/s|mm|cm|km|ms|mT|kHz|Hz|[mT])(?:\})?(?![A-Za-z0-9])"
+)
+
+#: 宽松版：只用来扫**契约**，回答「这个数在契约里出现过吗」。
+#  契约里常把数写在括号/区间里：`[0.73, 8.64] mm`、`A ∈ [A_c, A_lin] = [0.73, 8.64] mm`。
+#  严格版要求数和单位紧挨着，于是 `8.64` 被判成「只在正文里出现的野数」—— 假 NUM-DESYNC。
+_NUMUNIT_LOOSE = re.compile(
+    r"(?<![0-9.eE])(?<![eE][-+])"
+    r"([0-9]+(?:\.[0-9]+)?)(?![eE][-+]?[0-9])"
+    r"[^A-Za-z0-9]{0,8}?(?:\\mathrm\{)?"
+    r"(cm/s|m/s|mm|cm|km|ms|mT|kHz|Hz|[mT])(?![A-Za-z0-9])"
+)
+
+#: ★★ **这条检查分辨不了「同一个量的两个版本」和「两个不同的量」。**
+#
+#  它的代理是「同单位 + 数值接近」。而在一篇有十几个毫米量的分析里
+#  （a/2、线性化上限、阻尼峰位、初振幅、间隙、线径、绕组厚度、定位误差……），
+#  两两之间到处都是 1.1–1.4 的比值 —— **代理没有分辨力。**
+#
+#  **我试过加一条「同单位的数太多就闭嘴」的守卫。结果：
+#  它把 magnetic-brake 那个真实的脱钩（契约 0.35 mm / 正文 0.277 mm）也一起放走了。**
+#  （——被注入式回归当场抓住。**为了消误报而削弱一条检查，是最容易犯、也最贵的错。**）
+#
+#  所以：**不削弱它，而是让它承认自己的局限**，把裁决权交给人。
+#  这条是 WARNING，不是 ERROR —— 它的职责是**指出来**，不是**判定**。
+_DESYNC_NOTE = (
+    "**这条检查分辨不了「同一个量的两个版本」和「两个不同的量」—— 请人工核一遍。**"
+    "  若确是两个不同的量（如「线径 0.4 mm」vs「定位误差 0.5 mm」），忽略本条。"
 )
 
 #: 换算到 SI —— 用来和 model-spec 的 parameters（SI）比对
@@ -566,8 +699,25 @@ def check_number_desync(md: str, spec: dict) -> None:
         si = v * _SI.get(unit, 1.0)
         return any(abs(si - L) <= 0.01 * max(abs(si), abs(L)) for L in legit_si if L)
 
-    spec_txt = json.dumps(spec, ensure_ascii=False)
+    # ★ `json.dumps` 会把反斜杠**再转义一遍**：契约里的 `4\ \mathrm{mm}`
+    #   在 dumps 之后变成 `4\\ \\mathrm{mm}`，于是下面「这个数在契约里也出现过吗」
+    #   的正则（它认的是**单个**反斜杠）**永远匹配不上** ——
+    #   结果：契约里明明白白写着的数，被当成「只在正文里出现的野数」，
+    #   于是 NUM-DESYNC 疯狂误报。
+    #
+    #   **实测（electrical-damping）**：5 条 NUM-DESYNC 里 4 条是这么来的。
+    #   **一个总是响的警报，等于没有警报 —— 而且它会训练人无视所有警报。**
+    spec_txt = json.dumps(spec, ensure_ascii=False).replace("\\\\", "\\")
+
     spec_nums = {}
+    #: 契约里**所有**出现过的「数 + 单位」—— 用来判断「另一个值是不是也是契约里的量」。
+    #  只扫 expected_shape / criterion_check 是不够的：一个数可能定义在 A-5 的 criterion 里、
+    #  被 F-1 的 expected_shape 引用。**扫全文，而且用宽松的正则**
+    #  （契约里常写成 `[0.73, 8.64] mm`、`(35%, 45%)` —— 数和单位之间隔着标点）。
+    spec_all: dict[str, set[float]] = {}
+    for v, u in _NUMUNIT_LOOSE.findall(spec_txt):
+        spec_all.setdefault(u, set()).add(float(v))
+
     for f in spec.get("figures", []):
         for v, u in _NUMUNIT.findall(f.get("expected_shape", "") or ""):
             spec_nums.setdefault(u, set()).add((float(v), f.get("id", "?")))
@@ -583,26 +733,46 @@ def check_number_desync(md: str, spec: dict) -> None:
             # 舍入不算脱钩：契约写 0.277 mm、正文写 0.28 mm，是同一个数
             near = [o for o in others if abs(o - val) <= 0.02 * max(abs(o), abs(val))]
             if not near:
+                # ★ **这一条才是主力。** magnetic-brake 的真实脱钩（契约 0.35 mm、
+                #   正文修订成 0.277 mm）正是被它抓到的：**契约里的数，正文里根本找不到。**
                 warn("NUM-NOT-IN-PROSE",
                      f"契约里 {src} 用的 `{val:g} {unit}`，在 01-analysis.md 里找不到 —— "
                      f"正文与契约可能已脱钩")
                 continue
+
             for o in others:
                 if o in near or is_legit(o, unit):
                     continue
-                r = max(o, val) / min(o, val) if min(o, val) > 0 else 99
-                if not (1.05 < r < 1.8):          # "接近但不等" —— 典型的修订遗漏
+                # ★ 另一个值**也在契约里** ⟹ 它是**另一个量**，不是同一个数的两个版本。
+                #
+                #   实测（electrical-damping）：正文里同时有 `10.46 mm`（阻尼峰位）、
+                #   `8.64 mm`（线性化上限）、`5.4 mm`（a/2）、`4 mm`（磁体到线圈的间隙）……
+                #   **一篇有很多毫米量的分析里，「同单位 + 数值接近」这个代理彻底失效。**
+                #   ——除非先把「两个都在契约里声明过」的对子排掉。
+                if any(abs(o - s) <= 0.01 * max(abs(o), abs(s))
+                       for s in spec_all.get(unit, set())):
                     continue
-                # 另一个值只在正文里、不在契约里 —— 典型的"修订只改了一处"
-                if re.search(rf"(?<![0-9.]){o:g}\s*\$?\s*(?:\\[,; ])?\s*(?:\\mathrm\{{)?{re.escape(unit)}",
-                             spec_txt):
+                # ★ 窗口收紧到 (1.05, 1.4)。
+                #
+                #   这条检查瞄准的是**一种很具体的失败**：「修订漏了一个修正因子」。
+                #   magnetic-brake 的真实案例：0.35 mm（漏减了 0.99 项）vs 0.277 mm（真值）——
+                #   **比值 1.26**。这类遗漏的比值几乎总在 1.1–1.3。
+                #
+                #   而 1.8 的上限会把**两个毫不相干的量**扫进来：
+                #   electrical-damping 里同时有 5.4 mm（a/2）、8.64 mm（线性化上限）、
+                #   6 mm（初振幅）、4 mm（磁体到线圈的间隙）…… 两两之间到处都是 1.1–1.8。
+                #   **在一篇有很多同单位长度的分析里，「同单位 + 数值接近」这个代理彻底失效。**
+                r = max(o, val) / min(o, val) if min(o, val) > 0 else 99
+                if not (1.05 < r < 1.4):
                     continue
                 warn("NUM-DESYNC",
                      f"正文里**同时**存在 `{val:g} {unit}` 和 `{o:g} {unit}`"
-                     f"（相差 {(r-1)*100:.0f}%），而契约（{src}）用的是 `{val:g} {unit}`。\n"
+                     f"（相差 {(r-1)*100:.0f}%），而契约（{src}）用的是 `{val:g} {unit}`，\n"
+                     f"        **且 `{o:g} {unit}` 在契约里根本没出现过。**\n"
                      f"        **修订可能只改了一处。** 一个数通常住在四个地方：推导、机制预算表、\n"
                      f"        **预测表**、**model-spec.json** —— 后两处才是下游真正读的东西。\n"
-                     f"        改一个数，grep 整个工作区。")
+                     f"        改一个数，grep 整个工作区。\n"
+                     f"        {_DESYNC_NOTE}")
 
 
 def check_residue(md: str) -> None:
@@ -637,9 +807,122 @@ def check_sections(md: str) -> None:
             err("STAGE-MISSING", f"正文里找不到「{name}」—— 这一步被跳过了")
 
 
+# ---------------------------------------------------------------- 自检
+
+def selftest() -> int:
+    """★ 把这个检查器**自己的**解析逻辑钉死。
+
+        python check_analysis.py --selftest
+
+    ## 为什么需要它
+
+    这个检查器里全是**正则**，而正则是**照着一道题的排版写出来的**。
+    换一道题，同样合法的另一种写法就能让它：
+
+      · **崩溃**（`answers_task` 是数组 → `TypeError: unhashable type: 'list'`）
+      · **假报错**（ID 加了粗 `| **S-1** |` → 「你没写设定书」—— 它就在那儿，写了整整一张表）
+      · **静默地读错一个数**（`5e-5 T` → 读成 `5 T`，**错 10⁵ 倍**，然后拿这个捏造的数去指控你）
+
+    **上面三条全是 electrical-damping 第一次运行时真的发生的。**
+    而 magnetic-brake 跑了几十次，一条都没暴露 —— 因为它的排版恰好都是正则认得的那一种。
+
+    > **一个只在一道题上跑过的检查器，它的每一个隐式假设都还没有被证伪过。**
+
+    这个自检把**已知的坑**钉死。它拦不住下一个未知的坑 ——
+    **拦下一个坑的，是「在第二道题上真的跑一遍」。**
+    """
+    fails: list[str] = []
+
+    def eq(name: str, got, want):
+        if got != want:
+            fails.append(f"  ✗ {name}\n      得到 {got!r}\n      期望 {want!r}")
+        else:
+            print(f"  ✓ {name}")
+
+    print("=" * 72)
+    print("① _as_list：`一个或多个` 的字段，字符串和数组都必须收得住")
+    print("=" * 72)
+    eq("字符串",     _as_list("T-1"),               ["T-1"])
+    eq("数组",       _as_list(["T-2", "T-4"]),      ["T-2", "T-4"])
+    eq("空",         _as_list(None),                [])
+    eq("空串",       _as_list(""),                  [])
+
+    print()
+    print("=" * 72)
+    print("② ID 的正则：markdown 加粗 / 斜体 / 反引号 都必须认得")
+    print("=" * 72)
+    for raw, want in [
+        ("| S-1 | 磁体 |",        {"S-1"}),
+        ("| **S-1** | 磁体 |",    {"S-1"}),       # ← electrical-damping 踩的
+        ("| *S-2* | 线圈 |",      {"S-2"}),
+        ("| `S-3` | 弹簧 |",      {"S-3"}),
+    ]:
+        eq(f"设定书 {raw!r}",
+           set(re.findall(rf"\|\s*{_EMPH}(S-\d+){_EMPH}\s*\|", raw)), want)
+    for raw, want in [
+        ("### A-1 · 点偶极子",      {"A-1"}),
+        ("### **A-2** · 线性阻尼",  {"A-2"}),
+    ]:
+        eq(f"台账 {raw!r}",
+           set(re.findall(rf"###\s*{_EMPH}(A-\d+){_EMPH}", raw)), want)
+
+    print()
+    print("=" * 72)
+    print("③ _NUMUNIT：**绝不许**把科学计数法的尾数当成一个数")
+    print("=" * 72)
+    eq("`5e-5 T` 不是 5 T",        _NUMUNIT.findall("B_E = 5e-5 T"),          [])
+    eq("`1.2e-3 mm` 不是 1.2 mm",  _NUMUNIT.findall("d = 1.2e-3 mm"),         [])
+    eq("`1.30 T` 正常",            _NUMUNIT.findall("$B_r = 1.30$ T"),        [("1.30", "T")])
+    eq("`10.46 mm` 正常",          _NUMUNIT.findall("z_pk = 10.46 mm"),       [("10.46", "mm")])
+    eq("LaTeX `\\mathrm{mm}` 正常", _NUMUNIT.findall(r"$4\ \mathrm{mm}$"),     [("4", "mm")])
+
+    print()
+    print("=" * 72)
+    print("④ ★ NUM-DESYNC 必须仍然抓得到 magnetic-brake 那个**真实的**脱钩")
+    print("=" * 72)
+    #  真实案例：审稿抓到「达到终速的距离用了错误捷径，高估 27%，精确值 0.277 mm」。
+    #  作者改了**推导**，但漏了**预测表**和 **model-spec.json** —— 契约里还写着 0.35 mm。
+    #  这个 bug 一路活到了 Skill 2 手里。
+    #
+    #  **这条自检是一道「防削弱」的门**：
+    #  我曾为了消掉 electrical-damping 的误报，给这条检查加了一个「同单位的数太多就闭嘴」
+    #  的守卫 —— **结果它把这个真 bug 也一起放走了**（被注入式回归当场抓住）。
+    #
+    #  > **为了消误报而削弱一条检查，是最容易犯、也最贵的错。**
+    #  > 从今往后，任何人想动 NUM-DESYNC，**必须先过这一关**。
+    global ERRORS, WARNINGS
+    _e, _w = ERRORS, WARNINGS
+    ERRORS, WARNINGS = [], []
+    fake_spec = {
+        "parameters": [{"symbol": "a", "value": 0.006, "unit": "m"}],
+        "figures": [{"id": "F-3",
+                     "expected_shape": "在 0.35 mm 处已达 0.99，之后完全平坦"}],
+        "assumptions": [],
+    }
+    fake_md = ("精确值为 $x = v_t\\tau(\\ln 100 - 0.99) = 0.277$ mm。\n"
+               "而 0.35 mm 是那个错误捷径给出的值（高估 27%）。\n")
+    check_number_desync(fake_md, fake_spec)
+    caught = any("NUM-DESYNC" in w or "NUM-NOT-IN-PROSE" in w for w in WARNINGS)
+    ERRORS, WARNINGS = _e, _w
+    eq("契约 0.35 mm / 正文 0.277 mm 的脱钩", caught, True)
+
+    print()
+    print("=" * 72)
+    if fails:
+        print(f"✗ {len(fails)} 项自检未通过 —— **检查器自己坏了，先修它**\n")
+        print("\n".join(fails))
+        return 1
+    print("✓ 全部通过。")
+    print()
+    print("  但这只钉死了**已知的**坑。**下一个未知的坑，只有在第二道题上真的跑一遍才会现形。**")
+    return 0
+
+
 # ---------------------------------------------------------------- 主流程
 
 def main() -> int:
+    if len(sys.argv) == 2 and sys.argv[1] in ("--selftest", "-t"):
+        return selftest()
     if len(sys.argv) != 2:
         print(__doc__)
         return 2
@@ -651,17 +934,41 @@ def main() -> int:
 
     md, problem_md, spec = load(workspace)
 
-    check_tasks(spec or {})
-    check_essence(spec or {})
-    check_model_validation(spec or {})
-    check_contract(spec or {})
-    check_equations(md)
-    check_ids(md, problem_md, spec or {})
-    check_silent_neglect(md)
-    check_symbols(md, spec or {})
-    check_number_desync(md, spec or {})
-    check_residue(md)
-    check_sections(md)
+    # ★ 每道门单独兜住异常。
+    #
+    #  **一个崩溃的检查器，比一个漏报的检查器更糟：它什么信息都不给。**
+    #  你只看到一行 traceback，然后既不知道**别的**门过没过，也不知道**这道**门本来想说什么。
+    #
+    #  **血泪教训（electrical-damping 的第一次运行）**：`check_tasks` 假定 `answers_task`
+    #  只可能是字符串（因为 magnetic-brake 的 9 张图恰好都是），遇到数组直接
+    #  `TypeError: unhashable type: 'list'` —— **整个检查器死掉，另外 30 道门一道都没跑。**
+    #
+    #  修好那个 bug 是必要的；**但兜住异常是必须的** —— 下一个隐式假设还在某处等着。
+    gates = [
+        ("check_tasks",            lambda: check_tasks(spec or {})),
+        ("check_essence",          lambda: check_essence(spec or {})),
+        ("check_model_validation", lambda: check_model_validation(spec or {})),
+        ("check_contract",         lambda: check_contract(spec or {})),
+        ("check_equations",        lambda: check_equations(md)),
+        ("check_ids",              lambda: check_ids(md, problem_md, spec or {})),
+        ("check_silent_neglect",   lambda: check_silent_neglect(md)),
+        ("check_symbols",          lambda: check_symbols(md, spec or {})),
+        ("check_number_desync",    lambda: check_number_desync(md, spec or {})),
+        ("check_residue",          lambda: check_residue(md)),
+        ("check_sections",         lambda: check_sections(md)),
+    ]
+    for name, fn in gates:
+        try:
+            fn()
+        except Exception as e:                                       # noqa: BLE001
+            import traceback
+            err("CHECKER-CRASHED",
+                f"**检查器自己崩了**：`{name}` 抛出 {type(e).__name__}: {e}\n"
+                f"        这**不是**你的分析有问题 —— **是这道门有 bug**。\n"
+                f"        它多半在假定某个字段只可能是某一种类型 / 形状，"
+                f"而你的契约合法地用了另一种。\n"
+                f"        **修检查器，不要改契约去迁就它。**\n"
+                f"{textwrap.indent(traceback.format_exc().strip(), '          ')}")
 
     print(f"检查工作区: {workspace}\n")
 
