@@ -81,7 +81,7 @@ motion of the magnet and how the terminal velocity depends on relevant parameter
 | Skill | 职责 | 状态 |
 |---|---|---|
 | `iypt-analysis` | 补全设定 → 假设台账 → 量纲分析 → 机制预算 → 分层推导 → 可证伪预测 | ✅ |
-| `iypt-physics-review` | 对抗式物理审稿（16 条具体错误模式） | ✅ |
+| `iypt-physics-review` | 对抗式物理审稿（17 条具体错误模式） | ✅ |
 | `iypt-simulation` | 数值解 + 六道验证门 + 可视化（Python / JS 动态页面 / 带自检的 MATLAB 移植） | ✅ |
 | `iypt-slides` | Physics Fight 用的幻灯片（**数字不许手打，只许写指针**） | ✅ |
 | `iypt-design-review` | 图 / 交互页 / 幻灯片的设计审查（16 条失败模式，**必须真的看图**） | ✅ |

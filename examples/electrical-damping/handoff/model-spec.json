@@ -5,11 +5,10 @@
     "statement": "A magnet suspended by a spring will display simple harmonic motion when displaced. If the magnet oscillates within a coil connected to a resistor, its motion will be damped. Investigate the factors that affect the damping.",
     "type": "依赖关系探究型（主）+ 模式分类型（副）"
   },
-
   "tasks": [
     {
       "id": "T-1",
-      "statement": "基线：不接电阻时它真的是简谐运动吗？把机械本底衰减率 gamma_0（弹簧内耗 + 空气阻力）**开路单独量出来** —— 否则后面测的每一个 gamma 都含一个未知偏置。",
+      "statement": "基线：它**真的**是 SHM 吗？**开路**先把**开路本底** γ_oc 量出来。\n★ **r2 改了措辞（审稿 H1）**：r1 写的是「把**机械本底**（空气阻力 + 弹簧内耗）单独量出来」——**做不到**。开路读数里必然含 **24%** 的**线圈导线涡流**（它在每根导线内部闭合，**不需要外电路**，A-6b）。**「开路」这个动作分离不出「机械」。**\n⇒ 量到的是 **γ_oc（开路本底）**。**好消息**：γ_eddy 与 R 无关、与振幅近似无关 ⟹ γ − γ_oc 仍然精确扣除它。\n★ **顺带得到一条免费的证伪检验**：γ_oc **必须随 z₀ 变**（0.0413 s⁻¹ @ z₀=0 vs 0.0366 @ z₀=z_pk）。**若它与 z₀ 无关，A-6b 错了。**",
       "kind": "essence",
       "excavated_from": "will display simple harmonic motion",
       "why_implicit": "题面把 SHM 当成前提陈述。但真实的弹簧振子有内耗（Q ≈ 300），而机制预算显示：在 R 的扫描上端，这个「本底」占到总衰减率的 10.8%。**不先把它量出来，P2 的整条直线都建在流沙上。**"
@@ -36,14 +35,12 @@
       "why_implicit": "题面说 'within a coil' —— **没说在线圈的哪个位置**；又说 'the factors'（复数、未指名）。这两个词是这道题的 'under certain conditions'：它们藏着最重要、也最反直觉的那个 factor。**直觉说「停在正中间阻尼最强」，而正确答案是「阻尼恰好为零」。**"
     }
   ],
-
   "essence": {
     "one_sentence": "机械能通过磁通梯度 G(z) = dλ/dz 转换为电路焦耳耗散的机-电换能系统 —— 而 G 在线圈中心恒为零，故阻尼系数是「位置的函数」，这是一个阻尼依赖于状态的非线性振子。",
     "system_type": "非线性阻尼振子 —— 阻尼系数 b(z) = G(z)²/(R+R_c) 是状态的函数；在线圈中心 b ∝ z²，衰减从指数退化为幂律 A ∝ t^(-1/2)。同时存在一个「机械本底主导」的小振幅区间。",
     "energy_chain": "弹性势能 ⇄ 动能 →（经换能系数 G(z)）→ 线圈电流 → 电阻的焦耳热（不可逆）",
     "competing_effects": "感应阻尼力 b(z)·ż vs 弹性回复力 k·z。**但真正决定「模式」的竞争是 G 的位置依赖尺度 z_pk vs 振幅 A** —— 它决定了阻尼是线性的（指数衰减）还是非线性的（幂律衰减）。第三个竞争者是机械本底 gamma_0，它在小振幅端接管。"
   },
-
   "variables": {
     "independent": [
       "系统参数：磁体（M, m, R_m, L_m）；弹簧（k, Q）；线圈（N, a, ℓ_c, w, R_c, L）",
@@ -57,102 +54,518 @@
       "★ 模式（第三层）：**衰减包络的形态** —— 指数 / 幂律 A ∝ t^(-1/2) / 机械本底主导。**这是 IYPT 的分水岭，也是 T-2 的答案。**"
     ]
   },
-
   "symbols": [
-    { "symbol": "z",            "meaning": "磁体位移（相对线圈中心，沿轴）", "unit": "m" },
-    { "symbol": "z_0",          "meaning": "磁体平衡位置（相对线圈中心）—— 可调的实验参数", "unit": "m" },
-    { "symbol": "u",            "meaning": "相对平衡位置的位移 z - z_0", "unit": "m" },
-    { "symbol": "\\lambda",     "meaning": "线圈的磁通链", "unit": "Wb" },
-    { "symbol": "G",            "meaning": "换能系数 dλ/dz", "unit": "Wb/m" },
-    { "symbol": "m",            "meaning": "磁体的磁偶极矩", "unit": "A m^2" },
-    { "symbol": "M",            "meaning": "磁体质量", "unit": "kg" },
-    { "symbol": "M_s",          "meaning": "磁体的磁化强度", "unit": "A/m" },
-    { "symbol": "B_r",          "meaning": "磁体剩磁", "unit": "T" },
-    { "symbol": "R_m",          "meaning": "磁体半径", "unit": "m" },
-    { "symbol": "L_m",          "meaning": "磁体长度", "unit": "m" },
-    { "symbol": "k",            "meaning": "弹簧劲度系数", "unit": "N/m" },
-    { "symbol": "\\omega_0",    "meaning": "固有角频率 sqrt(k/M)", "unit": "rad/s" },
-    { "symbol": "\\omega_d",    "meaning": "有阻尼角频率", "unit": "rad/s" },
-    { "symbol": "Q",            "meaning": "弹簧的品质因数", "unit": "1" },
-    { "symbol": "N",            "meaning": "线圈匝数", "unit": "1" },
-    { "symbol": "a",            "meaning": "线圈的平均绕组半径", "unit": "m" },
-    { "symbol": "\\ell_c",      "meaning": "线圈长度", "unit": "m" },
-    { "symbol": "n",            "meaning": "线圈匝密度 N/ℓ_c", "unit": "1/m" },
-    { "symbol": "w",            "meaning": "绕组厚度", "unit": "m" },
-    { "symbol": "R",            "meaning": "外接电阻", "unit": "Ohm" },
-    { "symbol": "R_c",          "meaning": "线圈自阻", "unit": "Ohm" },
-    { "symbol": "L",            "meaning": "线圈电感", "unit": "H" },
-    { "symbol": "I",            "meaning": "电流", "unit": "A" },
-    { "symbol": "\\varepsilon", "meaning": "感生电动势", "unit": "V" },
-    { "symbol": "b",            "meaning": "阻尼系数", "unit": "N s/m" },
-    { "symbol": "\\gamma",      "meaning": "振幅衰减率（总）", "unit": "1/s" },
-    { "symbol": "\\gamma_0",    "meaning": "机械本底衰减率（弹簧内耗 + 空气）", "unit": "1/s" },
-    { "symbol": "\\zeta",       "meaning": "阻尼比", "unit": "1" },
-    { "symbol": "A",            "meaning": "振幅", "unit": "m" },
-    { "symbol": "A_0",          "meaning": "初振幅", "unit": "m" },
-    { "symbol": "A_c",          "meaning": "交叉振幅（机械本底接管处）", "unit": "m" },
-    { "symbol": "\\beta",       "meaning": "非线性阻尼系数（居中时 b = β z²）", "unit": "N s/m^3" },
-    { "symbol": "t^*",          "meaning": "幂律的特征时间", "unit": "s" },
-    { "symbol": "z_{\\rm pk}",  "meaning": "阻尼峰位（|G| 的极值点）", "unit": "m" },
-    { "symbol": "E",            "meaning": "机械能", "unit": "J" },
-    { "symbol": "C",            "meaning": "能量方程的非线性系数", "unit": "1/(J s)" },
-    { "symbol": "q",            "meaning": "无量纲组合 1/(2 γ_0 t*)", "unit": "1" },
-    { "symbol": "\\mu_0",       "meaning": "真空磁导率", "unit": "T m/A" },
-    { "symbol": "\\rho",        "meaning": "电阻率（下标区分材料）", "unit": "Ohm m" },
-    { "symbol": "\\delta",      "meaning": "趋肤深度", "unit": "m" },
-    { "symbol": "g",            "meaning": "重力加速度", "unit": "m/s^2" },
-    { "symbol": "\\Pi",         "meaning": "无量纲组（下标编号）", "unit": "1" },
-    { "symbol": "r",            "meaning": "径向坐标", "unit": "m" },
-    { "symbol": "\\epsilon",    "meaning": "极限对拍的缩放参数", "unit": "1" }
+    {
+      "symbol": "z",
+      "meaning": "磁体位移（相对线圈中心，沿轴）",
+      "unit": "m"
+    },
+    {
+      "symbol": "z_0",
+      "meaning": "磁体平衡位置（相对线圈中心）—— 可调的实验参数",
+      "unit": "m"
+    },
+    {
+      "symbol": "u",
+      "meaning": "相对平衡位置的位移 z - z_0",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\lambda",
+      "meaning": "线圈的磁通链",
+      "unit": "Wb"
+    },
+    {
+      "symbol": "G",
+      "meaning": "换能系数 dλ/dz",
+      "unit": "Wb/m"
+    },
+    {
+      "symbol": "m",
+      "meaning": "磁体的磁偶极矩",
+      "unit": "A m^2"
+    },
+    {
+      "symbol": "M",
+      "meaning": "磁体质量",
+      "unit": "kg"
+    },
+    {
+      "symbol": "M_s",
+      "meaning": "磁体的磁化强度",
+      "unit": "A/m"
+    },
+    {
+      "symbol": "B_r",
+      "meaning": "磁体剩磁",
+      "unit": "T"
+    },
+    {
+      "symbol": "R_m",
+      "meaning": "磁体半径",
+      "unit": "m"
+    },
+    {
+      "symbol": "L_m",
+      "meaning": "磁体长度",
+      "unit": "m"
+    },
+    {
+      "symbol": "k",
+      "meaning": "弹簧劲度系数",
+      "unit": "N/m"
+    },
+    {
+      "symbol": "\\omega_0",
+      "meaning": "固有角频率 sqrt(k/M)",
+      "unit": "rad/s"
+    },
+    {
+      "symbol": "\\omega_d",
+      "meaning": "有阻尼角频率",
+      "unit": "rad/s"
+    },
+    {
+      "symbol": "Q",
+      "meaning": "弹簧的品质因数",
+      "unit": "1"
+    },
+    {
+      "symbol": "N",
+      "meaning": "线圈匝数",
+      "unit": "1"
+    },
+    {
+      "symbol": "a",
+      "meaning": "线圈的平均绕组半径",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\ell_c",
+      "meaning": "线圈长度",
+      "unit": "m"
+    },
+    {
+      "symbol": "n",
+      "meaning": "线圈匝密度 N/ℓ_c",
+      "unit": "1/m"
+    },
+    {
+      "symbol": "w",
+      "meaning": "绕组厚度",
+      "unit": "m"
+    },
+    {
+      "symbol": "R",
+      "meaning": "外接电阻",
+      "unit": "Ohm"
+    },
+    {
+      "symbol": "R_c",
+      "meaning": "线圈自阻",
+      "unit": "Ohm"
+    },
+    {
+      "symbol": "L",
+      "meaning": "线圈电感",
+      "unit": "H"
+    },
+    {
+      "symbol": "I",
+      "meaning": "电流",
+      "unit": "A"
+    },
+    {
+      "symbol": "\\varepsilon",
+      "meaning": "感生电动势",
+      "unit": "V"
+    },
+    {
+      "symbol": "b",
+      "meaning": "阻尼系数",
+      "unit": "N s/m"
+    },
+    {
+      "symbol": "\\gamma",
+      "meaning": "振幅衰减率（总）",
+      "unit": "1/s"
+    },
+    {
+      "symbol": "\\gamma_0",
+      "meaning": "机械本底衰减率（弹簧内耗 + 空气）",
+      "unit": "1/s"
+    },
+    {
+      "symbol": "\\zeta",
+      "meaning": "阻尼比",
+      "unit": "1"
+    },
+    {
+      "symbol": "A",
+      "meaning": "振幅",
+      "unit": "m"
+    },
+    {
+      "symbol": "A_0",
+      "meaning": "初振幅",
+      "unit": "m"
+    },
+    {
+      "symbol": "A_c",
+      "meaning": "交叉振幅（机械本底接管处）",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\beta",
+      "meaning": "非线性阻尼系数（居中时 b = β z²）",
+      "unit": "N s/m^3"
+    },
+    {
+      "symbol": "t^*",
+      "meaning": "幂律的特征时间",
+      "unit": "s"
+    },
+    {
+      "symbol": "z_{\\rm pk}",
+      "meaning": "阻尼峰位（|G| 的极值点）",
+      "unit": "m"
+    },
+    {
+      "symbol": "E",
+      "meaning": "机械能",
+      "unit": "J"
+    },
+    {
+      "symbol": "C",
+      "meaning": "能量方程的非线性系数",
+      "unit": "1/(J s)"
+    },
+    {
+      "symbol": "q",
+      "meaning": "无量纲组合 1/(2 γ_oc t*)",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\mu_0",
+      "meaning": "真空磁导率",
+      "unit": "T m/A"
+    },
+    {
+      "symbol": "\\rho",
+      "meaning": "电阻率（下标区分材料）",
+      "unit": "Ohm m"
+    },
+    {
+      "symbol": "\\delta",
+      "meaning": "趋肤深度",
+      "unit": "m"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度",
+      "unit": "m/s^2"
+    },
+    {
+      "symbol": "\\Pi",
+      "meaning": "无量纲组（下标编号）",
+      "unit": "1"
+    },
+    {
+      "symbol": "r",
+      "meaning": "径向坐标",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\epsilon",
+      "meaning": "极限对拍的缩放参数",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\nu",
+      "meaning": "★ G 的**非线性度**（A-2 的判据）：ν(z₀,A) = max_{|u|≤A} |G(z₀+u) − G(z₀)| / |G(z₀)|。**无关阶数** —— 一阶判据在极值点 z_pk 会结构性失明（审稿 H2）。",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\sigma",
+      "meaning": "电导率 = 1/ρ（下标区分材料）",
+      "unit": "S/m"
+    },
+    {
+      "symbol": "\\varrho_{air}",
+      "meaning": "★ **空气的质量密度**。**不是 ρ** —— 符号表里 ρ 只作电阻率，而 r1 在立下这条规矩之后四页就用 ρ_air 表示了密度（审稿 H5）。",
+      "unit": "kg/m^3"
+    },
+    {
+      "symbol": "\\zeta_{eff}",
+      "meaning": "**包络的瞬时阻尼比**（A-8 的判据）= [γ_oc + βA₀²/(8 M_eff)]/ω₀",
+      "unit": "1"
+    },
+    {
+      "symbol": "G'",
+      "meaning": "G 的一阶导数。**G'(0) 由高斯计实测** —— P1 的曲率与 P3 的截距都用它",
+      "unit": "Wb/m^2"
+    },
+    {
+      "symbol": "G''",
+      "meaning": "G 的二阶导数。**G''(z_pk) = 2.56e4 Wb/m³ ≠ 0** —— 峰附近真正的非线性度",
+      "unit": "Wb/m^3"
+    },
+    {
+      "symbol": "z_{off}",
+      "meaning": "★ **线圈的定心偏差**（P1 抛物线拟合的顶点位置）—— **它把定位误差自己测出来了**",
+      "unit": "m"
+    },
+    {
+      "symbol": "A_{lin}",
+      "meaning": "G 的线性化上限（|G(A)/(G'(0)A) − 1| = 10% 处）= 8.64 mm",
+      "unit": "m"
+    },
+    {
+      "symbol": "r_w",
+      "meaning": "导线半径。★ **涡流损耗 ∝ r_w⁴** —— 这就是利兹线能把 γ_eddy 压掉 20 倍的原因（S-8）",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\mathcal{M}",
+      "meaning": "磁体与线圈的互感（§6.1 的互易性推导用）",
+      "unit": "H"
+    },
+    {
+      "symbol": "A_{cs}",
+      "meaning": "磁体的迎风截面积 πR_m²（**面积一律带下标** —— 与振幅 A 区分）",
+      "unit": "m^2"
+    },
+    {
+      "symbol": "\\Pi_4",
+      "meaning": "第四个无量纲组 A₀/z_pk。**它一出现，数据坍缩就失败 —— 而失败本身是结论**",
+      "unit": "1"
+    }
   ],
-
   "parameters": [
-    { "symbol": "M",   "meaning": "磁体质量（NdFeB, 7500 kg/m³ × 体积）", "value": 0.005890, "unit": "kg", "source": "derived" },
-    { "symbol": "R_m", "meaning": "磁体半径", "value": 0.005, "unit": "m", "source": "setting" },
-    { "symbol": "L_m", "meaning": "磁体长度", "value": 0.010, "unit": "m", "source": "setting",
-      "sweep_range": [0.005, 0.020], "sweep_scale": "linear" },
-    { "symbol": "B_r", "meaning": "剩磁 (N42)", "value": 1.30, "unit": "T", "source": "literature",
-      "ref": "NdFeB N42 供应商牌号规格，公差 ±5% ⟹ b 偏 ±10%。**实验中必须实测 G，不能用标称 B_r**（审稿模式 P12）" },
-    { "symbol": "M_s", "meaning": "磁化强度 = B_r/mu_0", "value": 1034507.0, "unit": "A/m", "source": "derived" },
-    { "symbol": "m",   "meaning": "磁偶极矩 = M_s · π R_m² L_m", "value": 0.81250, "unit": "A m^2", "source": "derived" },
-    { "symbol": "k",   "meaning": "弹簧劲度系数（选定使 f_0 = 3.0 Hz）", "value": 2.0932, "unit": "N/m", "source": "setting" },
-    { "symbol": "Q",   "meaning": "弹簧品质因数（钢弹簧典型值）", "value": 300.0, "unit": "1", "source": "literature",
-      "ref": "钢制拉伸弹簧的内耗品质因数典型范围 100–1000。**必须开路实测，此值仅用于设计** " },
-    { "symbol": "\\gamma_0", "meaning": "机械本底衰减率 = ω_0/(2Q) + γ_air", "value": 0.03217, "unit": "1/s", "source": "derived" },
-    { "symbol": "N",   "meaning": "线圈匝数", "value": 400, "unit": "1", "source": "setting" },
-    { "symbol": "a",   "meaning": "线圈平均绕组半径", "value": 0.01080, "unit": "m", "source": "setting" },
-    { "symbol": "\\ell_c", "meaning": "线圈长度", "value": 0.020, "unit": "m", "source": "setting" },
-    { "symbol": "w",   "meaning": "绕组厚度（9 层 × 0.40 mm）", "value": 0.0036, "unit": "m", "source": "setting" },
-    { "symbol": "R_c", "meaning": "线圈自阻（400 匝 × 0.40 mm 漆包线，32 m 铜）", "value": 3.72, "unit": "Ohm", "source": "derived" },
-    { "symbol": "L",   "meaning": "线圈电感（Wheeler 近似）", "value": 0.00248, "unit": "H", "source": "derived" },
-    { "symbol": "R",   "meaning": "外接电阻（电阻箱）", "value": 20.0, "unit": "Ohm", "source": "setting",
-      "sweep_range": [0.0, 200.0], "sweep_scale": "log" },
-    { "symbol": "z_0", "meaning": "磁体平衡位置（相对线圈中心）—— ★ T-4 的主角", "value": 0.01046, "unit": "m", "source": "setting",
-      "sweep_range": [0.0, 0.015], "sweep_scale": "linear" },
-    { "symbol": "A_0", "meaning": "初振幅 —— ★ T-2 的主角", "value": 0.003, "unit": "m", "source": "setting",
-      "sweep_range": [0.001, 0.008], "sweep_scale": "log" },
-    { "symbol": "\\mu_0", "meaning": "真空磁导率", "value": 1.25663706e-06, "unit": "T m/A", "source": "literature", "ref": "CODATA" },
-    { "symbol": "g",   "meaning": "重力加速度（只平移平衡点，不进振荡方程）", "value": 9.81, "unit": "m/s^2", "source": "setting" }
+    {
+      "symbol": "M",
+      "meaning": "磁体质量（NdFeB, 7500 kg/m³ × 体积）",
+      "value": 0.00589,
+      "unit": "kg",
+      "source": "derived"
+    },
+    {
+      "symbol": "m_s",
+      "meaning": "弹簧质量",
+      "value": 0.002,
+      "unit": "kg",
+      "source": "given"
+    },
+    {
+      "symbol": "M_eff",
+      "meaning": "★ **有效振动质量** = M + m_s/3（弹簧自己也在动，占 11%）。运动方程 (13)/(26) 里的质量是它，**不是 M**。**实验中直接测：M_eff = k/ω₀²**（静伸长给 k，振荡给 ω₀）——**不许假定 M_eff = M**。",
+      "value": 0.006557,
+      "unit": "kg",
+      "source": "derived"
+    },
+    {
+      "symbol": "R_m",
+      "meaning": "磁体半径",
+      "value": 0.005,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "L_m",
+      "meaning": "磁体长度",
+      "value": 0.01,
+      "unit": "m",
+      "source": "setting",
+      "sweep_range": [
+        0.005,
+        0.02
+      ],
+      "sweep_scale": "linear"
+    },
+    {
+      "symbol": "B_r",
+      "meaning": "剩磁 (N42)",
+      "value": 1.3,
+      "unit": "T",
+      "source": "literature",
+      "ref": "NdFeB N42 供应商牌号规格，公差 ±5% ⟹ b 偏 ±10%。**实验中必须实测 G，不能用标称 B_r**（审稿模式 P12）"
+    },
+    {
+      "symbol": "M_s",
+      "meaning": "磁化强度 = B_r/mu_0",
+      "value": 1034507.0,
+      "unit": "A/m",
+      "source": "derived"
+    },
+    {
+      "symbol": "m",
+      "meaning": "磁偶极矩 = M_s · π R_m² L_m",
+      "value": 0.8125,
+      "unit": "A m^2",
+      "source": "derived"
+    },
+    {
+      "symbol": "k",
+      "meaning": "弹簧劲度系数 = M_eff·ω₀²（**用 M_eff，不是 M**）",
+      "value": 2.33,
+      "unit": "N/m",
+      "source": "setting"
+    },
+    {
+      "symbol": "Q",
+      "meaning": "弹簧品质因数（钢弹簧典型值）",
+      "value": 300.0,
+      "unit": "1",
+      "source": "literature",
+      "ref": "钢制拉伸弹簧的内耗品质因数典型范围 100–1000。**必须开路实测，此值仅用于设计** "
+    },
+    {
+      "symbol": "\\gamma_{oc}",
+      "meaning": "★ **开路本底衰减率** = 弹簧内耗 + 空气阻力 + **线圈导线里的涡流**。**不是「机械」本底** —— 涡流在每根导线内部闭合，**不需要外电路，开路时一点不少**（占 24%，见 A-6b）。**它是实测量**（开路测得），**且必须在与正式测量相同的 A₀ 和 z₀ 下测**。★ 它随 z₀ 变：0.0413 s⁻¹ @ z₀=0；0.0366 @ z₀=z_pk。",
+      "value": 0.0413,
+      "unit": "1/s",
+      "source": "measured"
+    },
+    {
+      "symbol": "\\gamma_{eddy}",
+      "meaning": "★ 导线涡流贡献的衰减率（**与 R 无关** —— 涡流不经过外电路；与振幅也近似无关）。**它是 γ_oc 的一部分，不是一个被忽略项。** 见 A-6b。",
+      "value": 0.0097,
+      "unit": "1/s",
+      "source": "derived"
+    },
+    {
+      "symbol": "c_2",
+      "meaning": "★ **P1 抛物线拟合的曲率** = G'(0)²/[2·M_eff·(R+R_c)]。R = 20 Ω 时预言 0.0344 s⁻¹mm⁻²。**这是一条零自由参数交叉检验**（G'(0) 由高斯计测）。",
+      "value": 0.0344,
+      "unit": "1/(s mm^2)",
+      "source": "derived"
+    },
+    {
+      "symbol": "N",
+      "meaning": "线圈匝数",
+      "value": 400,
+      "unit": "1",
+      "source": "setting"
+    },
+    {
+      "symbol": "a",
+      "meaning": "线圈平均绕组半径",
+      "value": 0.0108,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\ell_c",
+      "meaning": "线圈长度",
+      "value": 0.02,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "d_w",
+      "meaning": "导线**裸**直径（径向叠层按它算）",
+      "value": 0.0004,
+      "unit": "m",
+      "source": "given"
+    },
+    {
+      "symbol": "p_w",
+      "meaning": "★ 绕线的**轴向节距**（含漆）—— 每层匝数 = ℓ_c/p_w = 44.4，400/44.4 = **9 层** ⟹ w = 9·d_w = 3.6 mm。**（正文里 0.40 与 0.45 是两个不同的量，不是同一个数的两个版本。）**",
+      "value": 0.00045,
+      "unit": "m",
+      "source": "given"
+    },
+    {
+      "symbol": "w",
+      "meaning": "绕组厚度（9 层 × 0.40 mm）",
+      "value": 0.0036,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "R_c",
+      "meaning": "线圈自阻（400 匝 × 0.40 mm 漆包线，32 m 铜）",
+      "value": 3.72,
+      "unit": "Ohm",
+      "source": "derived"
+    },
+    {
+      "symbol": "L",
+      "meaning": "线圈电感（Wheeler 近似）",
+      "value": 0.00248,
+      "unit": "H",
+      "source": "derived"
+    },
+    {
+      "symbol": "R",
+      "meaning": "外接电阻（电阻箱）",
+      "value": 20.0,
+      "unit": "Ohm",
+      "source": "setting",
+      "sweep_range": [
+        0.0,
+        200.0
+      ],
+      "sweep_scale": "log"
+    },
+    {
+      "symbol": "z_0",
+      "meaning": "磁体平衡位置（相对线圈中心）—— ★ T-4 的主角",
+      "value": 0.01046,
+      "unit": "m",
+      "source": "setting",
+      "sweep_range": [
+        0.0,
+        0.015
+      ],
+      "sweep_scale": "linear"
+    },
+    {
+      "symbol": "A_0",
+      "meaning": "初振幅 —— ★ T-2 的主角",
+      "value": 0.003,
+      "unit": "m",
+      "source": "setting",
+      "sweep_range": [
+        0.001,
+        0.008
+      ],
+      "sweep_scale": "log"
+    },
+    {
+      "symbol": "\\mu_0",
+      "meaning": "真空磁导率",
+      "value": 1.25663706e-06,
+      "unit": "T m/A",
+      "source": "literature",
+      "ref": "CODATA"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度（只平移平衡点，不进振荡方程）",
+      "value": 9.81,
+      "unit": "m/s^2",
+      "source": "setting"
+    }
   ],
-
   "assumptions": [
     {
       "id": "A-1",
       "statement": "磁体可等效为点偶极子（用磁矩 m 这一个数代替整个磁体）",
       "criterion": "a \\gg \\max(R_m,\\ L_m)",
       "criterion_check": "a = 10.80 mm，max(R_m, L_m) = 10 mm ⟹ a/max = **1.08**，判据要求 ≫1 —— **不满足**。数值代入：|G|_max 点偶极子 0.8466 vs 有限磁体 0.8083 Wb/m ⟹ 误差 ≈ **4.5%**；而 b ∝ G² ⟹ 阻尼系数误差 ≈ **9%**。",
-      "breaks_when": "磁体的尺寸接近线圈场的变化尺度时，磁体在自己的体积上**平均掉**线圈场的空间变化 ⟹ |G| 被系统性低估。",
+      "breaks_when": "磁体的尺寸接近线圈场的变化尺度时，磁体在自己的体积上**平均掉**线圈场的空间变化 ⟹ 真实的 |G| **比点偶极子的小**（0.8083 vs 0.8466）⟹ **点偶极子模型系统性地「高估」|G|**。（r1 这里写的是「|G| 被系统性低估」—— **方向写反了**，且与它自己给的两个数矛盾。审稿 H9。）",
       "grade": "RISKY",
       "impact_if_false": "G 的**绝对值**偏 4.5%，(16) 的斜率偏 9%，t* 偏 9%。**但 P1（G(0)=0，纯对称性）、P2 的直线性与 x 截距、P3 的函数形式、P5 的峰位（由线圈几何决定）全部不受影响。** ⟹ 结构性结论全部存活，只有标定值受影响。"
     },
     {
       "id": "A-2",
       "statement": "阻尼是线性的：G 在振幅范围内可视为常数 G(z_0)",
-      "criterion": "|G'(z_0)| \\cdot A / |G(z_0)| \\ll 1",
-      "criterion_check": "z_0 = z_pk = 10.46 mm（阻尼峰）：G'(z_pk) = 0 ⟹ 判据满足得很好 ✓。**但 z_0 = 0（线圈中心）：G(0) = 0 ⟹ 判据的分母为零 ⟹ 判据被无穷违反。** 此时 b(z) = β z² 是非线性阻尼，衰减包络从指数变为幂律（指数精确 −1/2）。",
-      "breaks_when": "z_0 → 0。阻尼从「常数」变成「∝ z²」，衰减模式从指数变成幂律。",
+      "criterion": "\\nu(z_0, A) \\equiv \\max_{|u|\\le A} \\frac{|G(z_0+u) - G(z_0)|}{|G(z_0)|} \\simeq \\max\\left(\\frac{|G'(z_0)|A}{|G(z_0)|},\\ \\frac{|G''(z_0)|A^2}{2|G(z_0)|}\\right) \\ll 1",
+      "criterion_check": "★ **r2 换了判据（审稿 H2）**。r1 用的是一阶判据 |G'(z_0)|·A/|G(z_0)| ≪ 1 —— 而它被用在 z_0 = z_pk 上，**那是 |G| 的极值点**，G'(z_pk) ≡ 0（定义使然）⟹ **判据的分子恒为零 ⟹ 它对任何振幅都返回 ~1e-8 并报「线性 ✓」**。\n代入 z_0 = z_pk（P2 的实验条件）：\n  A₀=1mm：r1 判据 3.3e-8（报 LINEAR）| **ν = 0.015** | 真实 ⟨b⟩ 误差 **0.7%**\n  A₀=3mm：r1 判据 9.9e-8（报 LINEAR）| **ν = 0.133** | 真实 ⟨b⟩ 误差 **6.3%**\n  A₀=8mm：r1 判据 2.7e-7（报 LINEAR）| **ν = 0.699** | 真实 ⟨b⟩ 误差 **31.1%**\n**r1 的判据在三行里差不到一个数量级，而真实误差从 0.7% 长到 31%。它测的不是它以为在测的东西。**\nz_0 = 0（线圈中心）：G(0) = 0 ⟹ ν 的分母为零 ⟹ **判据被无穷违反** —— **这仍是本题的答案。**",
+      "breaks_when": "z_0 → 0（分母 → 0，**这是本题的答案**）；**以及** z_0 → z_pk 且 A 大（**二阶项接管** —— G 在峰附近是抛物线，G''(z_pk) = 2.56e4 Wb/m³）。",
       "grade": "RISKY",
-      "impact_if_false": "**这不是「失效」，这是本题的答案。** T-2（衰减模式）与 T-4（位置是一个 factor）的全部内容都建立在它的失效上。若强行用 Model-0，会得出「中心处阻尼最大」这个**错误**结论（因为直觉认为磁通最大处阻尼最大）。"
+      "impact_if_false": "在 z_0 = 0 处：**这不是「失效」，这是 T-2 与 T-4 的全部内容。**\n在 z_0 = z_pk 处：是一个真实的 O(ν) 误差（A₀=8mm 时 ⟨b⟩ 偏 31%）。\n★ **但 P2 的标定侥幸存活**：包络衰减时振幅一路降到 A ≪ z_pk，对数拟合被小振幅段主导，非线性被平均掉 —— 实测斜率反推的 G 只偏 −0.4%，截距反推的 R_c 只偏 −1.1%。**结论对，但 r1 给的理由（「G'(z_pk)=0 所以线性」）不是它活下来的原因。**"
     },
     {
       "id": "A-3",
@@ -182,25 +595,42 @@
       "impact_if_false": "横向的 G 分量引入额外的、不可控的阻尼；且 z_0 定不准 —— 而 b ∝ z_0²，中心附近对 z_0 的误差**尤其敏感**。"
     },
     {
-      "id": "A-6",
-      "statement": "忽略趋肤效应与磁体内部涡流",
-      "criterion": "\\delta = \\sqrt{2\\rho/(\\mu_0\\omega_0)} \\gg \\text{特征尺寸}",
-      "criterion_check": "NdFeB（ρ ≈ 1.5e-6 Ω·m）：δ = 355 mm ≫ R_m = 5 mm，比值 1.4e-2；铜导线（ρ = 1.72e-8）：δ = 38 mm ≫ d_wire = 0.40 mm，比值 1.1e-2。⟹ 两者的涡流贡献均 < 1e-4，**忽略**。",
-      "breaks_when": "f ≳ 1 kHz",
+      "id": "A-6a",
+      "statement": "忽略**磁体内部**的涡流",
+      "criterion": "P_{eddy}/P_{Joule} \\ll 1  （★ **功率比，不是长度比**）",
+      "criterion_check": "磁体处的 dB_coil/dt 由线圈电流产生（I_max = 2 mA ⟹ B ~ 0.05 mT），且 NdFeB 的 σ ≈ 6.7e5 S/m（**比铜小 87 倍**）⟹ P_eddy/P_Joule ≈ **9e-9**。",
+      "breaks_when": "线圈电流大到磁体处的 dB/dt 与磁体自己的场同量级（本题差 4 个数量级）",
       "grade": "SAFE",
-      "impact_if_false": "高频下导线的邻近效应会抬高有效 R_c；磁体内部涡流会增加一份与 G 无关的阻尼。在 3 Hz 下两者均 < 1e-4。"
+      "impact_if_false": "阻尼多一个 O(1e-8) 的修正 —— 可忽略。"
+    },
+    {
+      "id": "A-6b",
+      "statement": "★★ **线圈铜线里的涡流**。**它不可忽略**（占开路本底的 24%），**但它与 R 无关、与振幅无关** ⟹ 它是 γ_oc 里一个**干净的常数偏置**，被开路测量整份扣掉 ⟹ **(16) 与 (23) 的形式不变。**",
+      "criterion": "\\left|\\frac{\\partial \\gamma_{eddy}}{\\partial R}\\right| \\equiv 0\\quad\\text{(解析)}\\qquad\\text{且}\\qquad\\frac{\\left|\\langle\\gamma_{eddy}\\rangle_{A_0=8\\,\\mathrm{mm}} - \\langle\\gamma_{eddy}\\rangle_{A_0\\to 0}\\right|}{\\langle\\gamma_{eddy}\\rangle} \\;\\ll\\; 1",
+      "criterion_check": "★ **判据 (a) R 无关 —— 解析的**：涡流由 dB_mag/dt = ż·∂_z B_mag 驱动，在**每根导线的横截面内**闭合，**根本不经过外电路** ⟹ ∂γ_eddy/∂R ≡ 0（严格）。\n★ **判据 (b) 振幅无关 —— 算出来的**（对一个周期做 ż² 加权平均）：\n  A₀ = 0.5 mm ⟹ ⟨γ_eddy⟩ = 0.0097 s⁻¹ （相对 A₀→0：+0.0%）\n  A₀ = 1.0 mm ⟹ ⟨γ_eddy⟩ = 0.0097 s⁻¹ （相对 A₀→0：-0.1%）\n  A₀ = 3.0 mm ⟹ ⟨γ_eddy⟩ = 0.0096 s⁻¹ （相对 A₀→0：-0.9%）\n  A₀ = 8.0 mm ⟹ ⟨γ_eddy⟩ = 0.0090 s⁻¹ （相对 A₀→0：-7.2%）\n  ⟹ **漂移在 A₀ ≤ 3 mm 时 < 1%；在扫描上端 A₀ = 8 mm 时是 7.2%。**\n  ★ **7.2% 不是零 —— 但它已经被协议吸收掉了**：A-7 要求「**在与正式测量相同的 A₀ 下测 γ_oc**」。真正的残差是「同一个 A₀ 下，短路 vs 开路时 γ_eddy 的差」——**那才是零**（涡流与 R 无关）。\n  ★ 若协议被违反（拿一个 A₀ 的 γ_oc 去扣另一个 A₀ 的 γ）：残差 0.0007 s⁻¹，占 γ_el 的 0.005%（R=0）～ **0.26%（R=200 Ω）** —— 仍在容差内，但**不许靠它**。\n⟹ **在协议被遵守的前提下，γ_eddy 是一个干净的偏置 ⟹ (16) 与 (23) 一个字都不用改。**\n\n★★ **但它的「大小」绝不可忽略**（这是 r1 判错的地方，审稿 H1）。r1 写的是「δ = 38 mm ≫ d_wire = 0.40 mm ⟹ 涡流 < 1e-4，忽略」—— **这是 non sequitur**：δ ≫ d 说明的是「场完全穿透导体、电流分布均匀」，**它恰恰是涡流可以「充分发展」的条件**。（反例就在本仓库里：examples/magnetic-brake 的铜管，δ 也远大于壁厚，**而那里涡流是全部物理**。）\n把**功率比**真的算出来（磁体当均匀磁化圆柱 = 面电流片，椭圆积分求绕组体积内每点的 ∂_z B，对铜体积积分，填充率 0.698）：\n  b_eddy(z₀=0) = 1.27e-4 N·s/m ⟹ **γ_eddy(0) = 0.0097 s⁻¹**；γ_eddy(z_pk) = 0.0050 s⁻¹\n**占开路读数 γ_oc 的 23.5%（z₀=0）/ 13.6%（z_pk）—— 不是 1e-4。差 2000 倍。**\n**它是唯一一个「比值随 R 增长」的项**（γ_el ∝ 1/(R+R_c)，而 γ_eddy 与 R 无关）：γ_eddy/γ_el = 0.03%（R=0）→ **1.85%（R=200 Ω，扫描上端）**",
+      "breaks_when": "若 γ_eddy 随 R 或振幅漂移 ⟹ γ − γ_oc 就扣不干净 ⟹ **P2 的直线会弯**。**但它不会漂**：涡流的驱动源是磁体的场与速度，与外电路无关。",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "★ **可直接实验证伪**：在两个不同的 z₀ 上开路测 γ_oc —— **它必须随 z₀ 变**（预言 0.0413 @ z₀=0 vs 0.0366 @ z₀=z_pk）。**若 γ_oc 与 z₀ 无关，说明涡流那一份根本不存在，A-6b 错了。**\n★ 后果：它把幂律窗口从 1.05 个十进位吃到 **0.998** —— **低于 §9 自己定的 1.000 下限** ⟹ P3′（渐近指数）在这套器材上**不可验收**（要验收必须换利兹线，S-8）。"
     },
     {
       "id": "A-7",
-      "statement": "弹簧线性（胡克定律）+ 机械本底阻尼线性（∝ ż 而非 ż²）",
+      "statement": "弹簧线性（胡克）+ **开路本底**阻尼线性",
       "criterion": "\\gamma_{\\rm air} \\ll \\gamma_0",
-      "criterion_check": "静伸长 27.6 mm，振幅 ≤ 8 mm ⟹ 相对变形 ≤ 29% —— 弹簧线性是好近似。**但空气阻力是 ∝ ż² 的**（Re ≈ 126，不在 Stokes 区）⟹ 本底阻尼不严格线性。数值：γ_air = 7.5e-4 s⁻¹ 只占 γ_0 = 0.0322 s⁻¹ 的 **2.3%** ⟹ 本底里非线性的那部分只占 2.3%，忽略。",
+      "criterion_check": "静伸长 27.6 mm，振幅 ≤ 8 mm ⟹ 相对变形 ≤ 29% —— 弹簧线性是好近似。\n**但空气阻力是 ∝ ż² 的**（Re ≤ 101，不在 Stokes 区）⟹ 本底阻尼不严格线性。\n★ **在扫描端点上代入**（审稿 H8 —— r1 的 γ_air 是在 **A₀ = 10 mm** 下算的，**而扫描范围只到 8 mm** ⟹ 高估了 3.7 倍）：\n  A₀=1mm：Re=13  ⟹ γ_air = 6.8e-5（占 γ_oc 的 0.2%）\n  A₀=3mm：Re=38  ⟹ γ_air = 2.0e-4（占 0.5%）\n  A₀=8mm：Re=101 ⟹ γ_air = 5.4e-4（占 **1.3%**）\n⟹ **本底里非线性的那部分在整个扫描范围内 ≤ 1.3%**，忽略。",
       "breaks_when": "大振幅、轻磁体（空气阻力占比上升）。",
       "grade": "LOAD-BEARING",
-      "impact_if_false": "γ_0 会**随振幅漂移** ⟹ (16) 与 (23) 里扣除的「常数 γ_0」不准。⟹ **实验协议：必须在与正式测量相同的振幅下测 γ_0。**"
+      "impact_if_false": "γ_oc 会**随振幅漂移** ⟹ (16) 与 (23) 里扣除的「常数 γ_oc」不准。⟹ **实验协议：必须在与正式测量相同的振幅下测 γ_oc。**"
+    },
+    {
+      "id": "A-8",
+      "statement": "★★ **弱阻尼平均**：(19)–(23) 的能量法假定一个周期内 z ≈ A(t)cos(ω₀t)，即**包络在一个周期内变化很小**。**r1 里它只出现在 §6.2 的一个括号里 —— 没有编号、没有判据、没有数字。**而 (23) 完全架在它上面，而 (23) 是 P3/P4/t*/A_c/F-3/F-4 的地基 —— **T-2 的全部内容。**",
+      "criterion": "\\zeta_{eff}(A_0) \\equiv \\frac{\\gamma_{oc} + \\beta A_0^2/(8 M_{eff})}{\\omega_0} \\ll 1",
+      "criterion_check": "（z₀=0，R=0 —— 正是协议第 6 步的条件；与直接积分 (18) 的包络对拍）\n  A₀=3mm：ζ_eff = 0.028，t* = 1.01 s ⟹ (23) vs 数值积分 **0.01%**\n  A₀=6mm：ζ_eff = 0.107，t* = 0.25 s ⟹ **0.20%**\n  A₀=8mm（扫描上端）：ζ_eff = **0.189**，t* = 0.14 s ⟹ **0.46%**",
+      "breaks_when": "A₀ 大（β A₀²/(8 M_eff ω₀) 接近 1）—— 本题在 A₀ = 8 mm 时 ζ_eff = 0.19。",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "(23) 与 (23a) 的包络偏 O(ζ_eff²)（A₀=8mm 时 0.46%）。**不改变任何主结论**（幂律指数仍精确是 −1/2 —— 那是 γ_oc→0 的解析极限，与弱阻尼误差无关）。\n★ **但它会让 Gate 0c 在扫描端点假失败** —— r1 的 Gate 0c 容差写的是「< 0.5%」，而 A₀=8mm 的真实误差是 0.46%，**贴着门框过**。⟹ **r2 把 Gate 0c 的对拍点钉死在 A₀ = 3 mm（纯数学检验，< 0.05%），并把「A₀ 扫描下 (23) 的退化」改判为「预期结果」而不是「门」。**"
     }
   ],
-
   "equations": [
     {
       "id": "(1)",
@@ -246,26 +676,34 @@
       "id": "(16)",
       "model_level": "model-0",
       "kind": "algebraic",
-      "latex": "\\frac{1}{\\gamma-\\gamma_0} = \\frac{2M}{G(z_0)^2}\\,(R+R_c)",
+      "latex": "\\frac{1}{\\gamma-\\gamma_{oc}} = \\frac{2M_{\\rm eff}}{G(z_0)^2}\\,(R+R_c)",
       "closed_form": "1/(gamma - gamma0) = 2*M*(R + R_c)/G(z0)**2",
-      "numerical_notes": "★★ 核心的零自由参数预测。1/(γ−γ_0) 对 R 是一条**直线**：斜率 = 2M/G(z_0)² ⟹ 给出 G；x 截距在 R = −R_c ⟹ 给出线圈自阻。**注意：(16) 在 Model-0 内部是代数恒等式** —— 它的证伪力不在「是不是直线」，而在**「斜率和截距是否等于两个独立测得的量」**（高斯计测的 G、万用表测的 R_c）。**这一点必须说清，否则就是审稿模式 P12（拿拟合冒充预测）。**"
+      "numerical_notes": "★★ 核心的零自由参数预测。1/(γ−γ_oc) 对 R 是一条**直线**：斜率 = 2·M_eff/G(z_0)² ⟹ 给出 G；x 截距在 R = −R_c ⟹ 给出线圈自阻。**注意：(16) 在 Model-0 内部是代数恒等式** —— 它的证伪力不在「是不是直线」，而在**「斜率和截距是否等于两个独立测得的量」**（高斯计测的 G、万用表测的 R_c）。**这一点必须说清，否则就是审稿模式 P12（拿拟合冒充预测）。**"
     },
     {
       "id": "(23)",
       "model_level": "model-1",
       "kind": "ode",
-      "latex": "\\left(\\frac{A_0}{A(t)}\\right)^{2} = (1+q)\\,e^{2\\gamma_0 t}-q,\\qquad q=\\frac{1}{2\\gamma_0 t^*},\\qquad t^*=\\frac{4M}{\\beta A_0^2}",
+      "latex": "\\left(\\frac{A_0}{A(t)}\\right)^{2} = (1+q)\\,e^{2\\gamma_{oc} t}-q,\\qquad q=\\frac{1}{2\\gamma_{oc} t^*},\\qquad t^*=\\frac{4M}{\\beta A_0^2}",
       "closed_form": "A(t) = A0 / sqrt((1 + q)*exp(2*gamma0*t) - q);  q = 1/(2*gamma0*t_star);  t_star = 4*M/(beta*A0**2);  beta = Gp0**2/(R + R_c)",
       "state_variables": "A(t)（包络）",
       "initial_conditions": "A(0) = A_0",
       "suggested_method": "解析（Bernoulli 方程的精确解）。数值对拍：对 (26) 用 b(z) = β z² 积分，提取每周期极大值。",
-      "numerical_notes": "★★ 磁体居中（z_0=0）时包络的**精确闭式**。**零自由参数**（γ_0 开路实测；t* 由 (7) 的 G'(0) 预测）。两个极限：① γ_0→0 ⟹ (A_0/A)² = 1 + t/t* ⟹ **A ∝ t^(-1/2)，指数解析地精确为 −0.50**；② t*→∞ ⟹ A = A_0·exp(−γ_0 t)（纯指数）。**两个极限都必须数值验证。** 适用范围：A ∈ [A_c, A_lin] = [0.73, 8.64] mm（下界=机械本底接管，上界=G 的线性化误差达 10%），跨度 11.9 倍。"
+      "numerical_notes": "★★ 磁体居中（z_0=0）时包络的**精确闭式**。**零自由参数**（γ_oc 开路实测；t* 由 (7) 的 G'(0) 预测）。两个极限：① γ_oc→0 ⟹ (A_0/A)² = 1 + t/t* ⟹ **A ∝ t^(-1/2)，指数解析地精确为 −0.50**；② t*→∞ ⟹ A = A_0·exp(−γ_oc t)（纯指数）。**两个极限都必须数值验证。** 适用范围：A ∈ [A_c, A_lin] = [0.73, 8.64] mm（下界=机械本底接管，上界=G 的线性化误差达 10%），跨度 11.9 倍。"
+    },
+    {
+      "id": "(23a)",
+      "model_level": "model-1",
+      "kind": "closed-form",
+      "latex": "\\ln\\!\\left[\\left(\\frac{A_0}{A(t)}\\right)^{2} + q\\right] = \\underbrace{\\ln(1+q)}_{\\text{截距}} + \\underbrace{2\\gamma_{oc}}_{\\text{斜率}}\\cdot t,\\qquad q = \\frac{\\beta A_0^2}{8 M_{\\rm eff}\\gamma_{oc}}",
+      "closed_form": true,
+      "numerical_notes": "★★ **(23) 的线性化 —— r2 新增，是 T-2 的主证据（P3）。**\n把 (23) 移项取对数 ⟹ **一条直线**。而斜率与截距**都是被预言死的**：\n  · **斜率 = 2γ_oc** ← **开路实测**（线圈断开！）\n  · **截距 = ln(1+q)**，q = βA₀²/(8·M_eff·γ_oc) ← β 由高斯计(G'(0)) + 欧姆表(R_c)；M_eff = k/ω₀²\n**零自由参数，而且它吃整条衰减曲线，不需要幂律窗口。**\n\n★ **为什么它值钱**：\n① **反直觉**：把线圈**短路**（ζ = 0.78，几乎临界阻尼）、磁体**居中**放开 —— 它一开始衰减得极快，**可它的长时衰减率会精确回到「线圈根本没接」的 γ_oc**。因为 b ∝ z² ⟹ **振幅一小，电磁阻尼自己把自己关掉了。**\n② **零 vs 非零的结构判别式**：常数阻尼模型 ⟹ A = A₀e^{−γt} ⟹ (A₀/A)² = e^{2γt} ⟹ **q ≡ 0 ⟹ 截距 ≡ 0**。而正确模型的截距是 ln(1+q) = **1.84 / 2.56 / 3.53 / 4.45**（A₀ = 2/3/5/8 mm），**且随 A₀² 增长**。**这是离散地不同的，不是「拟合值差一点」。**\n\n★ **数值验证（用真实的 G(z)、不是 βz² 近似，积真实的 (26)）**：四个 A₀ 全部 **R² = 1.000000，拟合斜率 vs 2γ_oc 偏差 +0.0%**。\n\n**⇒ Skill 2 必须画这张图（F-3 的主面板），且必须同时画上「常数阻尼模型」的对照线（截距 0）。**"
     },
     {
       "id": "(25)",
       "model_level": "model-1",
       "kind": "algebraic",
-      "latex": "A_c = \\sqrt{\\frac{8M\\gamma_0}{\\beta}}",
+      "latex": "A_c = \\sqrt{\\frac{8M\\gamma_{oc}}{\\beta}}",
       "closed_form": "A_c = sqrt(8*M*gamma0/beta)",
       "numerical_notes": "交叉振幅：电磁阻尼（∝A²）与机械本底（常数）相等处。基准值 A_c = 0.73 mm。**A > A_c：幂律；A < A_c：回到指数（机械本底主导）。** 这是 regime map（F-4）的一条边界。"
     },
@@ -273,12 +711,12 @@
       "id": "(26)",
       "model_level": "model-2",
       "kind": "ode",
-      "latex": "\\begin{cases}\\dot z = v\\\\ M\\dot v = -k(z-z_0) - 2M\\gamma_0 v + I\\,G(z)\\\\ L\\dot I = -(R+R_c)I - G(z)\\,v\\end{cases}",
+      "latex": "\\begin{cases}\\dot z = v\\\\ M\\dot v = -k(z-z_0) - 2M_{\\rm eff}\\gamma_{oc} v + I\\,G(z)\\\\ L\\dot I = -(R+R_c)I - G(z)\\,v\\end{cases}",
       "state_variables": "(z, v, I)",
       "initial_conditions": "z(0) = z_0 + A_0,  v(0) = 0,  I(0) = 0",
       "boundary_conditions": "无（ODE）。但 G(z) 的计算是一个空间积分问题，其「边界」是磁体的表面与线圈的绕组体积。",
       "suggested_method": "solve_ivp(DOP853, rtol=1e-11, atol=1e-14)。**注意刚性**：电流方程的时间尺度 L/(R+R_c) = 0.67 ms ≪ 力学时间尺度 1/ω_0 = 53 ms（刚性比 ≈ 80）。若刚性造成困难，可用 A-4 消去 I（退化为二维系统）作为对照 —— **两者之差必须 < 1.3%（A-4 的判据值）**。",
-      "numerical_notes": "★ **Gate 0（极限对拍配方）**：\n(1) 磁体等比缩小：R_m → ε·R_m，L_m → ε·L_m，M_s → M_s/ε³（**保持 m = M_s·π R_m² L_m 固定**），ε → 0；\n(2) **同时**：绕组厚度 w → 0（全部匝收缩到平均半径 a）；\n(3) 则 λ_2(z)（式 (27)）必须回到 λ_0(z)（式 (5)），**最大相对误差 < 0.1%，且误差随 ε 单调趋于 0**（扫 ε = 1, 0.3, 0.1, 0.03, 0.01）。\n\n★ **配方自检**：推到极限，剩下的真的是 (5) 吗？—— 是：(5) 的两个前提正是「磁体是点偶极子」与「绕组无限薄且连续」。**配方 (1) 收缩了磁体的两个尺度（R_m 与 L_m），配方 (2) 收缩了绕组厚度。三个尺度，一个不漏。**\n（血泪教训：magnetic-brake 把点偶极子的判据写成 a≫L 漏了 R，配方跟着只令 L→0，数值收敛到 3.55 而非 1。**判据漏一个尺度，配方就跟着漏一个。**）\n\n★ **Gate 0b（纯数学，只测积分器）**：把 G 强制为常数、γ_0 = 0、L = 0，则 (26) 必须**精确**重现 (15) 的教科书解 A_0·exp(−γt)·cos(ω_d t)，误差 < 1e-10。\n\n★ **Gate 0c（只测能量法推导）**：把 b(z) 强制为 β z²，数值积分的包络必须重现 (23) 的闭式，误差 < 0.5%。"
+      "numerical_notes": "★ **Gate 0（极限对拍配方）**：\n(1) 磁体等比缩小：R_m → ε·R_m，L_m → ε·L_m，M_s → M_s/ε³（**保持 m = M_s·π R_m² L_m 固定**），ε → 0；\n(2) **同时**：绕组厚度 w → 0（全部匝收缩到平均半径 a）；\n(3) 则 λ_2(z)（式 (27)）必须回到 λ_0(z)（式 (5)），**最大相对误差 < 0.1%，且误差随 ε 单调趋于 0**（扫 ε = 1, 0.3, 0.1, 0.03, 0.01）。\n\n★ **配方自检**：推到极限，剩下的真的是 (5) 吗？—— 是：(5) 的两个前提正是「磁体是点偶极子」与「绕组无限薄且连续」。**配方 (1) 收缩了磁体的两个尺度（R_m 与 L_m），配方 (2) 收缩了绕组厚度。三个尺度，一个不漏。**\n（血泪教训：magnetic-brake 把点偶极子的判据写成 a≫L 漏了 R，配方跟着只令 L→0，数值收敛到 3.55 而非 1。**判据漏一个尺度，配方就跟着漏一个。**）\n\n★ **Gate 0b（纯数学，只测积分器）**：把 G 强制为常数、γ_oc = 0、L = 0，则 (26) 必须**精确**重现 (15) 的教科书解 A_0·exp(−γt)·cos(ω_d t)，误差 < 1e-10。\n\n★ **Gate 0c（只测能量法推导）—— r2 重写了容差与对拍点（审稿 H4）**：\n把 b(z) 强制为 β z²（即 (18)），数值积分的包络必须重现 (23) 的闭式。\n  · **对拍点钉死在 A₀ = 3 mm**（ζ_eff = 0.028）：**误差 < 0.05%**。**这一条是纯数学检验** —— 只测 (19)–(23) 的代数，不测 G(z)、也不测弱阻尼假设。\n  · **A₀ 扫描下 (23) 的退化，是「预期结果」，不是「门」**：误差随 ζ_eff² 增长（A₀=8mm 时 **0.46%**）—— 这是 **A-8 的 O(ζ_eff²) 截断误差，不是 bug**。**Skill 2 必须把它画出来（→ risky_assumption_checks[A-8]），不许把它「修」掉。**\n  · ⚠ **r1 写的是「误差 < 0.5%」，且没说在哪个 A₀ 上测** —— 而 A₀=8mm（扫描上端）的真实误差是 0.46%，**贴着门框过**。容差是在基准点定的，**从没在扫描端点复核过**。\n"
     },
     {
       "id": "(27)",
@@ -289,7 +727,6 @@
       "numerical_notes": "★ 互易性 + 体平均 —— 这是 A-1 与 A-3 的完整版。**点偶极子在一个点上取 B；有限磁体在自己的体积上取 B 的平均。** \n\n**★★ 注意 (27) 里 L_m 是显式出现的，而 (5) 里它根本不出现。这个差别就是 A-1 的退化特征**：固定 m 扫 L_m，点偶极子模型给出的 G 是**恒定的**（相对变化 = 0，精确），真实模型给出的 G **强烈依赖 L_m**（相对变化 0.38）。零 vs 非零 —— 两个离散的答案。"
     }
   ],
-
   "targets": [
     {
       "symbol": "G_{\\max}",
@@ -311,15 +748,15 @@
       "symbol": "\\gamma",
       "meaning": "总振幅衰减率（基准点：R = 20 Ω，z_0 = z_pk）",
       "unit": "1/s",
-      "analytical_prediction": "\\gamma = \\gamma_0 + G(z_0)^2/[2M(R+R_c)]",
+      "analytical_prediction": "\\gamma = \\gamma_{oc} + G(z_0)^2/[2M_{\\rm eff}(R+R_c)]",
       "baseline_value": 2.5978,
-      "scaling_law": "γ − γ_0 ∝ (R + R_c)^(-1)；γ − γ_0 ∝ G(z_0)²"
+      "scaling_law": "γ − γ_oc ∝ (R + R_c)^(-1)；γ − γ_oc ∝ G(z_0)²"
     },
     {
       "symbol": "\\zeta",
       "meaning": "阻尼比（基准点）",
       "unit": "1",
-      "analytical_prediction": "\\zeta = G(z_0)^2/[2\\sqrt{Mk}\\,(R+R_c)]",
+      "analytical_prediction": "\\zeta = G(z_0)^2/[2\\sqrt{M_{\\rm eff}k}\\,(R+R_c)]",
       "baseline_value": 0.1361,
       "scaling_law": "ζ ∝ 1/(R+R_c)"
     },
@@ -327,71 +764,90 @@
       "symbol": "t^*",
       "meaning": "幂律的特征时间（居中，R = 0，A_0 = 3 mm）",
       "unit": "s",
-      "analytical_prediction": "t^* = 4M/(\\beta A_0^2),\\ \\beta = G'(0)^2/(R+R_c)",
+      "analytical_prediction": "t^* = 4M_{\\rm eff}/(\\beta A_0^2),\\ \\beta = G'(0)^2/(R+R_c)",
       "baseline_value": 0.9091,
       "scaling_law": "t* ∝ 1/A_0²；t* ∝ (R + R_c)"
     },
     {
       "symbol": "A_c",
-      "meaning": "交叉振幅（居中，R = 0）",
+      "meaning": "交叉振幅 —— **开路本底**接管处。★ **窗口 [A_c, A_lin] = [0.868, 8.64] mm = 0.998 个十进位 —— 低于「区分 −0.50 与 −0.45 所需的 1 个十进位」。**⟹ **渐近指数在这套器材上不可验收**（要验收必须换利兹线圈 S-8）。r1 报的是 0.765 mm / 1.05 十进位 ——**那个余量被导线涡流吃光了**（A-6b）。",
       "unit": "m",
-      "analytical_prediction": "A_c = \\sqrt{8M\\gamma_0/\\beta}",
-      "baseline_value": 0.00073,
-      "scaling_law": "A_c ∝ sqrt(γ_0 (R+R_c)) / |G'(0)|"
+      "analytical_prediction": "A_c = \\sqrt{8M\\gamma_{oc}/\\beta}",
+      "baseline_value": 0.000868,
+      "scaling_law": "A_c ∝ sqrt(γ_oc (R+R_c)) / |G'(0)|"
+    },
+    {
+      "symbol": "c_2",
+      "meaning": "★ **P1 抛物线拟合的曲率**（r2 新增，审稿 H3）—— γ(z₀) − γ_oc = c₂(z₀ − z_off)²",
+      "unit": "1/(s mm^2)",
+      "analytical_prediction": "c_2 = G'(0)^2 / [2 M_{\\rm eff} (R + R_c)]  （(7) 直接给 G'(0)）",
+      "baseline_value": 0.0344,
+      "scaling_law": "c_2 ∝ 1/(R + R_c)  —— **又一条零自由参数交叉检验**"
     }
   ],
-
   "figures": [
     {
       "id": "F-1",
-      "purpose": "★★ 证伪 P1：**磁体停在线圈正中心时，电磁阻尼精确为零。** 这是题面没点名的那个 factor（T-4），也是本题最反直觉的一条。左：换能系数 G(z) 本身（本质图）；右：阻尼 b(z_0)。",
-      "answers_task": ["T-4", "T-1"],
+      "purpose": "★★ 证伪 P1：**磁体停在线圈正中心时，电磁阻尼精确为零。** 这是题面没点名的那个 factor（T-4），也是本题最反直觉的一条。\n★ **r2 改了验收方式（审稿 H3）**：**不是「把磁体移到中心看 γ 回不回到 γ_oc」** —— b ∝ z₀² ⟹ ±0.5 mm 的定位误差会在短路时伪造出 γ_el = 133% γ_oc，**一个正确的模型会被自己的实验判死**。**改成：扫 z₀，拟合抛物线。**\n左：换能系数 G(z) 本身（本质图）；右：b(z₀) 与 γ(z₀) 的抛物线拟合。",
+      "answers_task": [
+        "T-4",
+        "T-1"
+      ],
       "x": "z_0 （磁体平衡位置，mm）",
       "y": "左：G(z) (Wb/m)；右：b(z_0) (N s/m)",
       "series": "Model-0（点偶极子 + 薄线圈，闭式）/ Model-2（有限磁体 + 厚绕组，数值）",
       "kind": "line",
-      "expected_shape": "**G(z) 是严格的奇函数**（G(−z) = −G(z)，机器精度 < 1e-12），**G(0) = 0 精确**，双峰，峰位在 |z| = z_pk = 10.46 mm ≈ ℓ_c/2 = 10 mm（**不是** a/2 = 5.40 mm）。**b(z_0) = G²/(R+R_c) 因此是偶函数，双峰，且在中心有一个精确的零点，b ∝ z_0²。** 两个模型的 G(0) = 0 必须**同时**成立（对称性与磁体模型无关）；但 Model-2 的 |G|_max 应比 Model-0 低约 4.5%（A-1 的有限尺寸效应）。**若 b(0) ≠ 0，说明代码把 G 当成了常数 —— 回去查。**",
+      "expected_shape": "**G(z) 是严格的奇函数**（G(−z) = −G(z)，机器精度 < 1e-12），**G(0) = 0 精确**，双峰，峰位在 |z| = z_pk = 10.46 mm ≈ ℓ_c/2 = 10 mm（**不是** a/2 = 5.40 mm）。\n**b(z₀) = G²/(R+R_c) 因此是偶函数，双峰，且在中心有一个精确的零点，b ∝ z₀²。**\n★ **r2 新增（P1 的抛物线验收）**：在 |z₀| ≤ 6 mm 上把 γ(z₀) − γ_oc 拟合成 c₂(z₀ − z_off)²，**图上必须标出三个数**：\n  ① 顶点处的 γ（**必须等于 γ_oc** —— 这才是 b(0)=0 的检验）\n  ② 顶点位置 z_off（**它把定位偏差自己测出来了**）\n  ③ **曲率 c₂，与解析预言 G'(0)²/[2 M_eff (R+R_c)] = 0.0344 s⁻¹mm⁻² 对质（零自由参数）**",
       "compare_with": "(6) 的闭式；(3) 的对称性论证"
     },
     {
       "id": "F-2",
-      "purpose": "★★ 证伪 P2：1/(γ−γ_0) 对 R 是一条直线，**斜率给出 G、x 截距给出线圈自阻 R_c**。这是 T-3 的核心，也是两条零自由参数的交叉检验。",
-      "answers_task": ["T-3"],
+      "purpose": "★★ 证伪 P2：1/(γ−γ_oc) 对 R 是一条直线，**斜率给出 G、x 截距给出线圈自阻 R_c**。这是 T-3 的核心，也是两条零自由参数的交叉检验。",
+      "answers_task": [
+        "T-3"
+      ],
       "x": "R （外接电阻，Ω）",
-      "y": "1/(γ − γ_0) （s）",
+      "y": "1/(γ − γ_oc) （s）",
       "series": "Model-0（解析）/ Model-2（数值，从 ODE 的包络拟合出 γ）",
       "kind": "line",
-      "expected_shape": "**严格的直线**（线性拟合 R² > 0.999）。**斜率 = 2M/G(z_0)² —— 必须与由 (6) 独立算出的 G(z_0) 一致（<10%）。x 截距 = −R_c = −3.72 Ω —— 必须与参数表里的 R_c 一致（<5%）。** 注意：直线性在 Model-0 里是代数恒等式，**没有证伪力**；证伪力全在斜率与截距的数值上。**Model-2 若给出弯曲的线，说明电感不可忽略（A-4 崩）或包络拟合有系统误差。**",
+      "expected_shape": "**严格的直线**（线性拟合 R² > 0.999）。**斜率 = 2·M_eff/G(z_0)² —— 必须与由 (6) 独立算出的 G(z_0) 一致（<10%）。x 截距 = −R_c = −3.72 Ω —— 必须与参数表里的 R_c 一致（<5%）。** 注意：直线性在 Model-0 里是代数恒等式，**没有证伪力**；证伪力全在斜率与截距的数值上。**Model-2 若给出弯曲的线，说明电感不可忽略（A-4 崩）或包络拟合有系统误差。**",
       "compare_with": "(16) 的闭式；R_c 的参数值 3.72 Ω"
     },
     {
       "id": "F-3",
-      "purpose": "★★★ 证伪 P3（本题的分水岭）：**磁体居中时，衰减包络不是指数，而是幂律。** 这是因变量的第三层（模式），也是 T-2 的答案。",
-      "answers_task": ["T-2"],
+      "purpose": "★★★ 证伪 P3（本题的分水岭）：**磁体居中时，衰减包络不是指数，而是幂律。** 这是因变量的第三层（模式），也是 T-2 的答案。\n★★ **r2 换了主面板（审稿 H1 的后果）**：渐近幂律的窗口只有 **0.998 个十进位 < 1.000** ⟹ **在这套器材上不可验收**。**主证据换成 (23a) 的线性化检验** —— 它吃整条曲线。",
+      "answers_task": [
+        "T-2"
+      ],
       "x": "t （s）；右面板用 log t",
       "y": "左（半对数）：A(t) (mm)；右（双对数）：A(t) (mm)",
       "series": "z_0 = z_pk（阻尼峰，线性阻尼）/ z_0 = 0（居中，非线性阻尼）/ (23) 的闭式",
       "kind": "semilogy",
-      "expected_shape": "**面板 (a) 半对数**：z_0 = z_pk 的包络是一条**直线**（指数衰减，斜率 = −γ）；**z_0 = 0 的包络明显向上弯曲（凹）—— 它不是指数。** **面板 (b) 双对数**：z_0 = 0 的包络在 A ∈ [A_c, A_lin] = [0.73, 8.64] mm 的窗口内趋于一条**斜率 −0.50** 的直线（幂律，指数解析地精确）。小振幅端（A < A_c = 0.73 mm）斜率转向 −∞（机械本底接管，回到指数）—— **这个转折必须标出来**。数值包络必须与 (23) 的闭式吻合（<2%）。**若 z_0 = 0 的包络在半对数上也是直线，说明代码用了常数阻尼 —— 回去查（这正是 A-2 的退化特征）。**",
+      "expected_shape": "**★ 主面板（新）—— (23a) 的线性化检验**：画 ln[(A₀/A)² + q] vs t。\n  · **必须是一条直线**（R² > 0.999）\n  · **斜率必须等于 2γ_oc**（= 0.0826 s⁻¹）—— **注意：线圈是短路的，而这是开路的衰减率！**\n  · **截距必须等于 ln(1+q)** = 1.84 / 2.56 / 3.53 / 4.45（A₀ = 2/3/5/8 mm）\n  · **必须同时画上「常数阻尼模型」的对照线：它的截距恒为 0。****零 vs 非零 —— 这是结构性判别式。**\n\n**副面板 (a) 半对数**：z₀ = z_pk 是**直线**（指数）；z₀ = 0 **明显向上弯**（衰减越来越慢）。\n**副面板 (b) 双对数**：z₀ = 0 的包络在 A ∈ [A_c, A_lin] = [0.868, 8.64] mm 上趋于斜率 **−0.50**。\n  ⚠ **但必须在图上标出 A_c 与 A_lin，并注明「窗口 = 0.998 个十进位 < 1.000 ⟹ 不足以把 −0.50 与 −0.45 分开」。这一条是「展示」，不是「验收」。**\n  ⚠ **不许把小振幅端偏离 −0.5 当成 bug 去修** —— 那是 A_c 以下开路本底接管，**是预期的**。",
       "compare_with": "(23) 的闭式；(24) 的 −1/2 幂律"
     },
     {
       "id": "F-4",
       "purpose": "★★ 「Investigate the factors」的答案不是一条曲线，是**一张参数空间相图**：在 (z_0, A_0) 平面上，衰减模式分成三个区。这同时答 T-2 与 T-4。",
-      "answers_task": ["T-2", "T-4"],
+      "answers_task": [
+        "T-2",
+        "T-4"
+      ],
       "x": "z_0 / z_pk （磁体位置，无量纲）",
       "y": "A_0 / z_pk （初振幅，无量纲，对数轴）",
       "series": "按衰减模式着色：线性（指数）/ 强非线性（幂律）/ 机械本底主导",
       "kind": "regime-map",
-      "expected_shape": "**三个区**：① **线性区**（z_0 大、A_0 小）：|G'(z_0)|·A_0/|G(z_0)| < 0.1 ⟹ 包络是指数；② **强非线性区**（z_0 → 0 且 A_0 > A_c）：包络是幂律；③ **机械本底主导区**（A_0 < A_c(z_0)）：电磁阻尼被 γ_0 压过，回到指数（但衰减率是 γ_0）。**区 ② 沿 z_0 = 0 呈一条竖直的带**（因为只有中心附近 G 才近似线性于 z）。**判据（一个机械可判的量）**：非线性度 ν ≡ (γ_fit,前半段 / γ_fit,后半段) — 线性区 ν = 1，强非线性区 ν > 1.5。**边界必须有物理解释**：A_c 的边界由 (25) 解析给出。",
+      "expected_shape": "★ **r2 换了区域边界（审稿 H2）**。r1 用的边界是一阶判据 |G'(z₀)|·A₀/|G(z₀)| < 0.1 —— **它在 z₀ = z_pk 处结构性失明**（G'(z_pk) ≡ 0）⟹ 会把 z₀ = z_pk 那**一整条竖线**涂成「线性区」，**而这与 F-5 的 expected_shape 直接矛盾**（F-5 说 A₀/z_pk ~ 0.8 时坍缩失败）。\n**同一份契约，同一个点，两个相反的断言。**\n\n**⇒ 新的边界用 A-2 的 ν（无关阶数）**：\n  ① **线性区**（ν < 0.1）：包络是指数。\n  ② **非线性区**（ν > 0.1）：包络偏离指数。**z₀ = z_pk、A₀ = 3 mm 时 ν = 0.133 ⟹ 它在这一侧**（⟨b⟩ 偏 6.3%），**A₀ = 8 mm 时 ν = 0.70**（⟨b⟩ 偏 31%）。**⇒ 与 F-5 一致了。**\n  ③ **幂律区**（z₀ → 0 且 A₀ > A_c = 0.868 mm）：包络是 (23) 的闭式，渐近 t^(−1/2)。\n  ④ **开路本底主导区**（A₀ < A_c）：回到指数（γ → γ_oc）。\n**四个区的边界全部是解析的，一条拟合线都没有。**",
       "compare_with": "(25) 的 A_c；A-2 的判据不等式"
     },
     {
       "id": "F-5",
       "purpose": "数据坍缩（P6）：不同的 (M, k, R, z_0) 组合必须坍缩到 y = x 这条 45° 线上。**而 A_0/z_pk 不小时坍缩失败 —— 失败本身就是结论。**",
-      "answers_task": ["T-3"],
+      "answers_task": [
+        "T-3"
+      ],
       "x": "ζ = G(z_0)² / [2·sqrt(M k)·(R + R_c)]",
-      "y": "(γ − γ_0) / ω_0",
+      "y": "(γ − γ_oc) / ω_0",
       "series": "至少 5 组不同的 (M, k, R, z_0)；再叠加一组大振幅（A_0/z_pk ~ 0.8）的点",
       "kind": "collapse",
       "expected_shape": "**小振幅（A_0/z_pk < 0.1）的点必须精确坍缩到 y = x**（斜率 1.000 ± 0.01，截距 0 ± 0.005，相对散布 < 1%）—— 这是式 (15) 的恒等式。**而大振幅（A_0/z_pk ~ 0.8）的点会系统性偏离**（因为此时 G 在一个周期内不是常数，系统引入了第四个无量纲组 Π₄ = A_0/z_pk）。**这个「坍缩失败」本身就是结论：它证明「振幅」是一个 factor，而题面从没提过它。** 把坍缩失败当成 bug 去修，就毁掉了这个结论。",
@@ -400,7 +856,9 @@
     {
       "id": "F-6",
       "purpose": "把「非线性」画出来：一族初始条件的相图。线性阻尼的螺线是对数螺线；而居中时的螺线在小振幅处**张开**（阻尼变弱）。",
-      "answers_task": ["T-2"],
+      "answers_task": [
+        "T-2"
+      ],
       "x": "z （mm）",
       "y": "ż / ω_0 （mm）",
       "series": "z_0 = z_pk（一族 A_0）/ z_0 = 0（一族 A_0）",
@@ -409,7 +867,6 @@
       "compare_with": "(18) 的非线性 ODE"
     }
   ],
-
   "risky_assumption_checks": [
     {
       "assumption_id": "A-1",
@@ -420,11 +877,16 @@
     {
       "assumption_id": "A-2",
       "task": "把 z_0 从 z_pk 扫到 0，对每个 z_0 数值积分 (26) 并提取包络。报告：(i) b(z_0=0) 是否为零；(ii) z_0 = 0 时包络在双对数上的渐近斜率；(iii) 包络与 (23) 闭式的偏差。",
-      "pass_criterion": "**预期不通过 —— 而这正是本题的答案。** A-2 在 z_0 = 0 处被**无穷违反**（判据的分母 G(0) = 0）。\n\n必须报告：\n(i) **b(z_0=0) / b(z_pk) < 1e-10**（中心处零阻尼，纯对称性）；\n(ii) z_0 = 0 时，包络在 A ∈ [0.73, 8.64] mm 窗口内的双对数斜率落在 **−0.50 ± 0.05**；\n(iii) 数值包络与 (23) 的闭式偏差 < 2%。\n\n**预注册的应对动作**：若 (ii) 的斜率在小振幅端（A < A_c = 0.73 mm）偏离 −0.50 超过 0.05 —— **这是预期的**（机械本底 γ_0 接管）。**必须在 F-3 上标出交叉振幅 A_c，并把 P3 的适用域明确限定在 A > A_c。** 这不是失败，是模型边界被正确定位。",
+      "pass_criterion": "**预期不通过 —— 而这正是本题的答案。** A-2 在 z_0 = 0 处被**无穷违反**（判据的分母 G(0) = 0）。\n\n必须报告：\n(i) **b(z_0=0) / b(z_pk) < 1e-10**（中心处零阻尼，纯对称性）；\n(ii) z_0 = 0 时，包络在 A ∈ [0.73, 8.64] mm 窗口内的双对数斜率落在 **−0.50 ± 0.05**；\n(iii) 数值包络与 (23) 的闭式偏差 < 2%。\n\n**预注册的应对动作**：若 (ii) 的斜率在小振幅端（A < A_c = 0.73 mm）偏离 −0.50 超过 0.05 —— **这是预期的**（机械本底 γ_oc 接管）。**必须在 F-3 上标出交叉振幅 A_c，并把 P3 的适用域明确限定在 A > A_c。** 这不是失败，是模型边界被正确定位。",
       "degenerate_signature": "★★ **b(z_0 = 0)：正确模型恒为 0（精确，由对称性）；常数阻尼模型（A-2 成立）则 ≠ 0。**\n\n**must_not：若 b(z_0=0) / b(z_pk) > 1e-6，说明 G 的位置依赖根本没进代码 —— 阻尼被当成了常数。**\n**零 vs 非零 —— 两个离散的答案。**\n\n第二条（结构性，防「只少一个修正」）：**z_0 = 0 时，包络在半对数图上的形状。** 常数阻尼 ⟹ **严格的直线**（指数）；真实模型 ⟹ **明显的凹曲率**。判据：把 log A(t) 做二次拟合，二次项系数 c₂ —— 常数阻尼下 |c₂| < 1e-6；真实模型下 c₂ > 0 且显著。**直线 vs 曲线 —— 结构性的差别，拟合值溜不掉。**"
+    },
+    {
+      "assumption_id": "A-8",
+      "task": "★ **弱阻尼平均的数值验证（r2 新增，审稿 H4）**：\n把 b(z) 强制为 β z²（即 (18)），对 A₀ = 2, 3, 4, 5, 6, 7, 8 mm 各积一次 (18)，提取包络的每个极大值，与 (23) 的闭式逐点比。**画「最大包络误差 vs ζ_eff(A₀)」**，并在同一张图上画 ζ_eff² 的参考线。",
+      "pass_criterion": "★ **预注册**：**误差必须随 ζ_eff² 增长**（这是 A-8 的 O(ζ_eff²) 截断误差的签名）。\n  · A₀ = 3 mm：误差 < 0.05%（**这是 Gate 0c 的对拍点 —— 它必须是纯数学检验**）\n  · A₀ = 8 mm：误差 **预期约 0.46%**，落在 [0.2%, 1.0%] 内即算符合预期\n**★ 若 A₀ = 8 mm 的误差 > 1%，说明能量法在扫描端点已经不能用 ⟹ 必须把 A₀ 的扫描上限收到 ζ_eff < 0.15 的地方，并在 §6.2 的窗口里重算。**\n**★★ 这个误差不是 bug，不许「修」。** 它是 (23) 这个近似本身的截断误差。",
+      "degenerate_signature": "**结构性判别**：误差 ∝ ζ_eff²（**二次**），**不是** ∝ ζ_eff（一次）、**也不是**常数。\n在 log–log 上拟合「误差 vs ζ_eff」的斜率：**必须是 2.0 ± 0.3**。\n  · 若斜率 ≈ 1 ⟹ 说明有一个**一阶**误差源 —— 那是 bug（能量法的一阶项应该正好抵消）。\n  · 若斜率 ≈ 0 ⟹ 说明有一个**常数**偏置 —— 那是积分器或包络提取的 bug。\n**⇒ 指数 2 vs 1 vs 0：离散地不同，拟合不出来的。**"
     }
   ],
-
   "model_validation_checks": [
     {
       "id": "V-1",
@@ -435,7 +897,7 @@
         "② ★★ **互易性（一条完全独立的计算路径）**：由式 (1)，G(z) = m · d(B_coil,z/I)/dz —— **先算线圈自己每安培的轴上场，再求导，再乘 m**。这条路**不经过磁通链的概念**，与路径 ① 的推导毫无共同之处。两者必须吻合到 < 1e-9。",
         "③ **Biot–Savart 直接积分**：把线圈拆成离散匝、把磁体拆成安培面电流，直接对 (27) 数值积分。与 ①② 在点偶极子 + 薄线圈的极限下必须一致（< 0.1%）。",
         "④ **对称性**：G(−z) = −G(z) 到机器精度（< 1e-12）；且 **G(0) = 0** 到机器精度。**这一条与任何模型无关。**",
-        "⑤ **单匝环极限**：令 ℓ_c → 0，(6) 必须退化为 λ = μ₀ m a²/[2(a²+z²)^{3/2}]，其 |G| 的峰**解析地**落在 z = ±a/2。"
+        "⑤ **单匝环极限**：令 ℓ_c → 0，(6) 必须退化为 λ = **N**·μ₀ m a²/[2(a²+z²)^{3/2}]  ★ **（r1 漏了这个 N —— 审稿 H6。数值验证：比值精确收敛到 400.00 = N。一道错 400 倍的门，比没有门更糟。）**，其 |G| 的峰**解析地**落在 z = ±a/2。"
       ],
       "experimental_check": "★★ **高斯计。** 给线圈通已知直流 I₀（如 0.5 A），沿轴每 1 mm 测 B_z(z)，数值微分得 dB_z/dz，乘 m ⟹ **G(z)**。\n\n**这就是真题里那句「使用高斯计测量磁感应强度，反推印证磁化强度」的同构版本** —— 去测链条**中间**的那个量，而不是拿末态（衰减率）去反证模型。\n\n它独立地给出 P2 的斜率、P3 的 t*、P5 的峰位 —— **全部不依赖任何动力学测量**。",
       "figure": "V-1"
@@ -457,14 +919,13 @@
       "intermediate_quantity": "能量审计：机械能的损失必须全部出现在电阻的焦耳热 + 机械本底的耗散里",
       "why_it_can_fail_silently": "**力和电流的符号搞反、或系数差一个 2，都会让阻尼「看起来对」而能量不守恒。** 尤其 F = I·G 这一步（式 (11)）—— 若符号错，磁体会被**加速**而不是减速；若系数错，衰减率会整体偏。**而只看包络，这两种错都可能被参数的重新标定掩盖。**",
       "independent_checks": [
-        "① **能量平衡**：−ΔE_mech = ∫I²(R+R_c)dt + ∫2Mγ₀ż²dt，必须平衡到机器精度（相对误差 < 1e-10）。",
-        "② **开路守恒**：令 R → ∞ 且 γ₀ = 0，则 E 必须**严格守恒**（相对漂移 < 1e-10 over 100 个周期）。**这是 Gate-0 级的纯数学检验 —— 它只测积分器。**",
+        "① **能量平衡**：−ΔE_mech = ∫I²(R+R_c)dt + ∫2Mγ_ocż²dt，必须平衡到机器精度（相对误差 < 1e-10）。",
+        "② **开路守恒**：令 R → ∞ 且 γ_oc = 0，则 E 必须**严格守恒**（相对漂移 < 1e-10 over 100 个周期）。**这是 Gate-0 级的纯数学检验 —— 它只测积分器。**",
         "③ **单调性**：dE/dt ≤ 0 在每个时刻都成立（耗散系统）。"
       ],
       "experimental_check": "把电阻两端接示波器，测 I(t)。∫I²R dt 必须等于机械能的损失（由包络算）。**这是实验上唯一能直接看见「能量去哪了」的方式。**",
       "figure": "V-3"
     }
   ],
-
   "open_gaps": []
 }

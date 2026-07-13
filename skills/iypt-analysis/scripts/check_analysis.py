@@ -486,11 +486,41 @@ def check_equations(md: str) -> None:
 #  > **正则写死一种排版，等于在契约里偷偷加了一条没人知道的格式规定。**
 _EMPH = r"(?:\*\*|__|\*|`)?"
 
+#  ★ 血泪教训 2（electrical-damping 真实发生）：ID 是 `A-6a` / `A-6b`。
+#
+#  原正则是 `(A-\d+)`，于是：
+#    · 正文的 `### A-6a` 被读成 **A-6**
+#    · 契约里是 A-6a / A-6b
+#    ⟹ **两个方向同时报错**：「A-6 在正文里有、契约里没有」+「A-6a 在契约里有、正文里没有」。
+#    ⟹ 一次**正确的修订**（把一条假设拆成两条），被检查器当成三个 ERROR 骂回来。
+#
+#  **而「把一条假设拆成两条」正是修订最常做的动作。** 任何题、任何一轮审稿都会撞上。
+#  ⇒ ID 必须允许字母后缀，而且**必须锚死尾部**（否则 A-6 仍会从 A-6a 里被抠出来）。
+_AID = r"A-\d+[a-z]?"
+_SID = r"S-\d+[a-z]?"
+
+#  ★ 第三次栽在「正则写死一种排版」上（--selftest 当场抓到的）：
+#  实际写出来的行是  `| **S-8** ★ | 利兹线 |` —— ID 后面跟了个星号。
+#  `{_EMPH}\s*\|` 要求 ID 之后**紧接着**就是竖线，于是 **S-8 整行对检查器隐形**。
+#  ⇒ ID 只需**占住单元格的开头**；这个单元格里剩下什么，不关它的事。
+_SROW = rf"\|\s*{_EMPH}({_SID}){_EMPH}[^|\n]*\|"
+
+#  「这一项**不可忽略**」是全文最负责任的一句话 —— 不许骂它。（→ check_silent_neglect）
+#  桥上的字必须是只可能出现在「否定 + 忽略」结构里的那些。
+#  **绝不能放宽成 `[^。]{0,8}`** ——「这一项很小，不影响结论，忽略」也会被放行，
+#  而那正是这条检查要抓的东西。（CLAUDE.md 教训 11：为消误报而削弱检查，最贵。）
+_BRIDGE = r"[\s被是为算作能得容可当成属于「」“”\"'*`]{0,5}"
+_NEGATED_NEGLECT = re.compile(
+    r"(?:non-?negligible|not\s+negligible)"                       # 本身就是完整的否定
+    r"|(?:不|无法|不能|绝不|决不|并非|而非|cannot|can't|must\s+not)"
+    + _BRIDGE + r"(?:忽略|略去|neglect|ignor)",
+    re.I)
+
 
 def check_ids(md: str, problem_md: str, spec: dict) -> None:
     """S-n / A-n：定义了就要被引用；台账要和 spec 对齐。"""
-    defined_s = set(re.findall(rf"\|\s*{_EMPH}(S-\d+){_EMPH}\s*\|", problem_md))
-    defined_a = set(re.findall(rf"###\s*{_EMPH}(A-\d+){_EMPH}", md))
+    defined_s = set(re.findall(_SROW, problem_md))
+    defined_a = set(re.findall(rf"###\s*{_EMPH}({_AID}){_EMPH}(?![0-9a-z])", md))
 
     if not defined_s:
         err("NO-SPEC-SHEET", "00-problem.md 里没有设定书条目（S-n）——IYPT 题目是欠定的，"
@@ -504,7 +534,8 @@ def check_ids(md: str, problem_md: str, spec: dict) -> None:
     # 而且有些设定本来就不该进入模型（管长不影响终速），要求它被引用是官僚主义。
     both = problem_md + "\n" + md
     for aid in sorted(defined_a):
-        if len(re.findall(rf"\b{re.escape(aid)}\b", both)) < 2:
+        # (?![0-9a-z]) —— 否则 "A-6" 会在 "A-6a" 里被数到，一条从没被引用的 A-6 会假装被引用了
+        if len(re.findall(rf"\b{re.escape(aid)}(?![0-9a-z])", both)) < 2:
             warn("ID-UNUSED", f"{aid} 定义之后再也没被引用过——它真的在推导里起作用吗？"
                               f"（一条从不被引用的假设，要么是废话，要么是你忘了它在哪里被用到）")
 
@@ -541,9 +572,19 @@ def check_silent_neglect(md: str) -> None:
     #  这和 `check_essence` 里那个「**无**混沌不需要画 Lyapunov 图」是**同一个病**：
     #  > **正则看得见关键词，看不见否定。**
     #  那里修过一次；**这里没有。同一课，只学了一半。**
-    negated = re.compile(r"(?:不[可能得容]?|无法|不能|绝不|决不|cannot|can't|must not|"
-                         r"non-negligible|not\s+negligible)\s*(?:被)?\s*"
-                         r"(?:忽略|略去|neglect|ignor)", re.I)
+    #  ★ 第三次栽在同一个病上（electrical-damping 真实发生）。被误报的那一行是：
+    #
+    #      「**它不是「可忽略」的 —— 它被吸收进 $M_{\rm eff}$**」
+    #
+    #  —— 全文**最负责任**的一句话，被这条检查骂了。
+    #  原正则要求否定词**紧挨着**「忽略」（中间只许一个「被」），
+    #  于是「不**是「可**忽略」的」中间隔了 `是「可` 三个字，就漏了。
+    #
+    #  ⇒ 允许一小段「桥」——**但桥上的字必须是只可能出现在「否定+忽略」结构里的那些**。
+    #  **绝不能放宽成 `[^。]{0,8}`**：那样「这一项很小，不影响结论，忽略」也会被放行，
+    #  而那正是这条检查要抓的东西。
+    #  **（CLAUDE.md 血泪教训 11：为了消误报而削弱一条检查，是最容易犯、也最贵的错。）**
+    negated = _NEGATED_NEGLECT
 
     # 这些行谈的是"忽略"这件事本身，不是在做一次忽略决策：
     #   标题行、引用块、失效边界的描述、表头单元格、以及规则条文本身
@@ -583,6 +624,21 @@ def check_silent_neglect(md: str) -> None:
 _NOT_SYMBOLS = {"Delta", "Omega"}
 
 
+#  ★ 排版差异 ≠ 符号差异（electrical-damping 真实发生）。
+#  契约里写 `A_{cs}`，正文里写 `A_{\rm cs}` —— **同一个符号**，而朴素的子串匹配说「没出现」。
+#  于是 6 条 SYM-UNUSED 假警报，把真正的漏声符号淹掉。
+#  **而「契约里写裸下标、正文里写 \rm 下标」是所有人都会做的事。**
+#  ⇒ 比较之前先把**纯排版**的东西剥掉：\rm / \mathrm / \mathbf / \text、空格、单字符外的花括号。
+#  **只剥排版，不剥语义** —— `G'` 与 `G` 仍然是两个符号，`\Pi_4` 与 `\Pi` 仍然是两个符号。
+_TYPO = re.compile(r"\\(?:rm|mathrm|mathbf|mathit|text|bm|boldsymbol)\s*")
+
+
+def _norm_sym(s: str) -> str:
+    s = _TYPO.sub("", s)
+    s = re.sub(r"\{(\w)\}", r"\1", s)      # {c} -> c（单字符的花括号是排版，不是语义）
+    return re.sub(r"[\s{}]", "", s)
+
+
 def check_symbols(md: str, spec: dict) -> None:
     """符号表双向闭合。"""
     if not spec or not spec.get("symbols"):
@@ -591,12 +647,13 @@ def check_symbols(md: str, spec: dict) -> None:
 
     table = {s.get("symbol", "").strip() for s in spec["symbols"]}
     body = md
+    body_n = _norm_sym(body)
 
     # 表里有，正文没用
     for sym in sorted(table):
         if not sym:
             continue
-        if sym not in body:
+        if sym not in body and _norm_sym(sym) not in body_n:
             warn("SYM-UNUSED", f"符号表里的 ${sym}$ 在正文里没出现")
 
     # 正文有，表里没有：只查希腊字母（误报率低、且正是一符多义的高危区）
@@ -856,19 +913,65 @@ def selftest() -> int:
         ("| **S-1** | 磁体 |",    {"S-1"}),       # ← electrical-damping 踩的
         ("| *S-2* | 线圈 |",      {"S-2"}),
         ("| `S-3` | 弹簧 |",      {"S-3"}),
+        ("| **S-8** ★ | 利兹线 |", {"S-8"}),
     ]:
         eq(f"设定书 {raw!r}",
-           set(re.findall(rf"\|\s*{_EMPH}(S-\d+){_EMPH}\s*\|", raw)), want)
+           set(re.findall(_SROW, raw)), want)
     for raw, want in [
         ("### A-1 · 点偶极子",      {"A-1"}),
         ("### **A-2** · 线性阻尼",  {"A-2"}),
+        # ★★ electrical-damping 踩的：修订把一条假设**拆成两条** ⟹ ID 变成 A-6a / A-6b。
+        #    旧正则 (A-\d+) 会从 `### A-6a` 里抠出 **A-6**，于是两个方向同时报 ERROR ——
+        #    **一次正确的修订，被检查器当成三个错误骂回来。**
+        #    而「拆假设」正是修订最常做的动作。
+        ("### A-6a · 磁体内涡流",   {"A-6a"}),
+        ("### A-6b · 导线涡流",     {"A-6b"}),
+        ("### **A-6b** · 导线涡流", {"A-6b"}),
     ]:
         eq(f"台账 {raw!r}",
-           set(re.findall(rf"###\s*{_EMPH}(A-\d+){_EMPH}", raw)), want)
+           set(re.findall(rf"###\s*{_EMPH}({_AID}){_EMPH}(?![0-9a-z])", raw)), want)
+    # ★ 引用计数也必须锚死：A-6 不许从 A-6a 里被数出来
+    eq("A-6 不会被 A-6a 冒名顶替",
+       len(re.findall(r"\bA-6(?![0-9a-z])", "见 A-6a 与 A-6b，另见 A-6a。")), 0)
 
     print()
     print("=" * 72)
-    print("③ _NUMUNIT：**绝不许**把科学计数法的尾数当成一个数")
+    print("③ SILENT-NEGLECT：**「这一项不可忽略」是最负责任的一句话，不许骂它**")
+    print("=" * 72)
+    _neg = _NEGATED_NEGLECT          # ★ 用同一个对象——自检必须测「真的在跑的那份正则」
+    for line,放行, why in [
+        ("这一项**不可忽略**",                    True,  "最基本的否定"),
+        ("**它不是「可忽略」的 —— 它被吸收进 M_eff**", True,  "★ electrical-damping 踩的"),
+        ("涡流不能忽略",                          True,  ""),
+        ("这一项 non-negligible",                 True,  ""),
+        # ★★ 反向：**绝不能**因为修误报而把真的口头忽略放行
+        ("这一项很小，不影响结论，忽略",           False, "★★ 真·口头忽略 —— 必须仍被抓"),
+        ("高阶项忽略",                            False, "★★ 真·口头忽略"),
+        ("由于对称性，交叉项略去",                 False, "★★ 真·口头忽略"),
+    ]:
+        eq(f"{'放行' if 放行 else '★抓住'} {line!r}{'  ' + why if why else ''}",
+           bool(_neg.search(line)), 放行)
+
+    print()
+    print("=" * 72)
+    print(r"④ _norm_sym：排版差异 != 符号差异（契约写 A_{cs}，正文写 A_{\rm cs}）")
+    print("=" * 72)
+    eq(r"A_{cs} == A_{\rm cs}",   _norm_sym(r"A_{cs}"),         _norm_sym(r"A_{\rm cs}"))
+    eq(r"\varrho_{air} == \varrho_{\rm air}",
+       _norm_sym(r"\varrho_{air}"), _norm_sym(r"\varrho_{\rm air}"))
+    eq(r"\mathcal{M} == \mathcal M",
+       _norm_sym(r"\mathcal{M}"),    _norm_sym(r"\mathcal M"))
+    eq(r"\zeta_{eff} == \zeta_{\rm eff}",
+       _norm_sym(r"\zeta_{eff}"),    _norm_sym(r"\zeta_{\rm eff}"))
+    # ★★ 反向：**绝不许**把两个不同的符号归一成一个（那才是真的削弱检查）
+    eq(r"G' != G       （撇号是语义）",  _norm_sym(r"G'")     == _norm_sym(r"G"),  False)
+    eq(r"\Pi_4 != \Pi  （下标是语义）",  _norm_sym(r"\Pi_4")  == _norm_sym(r"\Pi"), False)
+    eq(r"M_{eff} != M  （下标是语义）",  _norm_sym(r"M_{eff}") == _norm_sym(r"M"),  False)
+    eq(r"\rho != \varrho（字形是语义）", _norm_sym(r"\rho")   == _norm_sym(r"\varrho"), False)
+
+    print()
+    print("=" * 72)
+    print("⑤ _NUMUNIT：**绝不许**把科学计数法的尾数当成一个数")
     print("=" * 72)
     eq("`5e-5 T` 不是 5 T",        _NUMUNIT.findall("B_E = 5e-5 T"),          [])
     eq("`1.2e-3 mm` 不是 1.2 mm",  _NUMUNIT.findall("d = 1.2e-3 mm"),         [])
@@ -878,7 +981,7 @@ def selftest() -> int:
 
     print()
     print("=" * 72)
-    print("④ ★ NUM-DESYNC 必须仍然抓得到 magnetic-brake 那个**真实的**脱钩")
+    print("⑥ ★ NUM-DESYNC 必须仍然抓得到 magnetic-brake 那个**真实的**脱钩")
     print("=" * 72)
     #  真实案例：审稿抓到「达到终速的距离用了错误捷径，高估 27%，精确值 0.277 mm」。
     #  作者改了**推导**，但漏了**预测表**和 **model-spec.json** —— 契约里还写着 0.35 mm。
