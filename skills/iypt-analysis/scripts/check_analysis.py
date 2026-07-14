@@ -959,10 +959,16 @@ def check_stale_values(ws: Path, md: str, problem_md: str, spec: dict) -> None:
             nv = new[sym][0]
             if abs(ov - nv) <= 1e-12 * max(abs(ov), 1.0):
                 continue
+            #: ★ 有**物理单位**的量（长度/质量/时间…），不可能写成一个百分数。
+            #  实测误报：`w = 3.6 mm` 的字面量 `3.6`，撞上了正文里的
+            #  「涡流占本底的 **3.6%**」—— 那是一个完全无关的百分比。
+            #  **这不是放宽**：一个以 mm 为单位的长度，写成 `3.6%` 是没有意义的。
+            #  （而无量纲量 `unit: "1"` 不吃这条豁免 —— 它**可以**是百分数。）
+            tail = r"(?![0-9])(?!\s*[%％])" if unit.strip() in _SCALE_BY_UNIT else r"(?![0-9])"
             for lit in _literals(ov, unit):
                 if lit in _literals(nv, unit):
                     continue                               # 舍入后撞车，不算
-                pat = re.compile(rf"(?<![0-9.]){re.escape(lit)}(?![0-9])")
+                pat = re.compile(rf"(?<![0-9.]){re.escape(lit)}{tail}")
                 for fname, lines in docs:
                     for i, line in enumerate(lines, 1):
                         if not pat.search(line):
@@ -1011,8 +1017,22 @@ def check_stale_values(ws: Path, md: str, problem_md: str, spec: dict) -> None:
 #
 #  ⟹ 契约必须带一张 `criterion_matrix`（判据 × 模型），而且它必须是**跑出来的**，不是写出来的。
 
+def _catch_ids(c: dict) -> list[str]:
+    """`catches` 可以是 `[id]`，也可以是 `[{id, detail}]`（后者带「抓到时偏了多少」）。
+
+    ★ **非空 ≠ 有效** —— id 必须能解析回 `wrong_models`（CLAUDE.md 教训 6）。
+    """
+    out: list[str] = []
+    for x in _as_list(c.get("catches")):
+        if isinstance(x, dict) and x.get("id"):
+            out.append(str(x["id"]))
+        elif isinstance(x, str):
+            out.append(x)
+    return out
+
+
 def check_criterion_matrix(spec: dict) -> None:
-    """★★ 判据 × 模型的双向表：正确模型不许被误杀；每条判据必须至少抓到一个错模型。"""
+    """★★ 判据 × 模型的双向表 + **P18 的三个新维度**（r3 审稿逼出来的）。"""
     if not spec:
         return
     cm = spec.get("criterion_matrix")
@@ -1038,10 +1058,19 @@ def check_criterion_matrix(spec: dict) -> None:
         err("CRIT-MATRIX-EMPTY", "criterion_matrix.criteria 是空的")
         return
 
-    for w in wrong:
-        if not any(w in _as_list(c.get("catches")) for c in crits):
-            err("CRIT-MODEL-UNCAUGHT",
-                f"错模型 `{w}` **没有任何一条判据抓得到它** —— 它会一路走到评委面前。")
+    # ── ① 每个错模型必须被**判据的字面逻辑**抓到（★ 退化不算 —— P18 ⑤）
+    for w in sorted(wrong):
+        if any(w in _catch_ids(c) for c in crits):
+            continue
+        degen = [c.get("id", "?") for c in crits if w in _as_list(c.get("degenerate_on"))]
+        extra = (f"\n        ★★ 它在 {'、'.join(degen)} 上是 **DEGENERATE**（提取失败）—— "
+                 f"**那不是「被抓到」，那是拟合器崩了。**\n"
+                 f"        （r3 真实翻车：naive-A 的「被五条判据抓到」，明细全是「提不出 Γ」"
+                 f"—— **一个记账截断，被记了五次。**）\n"
+                 f"        **判据必须去看那件事本身**（如「它一下子就停了」），"
+                 f"而不是依赖一个恰好会崩的拟合器。" if degen else "")
+        err("CRIT-MODEL-UNCAUGHT",
+            f"错模型 `{w}` **没有任何一条判据抓得到它** —— 它会一路走到评委面前。{extra}")
 
     for c in crits:
         cid = c.get("id", "?")
@@ -1052,7 +1081,7 @@ def check_criterion_matrix(spec: dict) -> None:
                 f"r2 的抛物线顶点判据被 G 的非线性判死 +17.5%。）\n"
                 f"        **判据的适用区间由物理定**（如「G 的线性度 <1% 的那段 z₀」），"
                 f"**不是随手画的。**")
-        caught = _as_list(c.get("catches"))
+        caught = _catch_ids(c)
         if not caught:
             err("CRIT-BLIND",
                 f"判据 `{cid}` **在所有错模型上都通过** —— **它是一把失明的锁。**\n"
@@ -1063,6 +1092,47 @@ def check_criterion_matrix(spec: dict) -> None:
                 err("CRIT-CATCH-DANGLING",
                     f"判据 `{cid}` 声称抓得到 `{w}`，但 wrong_models 里没有这个 id —— "
                     f"**编出来的 id 是非空的。**")
+
+        # ── ② ★ 容差必须有来源（P18 ①）
+        if not str(c.get("tolerance_source") or "").strip():
+            err("CRIT-TOLERANCE-UNSOURCED",
+                f"判据 `{cid}` 没有 `tolerance_source` —— **它的容差是一个裸数字。**\n"
+                f"        **容差不是随手定的**：它必须由**测量误差 + 预言侧的不确定度**算出来。\n"
+                f"        （r3 真实翻车：源码里 `< 0.12` / `< 0.20` / `< 0.15`，"
+                f"而正文写的是 15% —— **两处矛盾，而且两条判据的阈值只活在 `.py` 里**。\n"
+                f"        §9 说 Γ 只测到 2% —— **一条比误差棒宽 6 倍的判据，"
+                f"抓不到一个 10% 的偏置。**）")
+
+    # ── ③ ★★ 「不误杀」必须在协议自己承认的系统误差上跑过（P18 ④）
+    rs = cm.get("robustness_scan")
+    if not (isinstance(rs, dict) and rs.get("parameter")):
+        err("CRIT-NO-ROBUSTNESS",
+            "`criterion_matrix` 没有 `robustness_scan` —— "
+            "**「不误杀」那一列只在理想点上跑过。**\n"
+            "        **判据必须在协议自己列出的每一项系统误差的量级上各跑一遍**，"
+            "并报出它的**有效窗口**。\n"
+            "        （r3 真实翻车：`crit_P3` 把 z₀ 钉死在**精确的 0.0**，"
+            "而同一份分析的 §9 写着「**不要试图把磁体对准中心**」——\n"
+            "        实算：**残余偏心 0.17 mm 就判死正确模型**，而噪声预算是 ±0.1 mm。\n"
+            "        **同一个病第三次**：r1 死于 ±0.5 mm 定位，r2 死于 ±6 mm 拟合区间。）\n"
+            "        字段：`{parameter, why, delta_max, verdict}`。")
+
+    # ── ④ ★★ 错模型的「错误幅度」不许是挑出来的 —— 扫 ε，报 ε*（P18 ②）
+    md = cm.get("min_detectable")
+    if not (isinstance(md, dict) and any(
+            isinstance(v, dict) and "eps_star" in v for v in md.values())):
+        err("CRIT-NO-MIN-DETECTABLE",
+            "`criterion_matrix` 没有 `min_detectable` —— "
+            "**「这个错模型被抓到了 ✓」这句话没有信息量，因为幅度是你自己挑的。**\n"
+            "        **必须扫错误幅度 ε，报「最小可检测幅度」ε\\*** ——\n"
+            "        ε\\* 是判据集的**分辨率**，而且它是一条**可汇报的物理结论**：\n"
+            "        「我们的判据能分辨 β 的 X% 偏差」是一句真话；"
+            "「bug-C 被抓到了」不是。\n"
+            "        （r3 真实翻车：`bug-C` 设成「β 错 **+30%**」，被 12% 的容差抓到 ✓ ——\n"
+            "        **而作者自己在 `why_a_student_writes_it` 里写着**"
+            "「标称 B_r 公差 ±5% ⟹ **b 偏 ±10%**」。\n"
+            "        **10% < 12% ⟹ 他亲手描述的那个真实场景，五条判据一条都抓不到。**）\n"
+            "        字段：`{<错模型>: {eps_star, caught_by, note}}`。")
 
 
 # ---------------------------------------------------------------- ★★ 闭式里的孤儿
@@ -1503,12 +1573,18 @@ def selftest() -> int:
         check_criterion_matrix(spec)
         return [e.split("]")[0].lstrip("[") for e in ERRORS]
 
+    _SRC = "测量误差 2%（§9）+ 预言侧 10% ⟹ 12%"
     good = {"criterion_matrix": {
         "wrong_models": [{"id": "n-A"}, {"id": "n-B"}, {"id": "bug-C"}],
-        "criteria": [{"id": "K1", "passes_correct": True, "catches": ["n-A", "n-B"]},
-                     {"id": "K2", "passes_correct": True, "catches": ["bug-C"]}],
+        "criteria": [
+            {"id": "K1", "passes_correct": True, "tolerance_source": _SRC,
+             "catches": [{"id": "n-A", "detail": "k=2.1"}, {"id": "n-B", "detail": "k=1.0"}]},
+            {"id": "K2", "passes_correct": True, "tolerance_source": _SRC,
+             "catches": ["bug-C"]}],                     # ★ 旧格式 [str] 必须仍然收得住
+        "robustness_scan": {"parameter": "δ = 残余定心误差", "delta_max": 1.7e-4},
+        "min_detectable": {"bug-C": {"eps_star": 0.13, "caught_by": ["K2"]}},
         "verdict": "PASS"}}
-    eq("合格的表 ⟹ 无 ERROR", _crit(good), [])
+    eq("合格的表（catches 新旧两种格式混用）⟹ 无 ERROR", _crit(good), [])
 
     import copy
     blind = copy.deepcopy(good)
@@ -1531,6 +1607,31 @@ def selftest() -> int:
     eq("★ 编出来的 id ⟹ CRIT-CATCH-DANGLING（非空 ≠ 有效）",
        sorted(_crit(dang)),
        ["CRIT-CATCH-DANGLING", "CRIT-MODEL-UNCAUGHT", "CRIT-MODEL-UNCAUGHT"])
+
+    # ★★★ P18 ⑤ —— r3 真实翻车：naive-A 的「被五条判据抓到」，明细全是「提不出 Γ」。
+    #     **一个记账截断，被记了五次。** 退化 ≠ 被抓到。
+    degen = copy.deepcopy(good)
+    degen["criterion_matrix"]["criteria"][0]["catches"] = [{"id": "n-A", "detail": "k=2.1"}]
+    degen["criterion_matrix"]["criteria"][0]["degenerate_on"] = ["n-B"]
+    eq("★★★ 只在 degenerate_on 里出现（拟合器崩了）⟹ **不算被抓到** ⟹ CRIT-MODEL-UNCAUGHT",
+       _crit(degen), ["CRIT-MODEL-UNCAUGHT"])
+
+    # ★★ P18 ① —— 容差是裸数字
+    nosrc = copy.deepcopy(good)
+    del nosrc["criterion_matrix"]["criteria"][0]["tolerance_source"]
+    eq("★★ 容差没有来源 ⟹ CRIT-TOLERANCE-UNSOURCED", _crit(nosrc),
+       ["CRIT-TOLERANCE-UNSOURCED"])
+
+    # ★★ P18 ④ —— 「不误杀」只在理想点上跑过
+    norob = copy.deepcopy(good)
+    del norob["criterion_matrix"]["robustness_scan"]
+    eq("★★ 没有 robustness_scan ⟹ CRIT-NO-ROBUSTNESS", _crit(norob), ["CRIT-NO-ROBUSTNESS"])
+
+    # ★★ P18 ② —— 错误幅度是挑出来的
+    nomin = copy.deepcopy(good)
+    del nomin["criterion_matrix"]["min_detectable"]
+    eq("★★ 没有 min_detectable（ε*）⟹ CRIT-NO-MIN-DETECTABLE", _crit(nomin),
+       ["CRIT-NO-MIN-DETECTABLE"])
 
     eq("契约里没有 criterion_matrix ⟹ CRIT-MATRIX-MISSING",
        _crit({"tasks": [{"id": "T-1"}]}), ["CRIT-MATRIX-MISSING"])

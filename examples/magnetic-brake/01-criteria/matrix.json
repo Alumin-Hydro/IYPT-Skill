@@ -1,6 +1,29 @@
 {
   "generated_by": "01-criteria/criterion_matrix.py",
-  "purpose": "★★ 判据 × 模型的**双向**表。只跑「正确模型」那一列 = 换了一把新的失明的锁。",
+  "purpose": "★★★ 判据 × 模型的**双向**表 + P18 的三个新维度。\n只跑「正确模型」那一列 = 换了一把新的失明的锁。\n**而只跑布尔值，那张表可以被调到全绿（审稿模式 P18）。**",
+  "robustness_scan": {
+    "parameter": "δa = 管内径的加工/测量公差 [m]",
+    "why": "★ **「不误杀」必须在协议自己承认的系统误差上跑过**（P18 ④）。\n**v_t ∝ a⁴ ⟹ 管内径是最敏感的一项**：a 偏 1% ⟹ v_t 偏 4%。",
+    "delta_max": 0.00015,
+    "verdict": "判据的有效窗口：**δa < 0.15 mm**。协议必须把管内径量到 **0.10 mm** 以内（游标卡尺 ±0.02 mm ⟹ 够）。"
+  },
+  "min_detectable": {
+    "why": "★★ 一个错模型「被抓到了 ✓」**没有信息量 —— 因为幅度是作者挑的**（P18 ②）。\n**扫 ε，报「最小可检测幅度」ε\\*** —— 那才是判据集的分辨率。",
+    "bug-C_prefactor": {
+      "eps_star": 0.1133,
+      "caught_by": [
+        "K3"
+      ],
+      "note": "「判据能分辨 b 的 **11%** 偏差」。\n★ 而 K3 的容差就是 10%（预言侧的 σ/m/a/w 不确定度）—— **ε\\* 就是那个数**。\n**⟹ 想抓更小的偏差，只能先把 σ、m、a 量得更准。判据本身已经到头了。**"
+    },
+    "bug-E_friction": {
+      "eps_star": 0.1016,
+      "caught_by": [
+        "K3"
+      ],
+      "note": "真实的 bug-E 设的是 **15%** 的恒定摩擦 —— ε\\* = **10%**。"
+    }
+  },
   "wrong_models": [
     {
       "id": "naive-A 用了 Φ 而不是 dΦ/dz",
@@ -32,40 +55,69 @@
     {
       "id": "K1",
       "statement": "K1 v_t ∝ a⁴【结构】",
+      "tolerance": 0.15,
+      "tolerance_source": "指数是**离散**的：正确模型给 4.000，bug-D（球/柱坐标混）给 3.000。\n  半导体级的对数拟合噪声 < 0.01；实验上 a 扫一个十进位、v_t 测到 2% ⟹ 拟合斜率的误差 ≈ 0.02。\n  ⟹ 门槛取 **0.15** —— 远离 1.0 的间隔，也远高于噪声。**离散。**",
       "passes_correct": true,
       "correct_model_detail": "k = 4.000（预言 4.000）",
       "catches": [
-        "naive-A 用了 Φ 而不是 dΦ/dz",
-        "bug-D  a 的指数错成 3"
+        {
+          "id": "naive-A 用了 Φ 而不是 dΦ/dz",
+          "detail": "k = 2.000（预言 4.000）"
+        },
+        {
+          "id": "bug-D  a 的指数错成 3",
+          "detail": "k = 3.000（预言 4.000）"
+        }
       ]
     },
     {
       "id": "K2",
       "statement": "K2 v_t ∝ 1/w【结构】",
+      "tolerance": 0.15,
+      "tolerance_source": "同 K1：正确 −1.000，naive-B（b 与 w 无关）给 **0.000**。间隔 1.0，门槛 0.15。",
       "passes_correct": true,
       "correct_model_detail": "p = -1.000（预言 −1.000）",
       "catches": [
-        "naive-B b 与壁厚 w 无关"
+        {
+          "id": "naive-B b 与壁厚 w 无关",
+          "detail": "p = -0.000（预言 −1.000）"
+        }
       ]
     },
     {
       "id": "K3",
       "statement": "K3 v_t 的绝对值【零参】",
+      "tolerance": 0.1,
+      "tolerance_source": "**绝对值**判据 ⟹ 预言侧的不确定度主导：\n  σ（铜的电导率，温度 ±5°C ⟹ ±2%）· m（磁矩，±3%）· a（管内径，±1% ⟹ v_t ∝ a⁴ ⟹ **±4%**）· w（±3%）\n  ⟹ 预言的 1σ ≈ **6%**；加测量 2% ⟹ 门槛 **10%**。\n  ★★ **⟹ 这条判据分辨不了 10% 以下的绝对值偏差** —— 见 min_detectable。",
       "passes_correct": true,
       "correct_model_detail": "v_t = 2.74 cm/s（预言 2.74）",
       "catches": [
-        "bug-C  前因子 45/1024 → 1/16",
-        "bug-D  a 的指数错成 3",
-        "★ bug-E 多一个恒定摩擦"
+        {
+          "id": "bug-C  前因子 45/1024 → 1/16",
+          "detail": "v_t = 1.93 cm/s（预言 2.74）"
+        },
+        {
+          "id": "bug-D  a 的指数错成 3",
+          "detail": "v_t = 457.10 cm/s（预言 2.74）"
+        },
+        {
+          "id": "★ bug-E 多一个恒定摩擦",
+          "detail": "v_t = 2.33 cm/s（预言 2.74）"
+        }
       ]
     },
     {
       "id": "K4",
       "statement": "K4 b/w 与 w 无关【结构】",
+      "tolerance": 0.05,
+      "tolerance_source": "b/w 的离散度：薄壁近似的误差是 O(w/a) = 0.2 ⟹ 在 w ∈ [0.5, 2] mm 上，\n  正确模型的 b/w 离散度 ≈ 1%（数值实测）；naive-B 给 **~100%**。\n  ⟹ 门槛 **5%** —— 5 倍于正确模型的离散度，20 倍低于 naive-B。",
       "passes_correct": true,
       "correct_model_detail": "b/w 的离散度 = 0.0%",
       "catches": [
-        "naive-B b 与壁厚 w 无关"
+        {
+          "id": "naive-B b 与壁厚 w 无关",
+          "detail": "b/w 的离散度 = 128.6%"
+        }
       ]
     }
   ],

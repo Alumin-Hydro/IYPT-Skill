@@ -90,72 +90,150 @@ def v_t(model_name, a=A0, w=W0):
 V_PRED = (M_MASS * G_ACC) / b_correct(A0, W0)          # 终速的解析预言
 
 
-def crit_exp_a(mn):
+# ★★ 容差**必须有来源**（审稿模式 P18 ①）—— 不许是源码里的裸数字。
+TOL = {
+    "K1": (0.15, "指数是**离散**的：正确模型给 4.000，bug-D（球/柱坐标混）给 3.000。\n"
+                 "  半导体级的对数拟合噪声 < 0.01；实验上 a 扫一个十进位、v_t 测到 2% "
+                 "⟹ 拟合斜率的误差 ≈ 0.02。\n"
+                 "  ⟹ 门槛取 **0.15** —— 远离 1.0 的间隔，也远高于噪声。**离散。**"),
+    "K2": (0.15, "同 K1：正确 −1.000，naive-B（b 与 w 无关）给 **0.000**。间隔 1.0，门槛 0.15。"),
+    "K3": (0.10, "**绝对值**判据 ⟹ 预言侧的不确定度主导：\n"
+                 "  σ（铜的电导率，温度 ±5°C ⟹ ±2%）· m（磁矩，±3%）· a（管内径，±1% "
+                 "⟹ v_t ∝ a⁴ ⟹ **±4%**）· w（±3%）\n"
+                 "  ⟹ 预言的 1σ ≈ **6%**；加测量 2% ⟹ 门槛 **10%**。\n"
+                 "  ★★ **⟹ 这条判据分辨不了 10% 以下的绝对值偏差** —— 见 min_detectable。"),
+    "K4": (0.05, "b/w 的离散度：薄壁近似的误差是 O(w/a) = 0.2 ⟹ 在 w ∈ [0.5, 2] mm 上，\n"
+                 "  正确模型的 b/w 离散度 ≈ 1%（数值实测）；naive-B 给 **~100%**。\n"
+                 "  ⟹ 门槛 **5%** —— 5 倍于正确模型的离散度，20 倍低于 naive-B。"),
+}
+
+
+def crit_exp_a(mn, da=0.0):
     """K1【结构】v_t ∝ a^k，**k 必须精确是 4**。（指数是离散的，不是拟合出来的连续数。）"""
-    aa = np.array([4e-3, 5e-3, 6e-3, 7e-3, 8e-3])
+    aa = np.array([4e-3, 5e-3, 6e-3, 7e-3, 8e-3]) + da
     v = np.array([v_t(mn, a=a) for a in aa])
-    k = np.polyfit(np.log(aa), np.log(v), 1)[0]
-    return abs(k - 4.0) < 0.15, f"k = {k:.3f}（预言 4.000）"
+    k = np.polyfit(np.log(aa - da), np.log(v), 1)[0]      # 名义 a（实验读数）
+    return abs(k - 4.0) < TOL["K1"][0], f"k = {k:.3f}（预言 4.000）"
 
 
-def crit_exp_w(mn):
+def crit_exp_w(mn, da=0.0):
     """K2【结构】v_t ∝ w^p，**p 必须精确是 −1**（薄壁）。"""
     ww = np.array([0.5, 0.7, 1.0, 1.5, 2.0]) * 1e-3
-    v = np.array([v_t(mn, w=w) for w in ww])
+    v = np.array([v_t(mn, a=A0 + da, w=w) for w in ww])
     p = np.polyfit(np.log(ww), np.log(v), 1)[0]
-    return abs(p + 1.0) < 0.15, f"p = {p:.3f}（预言 −1.000）"
+    return abs(p + 1.0) < TOL["K2"][0], f"p = {p:.3f}（预言 −1.000）"
 
 
-def crit_absolute(mn):
+def crit_absolute(mn, da=0.0):
     """★ K3【零自由参数】v_t 的**绝对值**必须等于闭式 (1024/45)·Mga⁴/(μ₀²m²σw)。
 
     ★ 它是**唯一**能抓到「标度律全对、但多一个恒定摩擦」（bug-E）的那条。
     """
-    v = v_t(mn)
-    return abs(v / V_PRED - 1) < 0.10, f"v_t = {v*100:.2f} cm/s（预言 {V_PRED*100:.2f}）"
+    v = v_t(mn, a=A0 + da)
+    return abs(v / V_PRED - 1) < TOL["K3"][0], f"v_t = {v*100:.2f} cm/s（预言 {V_PRED*100:.2f}）"
 
 
-def crit_bw(mn):
+def crit_bw(mn, da=0.0):
     """K4【结构】b/w 与 w **无关**（薄壁近似的签名）。"""
     ww = np.array([0.5, 1.0, 2.0]) * 1e-3
-    r = np.array([MODELS[mn](A0, w) / w for w in ww])
+    r = np.array([MODELS[mn](A0 + da, w) / w for w in ww])
     spread = float(np.ptp(r) / r.mean())
-    return spread < 0.05, f"b/w 的离散度 = {spread:.1%}"
+    return spread < TOL["K4"][0], f"b/w 的离散度 = {spread:.1%}"
 
 
-CRITS = [("K1 v_t ∝ a⁴【结构】", crit_exp_a),
-         ("K2 v_t ∝ 1/w【结构】", crit_exp_w),
-         ("K3 v_t 的绝对值【零参】", crit_absolute),
-         ("K4 b/w 与 w 无关【结构】", crit_bw)]
+CRITS = [("K1", "v_t ∝ a⁴【结构】", crit_exp_a),
+         ("K2", "v_t ∝ 1/w【结构】", crit_exp_w),
+         ("K3", "v_t 的绝对值【零参】", crit_absolute),
+         ("K4", "b/w 与 w 无关【结构】", crit_bw)]
 
 print("=" * 104)
 print("★★ magnetic-brake · 判据 × 模型双向表")
 print("   正确模型这一列必须全 PASS（**不误杀**）；每个错模型必须至少被一条抓到（**不失明**）。")
 print("=" * 104)
 
-rows = {c: {m: f(m) for m in MODELS} for c, f in CRITS}
+rows = {(cid, m): fn(m) for cid, _, fn in CRITS for m in MODELS}
 print(f"  {'判据':26}" + "".join(f" {m[:13]:>15}" for m in MODELS))
 print("  " + "-" * 100)
-for c, _ in CRITS:
-    print(f"  {c:26}" + "".join(f" {'✓ PASS' if rows[c][m][0] else '✗ FAIL':>15}" for m in MODELS))
+for cid, name, _ in CRITS:
+    print(f"  {cid + ' ' + name:26}"
+          + "".join(f" {'✓ PASS' if rows[(cid, m)][0] else '✗ 抓到':>15}" for m in MODELS))
 
 print("\n  ── 判定 ──")
 bad = False
 for m in MODELS:
-    ps = [rows[c][m][0] for c, _ in CRITS]
+    ps = [rows[(c, m)][0] for c, _, _ in CRITS]
     if m.startswith("★ 正确"):
         print(f"  {m:30} 全部 PASS？ {'✓ 是（不误杀）' if all(ps) else '✗✗ 否 —— 误杀了正确模型'}")
         bad |= not all(ps)
     else:
-        hit = [c.split()[0] for (c, _), p in zip(CRITS, ps) if not p]
+        hit = [c for (c, _, _), p in zip(CRITS, ps) if not p]
         print(f"  {m:30} 被抓到？ {'✓ 是  ← ' + '、'.join(hit) if hit else '✗✗ 否 —— 漏网！'}")
         bad |= not hit
 
+# ═══════════════════════════ ② ★ 「不误杀」扫协议自己承认的系统误差（P18 ④）
+#   管内径的加工/测量公差 δa。**b ∝ 1/a⁴ ⟹ v_t ∝ a⁴ ⟹ 这是最敏感的一项。**
+print("\n  " + "─" * 100)
+print("  ② ★ 「不误杀」扫 **管内径公差 δa** —— v_t ∝ a⁴，这是协议里最敏感的一项系统误差")
+print("  " + "─" * 100)
+DAS = [0.0, 0.02e-3, 0.05e-3, 0.10e-3, 0.15e-3]
+print(f"  {'δa [mm]':>9}" + "".join(f"{c:>10}" for c, _, _ in CRITS))
+da_max = None
+for da in DAS:
+    res = [fn("★ 正确", da=da)[0] for _, _, fn in CRITS]
+    print(f"  {da*1e3:>9.2f}" + "".join(f"{'✓' if r else '✗✗ 判死':>10}" for r in res))
+    if da_max is None and not all(res):
+        da_max = da
+DA_SAFE = 0.10e-3 if da_max is None else max(d for d in DAS if d < da_max)
+print(f"\n  ⟹ **判据的有效窗口：δa < {(da_max or 999):.4g} m**"
+      f"（第一个判死正确模型的 δa）")
+print(f"  ⟹ **协议必须把管内径量到 {DA_SAFE*1e3:.2f} mm 以内**（游标卡尺 ±0.02 mm ⟹ 够）。")
+
+# ═══════════════════════════ ③ ★★ 扫错误幅度 ε，报 ε*（P18 ②）
+print("\n  " + "─" * 100)
+print("  ③ ★★ 扫**错误幅度** ε，报「**最小可检测幅度** ε*」—— 不是挑一个数说「抓到了」")
+print("  " + "─" * 100)
+
+
+def _eps_star(mk, lo, hi, tol=0.005):
+    """二分：最小的能被**任一条**判据抓到的 ε。"""
+    if all(fn(*mk(hi))[0] for _, _, fn in CRITS):
+        return None
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        if not all(fn(*mk(mid))[0] for _, _, fn in CRITS):
+            hi = mid
+        else:
+            lo = mid
+    return hi
+
+
+_orig_C, _orig_E = MODELS["bug-C  前因子 45/1024 → 1/16"], F_FRICTION["★ bug-E 多一个恒定摩擦"]
+
+
+def _mk_C(e):
+    MODELS["bug-C  前因子 45/1024 → 1/16"] = lambda a, w: (1 + e) * b_correct(a, w)
+    return ("bug-C  前因子 45/1024 → 1/16",)
+
+
+def _mk_E(e):
+    F_FRICTION["★ bug-E 多一个恒定摩擦"] = e * M_MASS * G_ACC
+    return ("★ bug-E 多一个恒定摩擦",)
+
+
+eC = _eps_star(_mk_C, 0.0, 0.5)
+MODELS["bug-C  前因子 45/1024 → 1/16"] = _orig_C
+eE = _eps_star(_mk_E, 0.0, 0.5)
+F_FRICTION["★ bug-E 多一个恒定摩擦"] = _orig_E
+print(f"  **bug-C（前因子错 ε）**：ε* = **{eC:.0%}** ——「判据能分辨 b 的 {eC:.0%} 偏差」")
+print(f"     ★ 而 K3 的容差就是 10%（预言侧的 σ/m/a/w 不确定度）—— **ε\\* 就是那个数。**")
+print(f"     **⟹ 想抓更小的偏差，只能先把 σ、m、a 量得更准 —— 判据本身已经到头了。**")
+print(f"  **bug-E（恒定摩擦 ε·Mg）**：ε* = **{eE:.0%}**（真实的 bug-E 设的是 15%）")
+
 print("\n  ── 明细 ──")
-for c, _ in CRITS:
-    print(f"\n  【{c}】")
+for cid, name, _ in CRITS:
+    print(f"\n  【{cid} {name}】  容差 {TOL[cid][0]}")
     for m in MODELS:
-        ok, dt = rows[c][m]
+        ok, dt = rows[(cid, m)]
         print(f"    {'✓' if ok else '✗'} {m:30} {dt}")
 
 WHY = {
@@ -181,17 +259,47 @@ from pathlib import Path
 
 out = {
     "generated_by": "01-criteria/criterion_matrix.py",
-    "purpose": "★★ 判据 × 模型的**双向**表。只跑「正确模型」那一列 = 换了一把新的失明的锁。",
+    "purpose": "★★★ 判据 × 模型的**双向**表 + P18 的三个新维度。\n"
+               "只跑「正确模型」那一列 = 换了一把新的失明的锁。\n"
+               "**而只跑布尔值，那张表可以被调到全绿（审稿模式 P18）。**",
+    "robustness_scan": {
+        "parameter": "δa = 管内径的加工/测量公差 [m]",
+        "why": "★ **「不误杀」必须在协议自己承认的系统误差上跑过**（P18 ④）。\n"
+               "**v_t ∝ a⁴ ⟹ 管内径是最敏感的一项**：a 偏 1% ⟹ v_t 偏 4%。",
+        "delta_max": None if da_max is None else round(float(da_max), 6),
+        "verdict": (f"判据的有效窗口：**δa < {da_max*1e3:.2f} mm**。"
+                    f"协议必须把管内径量到 **{DA_SAFE*1e3:.2f} mm** 以内"
+                    f"（游标卡尺 ±0.02 mm ⟹ 够）。"
+                    if da_max else "在 δa ≤ 0.15 mm 的全范围内都不误杀"),
+    },
+    "min_detectable": {
+        "why": "★★ 一个错模型「被抓到了 ✓」**没有信息量 —— 因为幅度是作者挑的**（P18 ②）。\n"
+               "**扫 ε，报「最小可检测幅度」ε\\*** —— 那才是判据集的分辨率。",
+        "bug-C_prefactor": {
+            "eps_star": round(float(eC), 4),
+            "caught_by": ["K3"],
+            "note": f"「判据能分辨 b 的 **{eC:.0%}** 偏差」。\n"
+                    "★ 而 K3 的容差就是 10%（预言侧的 σ/m/a/w 不确定度）—— **ε\\* 就是那个数**。\n"
+                    "**⟹ 想抓更小的偏差，只能先把 σ、m、a 量得更准。判据本身已经到头了。**",
+        },
+        "bug-E_friction": {
+            "eps_star": round(float(eE), 4),
+            "caught_by": ["K3"],
+            "note": f"真实的 bug-E 设的是 **15%** 的恒定摩擦 —— ε\\* = **{eE:.0%}**。",
+        },
+    },
     "wrong_models": [
         {"id": m, "statement": m.split(maxsplit=1)[-1], "why_a_student_writes_it": WHY[m]}
         for m in MODELS if not m.startswith("★ 正确")],
     "criteria": [
-        {"id": c.split()[0], "statement": c,
-         "passes_correct": bool(rows[c]["★ 正确"][0]),
-         "correct_model_detail": rows[c]["★ 正确"][1],
-         "catches": [m for m in MODELS
-                     if not m.startswith("★ 正确") and not rows[c][m][0]]}
-        for c, _ in CRITS],
+        {"id": cid, "statement": f"{cid} {name}",
+         "tolerance": TOL[cid][0],
+         "tolerance_source": TOL[cid][1],
+         "passes_correct": bool(rows[(cid, "★ 正确")][0]),
+         "correct_model_detail": rows[(cid, "★ 正确")][1],
+         "catches": [{"id": m, "detail": rows[(cid, m)][1]} for m in MODELS
+                     if not m.startswith("★ 正确") and not rows[(cid, m)][0]]}
+        for cid, name, _ in CRITS],
     "verdict": "FAIL" if bad else "PASS",
 }
 Path(__file__).with_name("matrix.json").write_text(
