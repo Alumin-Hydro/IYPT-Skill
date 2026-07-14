@@ -1049,7 +1049,7 @@ def check_criterion_matrix(spec: dict) -> None:
             err("CRIT-FALSEKILL",
                 f"判据 `{cid}` 在**正确模型**上不通过 —— **它会误杀一个正确的模型。**\n"
                 f"        （r1/r2 各翻车一次：P1 的原判据被 ±0.5 mm 定位误差判死；"
-                f"r2 的抛物线顶点判据被 G 的非线性判死 +27.7%。）\n"
+                f"r2 的抛物线顶点判据被 G 的非线性判死 +17.5%。）\n"
                 f"        **判据的适用区间由物理定**（如「G 的线性度 <1% 的那段 z₀」），"
                 f"**不是随手画的。**")
         caught = _as_list(c.get("catches"))
@@ -1063,6 +1063,312 @@ def check_criterion_matrix(spec: dict) -> None:
                 err("CRIT-CATCH-DANGLING",
                     f"判据 `{cid}` 声称抓得到 `{w}`，但 wrong_models 里没有这个 id —— "
                     f"**编出来的 id 是非空的。**")
+
+
+# ---------------------------------------------------------------- ★★ 闭式里的孤儿
+#
+#  **教训（electrical-damping r3 审稿，真实发生）**：`STALE-VALUE` 这道门只在
+#  「值**变了**，但旧值还在别处躺着」时触发（`if abs(ov-nv) <= 1e-12: continue`）。
+#
+#  > **而「忘了改」的定义，就是「值没变」。**
+#
+#  于是 `(16)/(23)/(25).closed_form` 里的 `gamma0` —— 一个在 r2 就被改名成 `\gamma_{oc}`、
+#  **在当前契约的 symbols/parameters 里根本不存在**的标识符 —— 三代原封不动地活着，
+#  而 `STALE-SYMBOL` 也抓不到它（它查的是**正文**，不是 `closed_form` 里的**代码**）。
+#
+#  **一个下游 agent 拿 `closed_form` 去 eval，用 `parameters[].symbol` 建符号表 ⟹ NameError。**
+#  **而这道门只需要解析，不需要求值。**
+
+_MATH_NAMES = {
+    "sqrt", "exp", "log", "log10", "ln", "sin", "cos", "tan", "arctan", "atan",
+    "sinh", "cosh", "tanh", "abs", "min", "max", "pi", "inf", "sign", "erf",
+    "sum", "int", "d", "dt", "dz",                     # 微分记号
+    "True", "False", "None", "and", "or", "not", "if", "else", "for", "in",
+}
+
+_IDENT = re.compile(r"(?<![\w.])([A-Za-z_]\w*)")
+#: `tau = M/b = 2.80 ms` —— 数字 + 空格 + 字母 ⟹ 那是**单位**，不是标识符。
+_UNIT_AFTER_NUM = re.compile(r"\d\s+([A-Za-z_]\w*)")
+#: `Bz_coil(z)` / `G(z0)` —— 后面跟 `(` 的是**函数**，它可以是数值定义的。
+_CALLED = re.compile(r"([A-Za-z_]\w*)\s*\(")
+#: ★ **只有「单个标识符（可带形参）」的左边才是一次定义。**
+#
+#   **这道门第一版就栽在这里**（而且是它自己要抓的那个 bug）：
+#   `(16).closed_form` 是 `1/(gamma - gamma0) = 2*M_eff*(R+R_c)/G(z0)**2` ——
+#   左边是一个**表达式**，不是定义。第一版把 LHS 里所有标识符都当成「已定义」，
+#   于是 **`gamma0` 把自己定义了，门对它彻底失明。**
+#
+#   > **我建的新门，在它该响的地方没响 —— 而我差一点就交付了。**
+#   > **这就是本轮的全部内容：拆掉一把瞎锁，换上的新锁多半也是瞎的。**
+#   > **⟹ 反向用例（`(16)` 这一行）已经钉进 `--selftest`。**
+_DEF_LHS = re.compile(r"^\s*([A-Za-z_]\w*)\s*(?:\(([^)]*)\))?\s*$")
+
+
+def _ascii_variants(sym: str) -> set[str]:
+    r"""一个契约符号（LaTeX）在 `closed_form` 里可能被写成的**标识符**。
+
+    契约写 `\mu_0`，代码写 `mu0` —— **这是两种合法的记法，不是错误。**
+    但 `\gamma_{oc}` 的变体是 `gamma_oc` / `gammaoc` —— **`gamma0` 不在里面。**
+
+    > **⟹ 记法变体放行，而真正不存在的标识符仍然被抓住。**
+    > 这正是零号规则：**不许因为「我知道他的意思」就放过。**
+    > `gamma0` 和 `gamma_oc` 是两个不同的标识符，而前者在契约里**不存在**。
+    """
+    out: set[str] = {sym}
+    for ell_as in ("ell", "l"):                          # `\ell_c` 写成 ell_c 或 l_c 都常见
+        s = re.sub(r"\\(?:rm|mathrm|text|mathbf|operatorname)\b\s*", "", sym)
+        s = s.replace(r"\ell", ell_as)
+        s = s.replace("\\", "")                          # \max → max、\gamma → gamma、\mu → mu
+        s = s.replace("^*", "_star").replace("*", "_star")   # t^* → t_star
+        s = s.replace("^", "_").replace("'", "p")        # G' → Gp、R_c' → R_cp
+        s = re.sub(r"\W+", "_", s).strip("_")
+        s = re.sub(r"__+", "_", s)
+        if s:
+            out.add(s)
+            out.add(s.replace("_", ""))                  # mu_0 → mu0、A_0 → A0
+    return out
+
+
+def _clauses(cf: str) -> list[str]:
+    return [c for c in re.split(r"[;\n]|,\s+(?=[A-Za-z_]\w*\s*=)", cf) if c.strip()]
+
+
+def _defs_in(cf: str) -> tuple[set[str], set[str]]:
+    """(这份闭式定义的名字, 它的函数形参)。**LHS 是表达式的，一个名字都不定义。**"""
+    names: set[str] = set()
+    params: set[str] = set()
+    for clause in _clauses(cf):
+        if "==" in clause or "=" not in clause:
+            continue
+        m = _DEF_LHS.match(clause.split("=", 1)[0])
+        if not m:
+            continue                                   # ★ `1/(gamma - gamma0) = …` —— 不是定义
+        names.add(m.group(1))
+        if m.group(2):
+            params |= {p.strip() for p in m.group(2).split(",") if p.strip()}
+    return names, params
+
+
+def check_closed_forms(spec: dict) -> None:
+    """★★ `equations[].closed_form` 里的每个自由标识符，必须在契约里存在。"""
+    if not spec:
+        return
+    eqs = [e for e in spec.get("equations", []) if isinstance(e.get("closed_form"), str)]
+    if not eqs:
+        return
+
+    known: set[str] = set()
+    for grp in ("parameters", "symbols", "targets"):
+        for it in spec.get(grp, []):
+            if isinstance(it, dict) and it.get("symbol"):
+                known |= _ascii_variants(str(it["symbol"]))
+
+    # ★ 跨方程引用是合法的：(23) 用的 Gp0 由 (7) 定义。
+    defined: set[str] = set()
+    for e in eqs:
+        defined |= _defs_in(e["closed_form"])[0]
+
+    for e in eqs:
+        cf, eid = e["closed_form"], e.get("id", "?")
+        local = _defs_in(cf)[1]                        # 形参只在**本式**内有效
+        units = {m.group(1) for m in _UNIT_AFTER_NUM.finditer(cf)}
+        called = {m.group(1) for m in _CALLED.finditer(cf)}
+        free = {m.group(1) for m in _IDENT.finditer(cf)}
+        for o in sorted(free - known - defined - local - _MATH_NAMES - units - called):
+            err("CLOSED-FORM-ORPHAN",
+                f"`equations[{eid}].closed_form` 用了标识符 `{o}` —— "
+                f"**它不在契约的 parameters / symbols / targets 里。**\n"
+                f"        下游拿 `closed_form` 去求值、用 `symbol` 建符号表 ⟹ **NameError**。\n"
+                f"        **改名必须传播到代码，不只是正文**（`STALE-SYMBOL` 只查正文）。\n"
+                f"        > {cf[:90]}")
+
+
+# ---------------------------------------------------------------- ★★★ 契约自相矛盾
+#
+#  **这道门是 r3 审稿最贵的一条产出。**
+#
+#  `STALE-VALUE` 拿归档的旧值 grep 新文档 —— 但它第 960 行写着：
+#
+#      if abs(ov - nv) <= 1e-12 * max(abs(ov), 1.0):
+#          continue                      # ← 值**没变** ⟹ 跳过
+#
+#  > **而「忘了改」的定义，就是「值没变」。**
+#
+#  **实测**：`targets[\gamma].baseline_value = 2.5978` 在 r1 / r2 / r3 **三代一字未动**，
+#  而它自己的 `analytical_prediction` 算出来是 **2.3454**（偏 +10.8%）。
+#  r2 审稿逐字点过它。r3 的 §11 写着「全部清掉」。**而两道 STALE-* 门都看不见它** ——
+#  因为 `old == new`，门根本没往下走。
+#
+#  > **⟹ 一个「值从没改过」的错值，只能靠「它和自己的公式对不上」来抓。**
+#  > **这是 P17 ④ 升了一层楼：这次瞎掉的不是物理判据，是「用来查判据的那道机械门」。**
+#
+#  ★ **顺带的收获**：`t^*` 和 `A_c` 的 baseline 是在**短路**（R=0）下算的，而 `\gamma`/`c_2`
+#  是在 R=20 Ω 下算的。**这件事以前只活在作者的脑子里。** 一个 baseline 复算不出来，
+#  **第一嫌疑不是「值错了」，而是「它的基准条件从来没被写下来」。**
+
+_MATH_ENV = {k: getattr(__import__("math"), k) for k in
+             ("sqrt", "exp", "log", "log10", "sin", "cos", "tan", "atan", "pi", "sinh", "cosh")}
+_MATH_ENV["abs"] = abs
+
+
+def _spec_env(spec: dict) -> dict:
+    """契约的符号表：parameters 的 value + targets 的 baseline_value，按 ASCII 变体展开。"""
+    env = dict(_MATH_ENV)
+    for p in spec.get("parameters", []):
+        if isinstance(p.get("value"), (int, float)) and p.get("symbol"):
+            for v in _ascii_variants(str(p["symbol"])):
+                if v.isidentifier():
+                    env[v] = float(p["value"])
+    for t in spec.get("targets", []):
+        if isinstance(t.get("baseline_value"), (int, float)) and t.get("symbol"):
+            for v in _ascii_variants(str(t["symbol"])):
+                if v.isidentifier():
+                    env.setdefault(v, float(t["baseline_value"]))   # parameters 优先
+    return env
+
+
+def check_spec_selfcontradict(spec: dict) -> None:
+    """★★★ 每个 `targets[].baseline_value`，必须能由它自己的 `closed_form` 复算出来。"""
+    if not spec:
+        return
+    targets = spec.get("targets", [])
+    if not targets:
+        return
+    env = _spec_env(spec)
+
+    for t in targets:
+        sym = t.get("symbol", "?")
+        bl = t.get("baseline_value")
+        cf = t.get("closed_form")
+        if not isinstance(bl, (int, float)):
+            continue
+
+        if not isinstance(cf, str) or not cf.strip():
+            if not str(t.get("numerical_recipe") or "").strip():
+                err("TARGET-NO-RECIPE",
+                    f"`targets[{sym}].baseline_value = {bl:g}` **既没有可执行的 `closed_form`，"
+                    f"也没有 `numerical_recipe`。**\n"
+                    f"        ⟹ 这个数**没有任何机械校验**。它可以三代原封不动地错下去"
+                    f"（`targets[\\gamma] = 2.5978` 就是这么活过来的 —— 真值 2.3454）。\n"
+                    f"        **二选一**：① 写 `closed_form`（Python 表达式，"
+                    f"只用 `parameters[].symbol` 和其他 `targets[].symbol`）；\n"
+                    f"        ② 若它只能数值求解（如「(6) 的极值」），写 `numerical_recipe` "
+                    f"**显式声明**它无闭式。**不许沉默地跳过。**")
+            continue
+
+        try:
+            got = eval(cf, {"__builtins__": {}}, env)              # noqa: S307
+        except Exception as e:                                     # noqa: BLE001
+            err("TARGET-CF-BROKEN",
+                f"`targets[{sym}].closed_form` **求不出值**：{type(e).__name__}: {e}\n"
+                f"        > {cf[:90]}\n"
+                f"        它必须是一个**可执行的 Python 表达式**，"
+                f"只用 `parameters[].symbol` / `targets[].symbol`（LaTeX 会被自动归一化成标识符）。")
+            continue
+
+        if not isinstance(got, (int, float)) or bl == 0:
+            continue
+        dev = got / bl - 1
+        if abs(dev) > 0.01:
+            err("SPEC-SELFCONTRADICT",
+                f"★★ `targets[{sym}]` **和它自己的公式对不上**：\n"
+                f"        `baseline_value` = **{bl:.6g}**，而 `closed_form` 算出 **{got:.6g}** "
+                f"（偏 **{dev:+.1%}**，门槛 1%）。\n"
+                f"        > {cf[:90]}\n"
+                f"        **这是下游会直接撞上的一个伪失败** —— Skill 2 拿 baseline 对质，"
+                f"然后去「修」一段本来正确的代码。\n"
+                f"        **两个嫌疑，按顺序查**：\n"
+                f"        **① 值就是错的**（最常见 —— 一个从没被改过的旧值。"
+                f"`STALE-VALUE` 对它结构性失明：`old == new` ⟹ 那道门根本不响）。\n"
+                f"        **② 基准条件没写进公式**（如 `t^*` 是**短路** R=0 算的，"
+                f"而 `\\gamma` 是 R=20 Ω —— **这件事以前只活在作者脑子里**）。")
+
+
+# ---------------------------------------------------------------- ★★ 幽灵引文
+#
+#  **教训（真实发生，而且受害者是 `CLAUDE.md` 本身）**：
+#  作者写「**r2 审稿的实测：正确模型偏 +27.7%**」。
+#  **而 `01-review-r2.md` 里 "27.7" 出现 0 次 —— 它逐字写的是 17.5%（出现 8 次）。**
+#
+#  那个凭记忆填出来的数字，一路活到了 `CLAUDE.md` 的「教训 15」、
+#  `physics-failure-patterns.md` 的弹药表、以及 `check_analysis.py` 自己的错误消息里。
+#  **下一道题的模型会读到它，并且相信它。**
+#
+#  > **零号规则通常说：审稿人不许拿自己的推导替换作者的字。**
+#  > **这是它的镜像：作者不许拿自己的记忆替换审稿人的字。**
+#
+#  **这和 Skill 3 的「行内引文必须是原文的子串」是同一道门** —— **编的数字不可能是原文的子串。**
+
+#: 一行里「点名了 r{n}」+「给了一个百分数」⟹ 那个百分数必须在 01-review-r{n}.md 里。
+_PCT = re.compile(r"[-+]?\d+(?:\.\d+)?(?=\s*\\?%)")
+_RTAG = re.compile(r"\br([1-9])\b")
+#: 豁免：这一行**自己声明了另一个来源**（本文算的，不是从审稿报告抄的）。
+_OWN_SOURCE = re.compile(
+    r"本文|本表|本节|本轮|我复现|复现|重算|重跑|自己算|"
+    r"\d+\s*点|01-review-r\d|matrix\.json|criterion_matrix")
+
+
+def _own_source_near(lines: list[str], i: int) -> bool:
+    """第 i 行（1-based）的数，**在附近声明了自己的来源**吗？
+
+    ★ 窗口是**双向**的（上下各 3 行）—— 因为一张表的说明常常在表**下面**：
+
+        | ±6 mm（r2 用的） | 1.1% | +16.2% |        ← 数在这里
+        > ★ 这里的 +16.2% 是**本表**的 9 点扫描。      ← 来源在下一行
+
+    **这不是宽容，是和 `_cited` 同构的一条语法**：
+    **模糊的归属必须被显式化 —— 「我自己算的」和「我从 r2 抄的」，在语法上被区分开。**
+    """
+    for j in range(max(0, i - 4), min(len(lines), i + 3)):
+        if _OWN_SOURCE.search(lines[j]):
+            return True
+    for j in range(i - 1, -1, -1):                     # 节标题（子标题继承父节）
+        m = re.match(r"(#{1,6})\s", lines[j])
+        if not m:
+            continue
+        if _OWN_SOURCE.search(lines[j]):
+            return True
+        if len(m.group(1)) <= 2:
+            return False
+    return False
+
+
+def check_review_citations(ws: Path, md: str) -> None:
+    """★★ 凡是把一个数归给「r{n} 审稿」的，那个数必须能在 `01-review-r{n}.md` 里 grep 到。"""
+    reports: dict[str, str] = {}
+    for p in sorted(ws.glob("01-review-r*.md")):
+        m = re.search(r"01-review-(r\d+)\.md", p.name)
+        if m:
+            reports[m.group(1)] = p.read_text(encoding="utf-8", errors="replace")
+    if not reports:
+        return
+
+    lines = md.splitlines()
+    for i, line in enumerate(lines, 1):
+        pcts = _PCT.findall(line)
+        if not pcts:
+            continue
+        tags = {f"r{d}" for d in _RTAG.findall(line)} & reports.keys()
+        if not tags or _own_source_near(lines, i):
+            continue
+        for lit in pcts:
+            # ★ 一行里可以同时点名 r1 和 r2（「r1 死于定位，r2 死于非线性 +17.5%」）。
+            #   机械上无法判断哪个数属于哪一版 —— **但「它在任何一份被点名的报告里都查无此数」
+            #   已经足够抓住那个病：你是凭记忆编的。**
+            #   （放宽的是「归属」，**没有放宽「存在」** —— 后者才是这道门的全部内容。）
+            if any(lit.lstrip("+-") in reports[t] for t in tags):
+                continue
+            err("REVIEW-CITE-GHOST",
+                f"01-analysis.md:{i} 把 `{lit}%` 归给了 **{'/'.join(sorted(tags))}**，"
+                f"但那些审稿报告里**根本没有这个数**。\n"
+                f"        **这是一个幽灵数字 —— 你拿自己的记忆替换了审稿人的字。**\n"
+                f"        （真实后果：一个编出来的 `+27.7%` 进了 `CLAUDE.md` 的教训表、"
+                f"审稿人的弹药库、和本检查器自己的错误消息 —— **下一道题的模型会相信它**。）\n"
+                f"        修法二选一：**① 改成报告里真有的那个数**；\n"
+                f"        **② 若这个数是你自己算的**，在附近点名来源"
+                f"（`本表` / `本文` / `9 点` / `01-review-r2.md L123`）——\n"
+                f"        **引用必须点名出处。编出来的数字，不可能是原文的子串。**\n"
+                f"        > {line.strip()[:100]}")
 
 
 def check_residue(md: str) -> None:
@@ -1232,6 +1538,116 @@ def selftest() -> int:
 
     print()
     print("=" * 72)
+    print("②c′ ★★★ SPEC-SELFCONTRADICT：抓「值**压根没改过**」——STALE-VALUE 看不见的那一半")
+    print("=" * 72)
+
+    def _sc(spec):
+        ERRORS.clear()
+        check_spec_selfcontradict(spec)
+        return [e.split("]")[0].lstrip("[") for e in ERRORS]
+
+    _P = [{"symbol": r"\gamma_{oc}", "value": 0.0413}, {"symbol": "M_eff", "value": 0.006557},
+          {"symbol": "R", "value": 20.0}, {"symbol": "R_c", "value": 3.72}]
+    _CF = "gamma_oc + G_max**2/(2*M_eff*(R + R_c))"
+
+    # ★★★ 真实事故：targets[\gamma] = 2.5978 在 r1/r2/r3 **三代一字未动**，
+    #     而它自己的公式算出 2.3454。**STALE-VALUE 对它彻底失明**（old == new ⟹ 直接 continue）。
+    eq("★★★ 三代未动的错值（2.5978 vs 公式的 2.345）⟹ SPEC-SELFCONTRADICT",
+       _sc({"parameters": _P, "targets": [
+           {"symbol": r"G_{\max}", "baseline_value": 0.8466, "numerical_recipe": "(6) 求极值"},
+           {"symbol": r"\gamma", "baseline_value": 2.5978, "closed_form": _CF}]}),
+       ["SPEC-SELFCONTRADICT"])
+    eq("值改对了（2.3454）⟹ 不报",
+       _sc({"parameters": _P, "targets": [
+           {"symbol": r"G_{\max}", "baseline_value": 0.8466, "numerical_recipe": "(6) 求极值"},
+           {"symbol": r"\gamma", "baseline_value": 2.3454, "closed_form": _CF}]}),
+       [])
+    # ★ 没有闭式、也没有 numerical_recipe ⟹ 这个数**没有任何机械校验** —— 不许沉默地跳过。
+    eq("★ 既无 closed_form 也无 numerical_recipe ⟹ TARGET-NO-RECIPE",
+       _sc({"parameters": _P, "targets": [{"symbol": r"\gamma", "baseline_value": 2.5978}]}),
+       ["TARGET-NO-RECIPE"])
+    eq("显式声明「只能数值求解」⟹ 放行（但必须**说出来**）",
+       _sc({"parameters": _P, "targets": [
+           {"symbol": r"G_{\max}", "baseline_value": 0.8466,
+            "numerical_recipe": "(6) 的极值，无闭式"}]}), [])
+    eq("闭式写坏了 ⟹ TARGET-CF-BROKEN（不是静默跳过）",
+       _sc({"parameters": _P, "targets": [
+           {"symbol": r"\gamma", "baseline_value": 2.5978, "closed_form": "gamma_oc + nonexistent"}]}),
+       ["TARGET-CF-BROKEN"])
+    ERRORS.clear()
+
+    print()
+    print("=" * 72)
+    print("②d ★★ CLOSED-FORM-ORPHAN：改名必须传播到**代码**，不只是正文")
+    print("=" * 72)
+    # `\gamma_{oc}` 在 closed_form 里合法的写法只有 gamma_oc / gammaoc —— **gamma0 不是**。
+    eq("\\gamma_{oc} → 变体含 gamma_oc",   "gamma_oc" in _ascii_variants(r"\gamma_{oc}"),  True)
+    eq("★ \\gamma_{oc} → 变体**不含** gamma0",
+       "gamma0" in _ascii_variants(r"\gamma_{oc}"), False)
+    eq("\\mu_0 → 变体含 mu0（去下划线的写法合法）", "mu0" in _ascii_variants(r"\mu_0"), True)
+    eq("\\ell_c → 变体含 l_c（\\ell 就是 l）",     "l_c" in _ascii_variants(r"\ell_c"), True)
+
+    # ★★★ 反向用例 —— **这道门的第一版就死在这里，而且是被它自己要抓的那个 bug 杀死的。**
+    #     `1/(gamma - gamma0) = …` 的左边是一个**表达式**，不是定义。
+    #     第一版把 LHS 里所有标识符都塞进「已定义」⟹ **gamma0 把自己定义了 ⟹ 门彻底失明。**
+    #     **我差一点就交付了一把新的瞎锁。**
+    eq("★★ LHS 是表达式（1/(gamma-gamma0)=…）⟹ **一个名字都不定义**",
+       _defs_in("1/(gamma - gamma0) = 2*M_eff*(R + R_c)/G(z0)**2")[0], set())
+    eq("LHS 是单标识符 ⟹ 定义它",
+       _defs_in("Gp0 = -1.5*mu0*N*m*a**2")[0], {"Gp0"})
+    eq("LHS 带函数签名 ⟹ 定义函数名，形参归本地",
+       _defs_in("G0(z) = mu0*N*m/(2*l_c)"), ({"G0"}, {"z"}))
+
+    def _cf(spec):
+        ERRORS.clear()
+        check_closed_forms(spec)
+        return [e.split("]")[0].lstrip("[") for e in ERRORS]
+
+    # ★ `\gamma` 和 `\gamma_{oc}` 是**两个**符号 —— 少写一个，门就会（正确地）把它也当孤儿。
+    _sym = {"symbols": [{"symbol": r"\gamma"}, {"symbol": r"\gamma_{oc}"}, {"symbol": r"\mu_0"},
+                        {"symbol": "M_eff"}, {"symbol": "R"}, {"symbol": "R_c"},
+                        {"symbol": "G"}, {"symbol": "z_0"}, {"symbol": r"\beta"}]}
+    eq("★★ 孤儿 gamma0（真实 bug，三代存活）⟹ CLOSED-FORM-ORPHAN",
+       _cf({**_sym, "equations": [
+           {"id": "(16)", "closed_form": "1/(gamma - gamma0) = 2*M_eff*(R + R_c)/G(z0)**2"}]}),
+       ["CLOSED-FORM-ORPHAN"])
+    eq("改名传播到位（gamma_oc）⟹ 不报",
+       _cf({**_sym, "equations": [
+           {"id": "(16)", "closed_form": "1/(gamma - gamma_oc) = 2*M_eff*(R + R_c)/G(z0)**2"}]}),
+       [])
+    eq("跨方程引用（(23) 用 (7) 定义的 Gp0）⟹ 不报",
+       _cf({**_sym, "equations": [
+           {"id": "(7)",  "closed_form": "Gp0 = -1.5*mu0*M_eff"},
+           {"id": "(23)", "closed_form": "beta = Gp0**2/(R + R_c)"}]}),
+       [])
+    eq("单位不是标识符（`= 2.80 ms`）⟹ 不报",
+       _cf({**_sym, "equations": [{"id": "(12)", "closed_form": "tau = M_eff/R = 2.80 ms"}]}), [])
+    ERRORS.clear()
+
+    print()
+    print("=" * 72)
+    print("②e ★★ REVIEW-CITE-GHOST：**作者不许拿自己的记忆替换审稿人的字**")
+    print("=" * 72)
+    # 真实事故：作者写「r2 审稿的实测 +27.7%」，而 r2 报告里 "27.7" 出现 **0 次**（写的是 17.5%）。
+    # 那个数一路进了 CLAUDE.md 的教训表、审稿人的弹药库、和本检查器自己的错误消息。
+    _L = ["## 8.5 · 双向表", "",
+          "r2 的顶点判据判死正确模型 $+27.7\\%$", "",          # 3: 幽灵
+          "r2 的顶点判据判死正确模型 $+17.5\\%$", "",          # 5: 真的（r2 说过）
+          "| ±6 mm（**r2 用的**） | **$+16.2\\%$** |",         # 7: 本文算的
+          "> ★ 这里的 $+16.2\\%$ 是**本表**的 9 点扫描。", ""]  # 8: 来源在**下一行**
+    eq("★ 上下文里点名了「本表」⟹ 放行（窗口必须**双向** —— 表的说明常在表下面）",
+       _own_source_near(_L, 7), True)
+    eq("★ 孤零零一句「r2 报的是 +27.7%」⟹ 没有来源 ⟹ **抓住**",
+       _own_source_near(_L, 3), False)
+    # ★ 而放宽的只是「归属」，**没有放宽「存在」**：
+    #   一行里同时点名 r1 和 r2 时，无法机械判断哪个数属于哪一版 ——
+    #   但「它在**任何**一份被点名的报告里都查无此数」已经足够抓住「凭记忆编造」。
+    eq("百分数正则：+17.5% / -3.9% / 16.2% 都抠得出",
+       _PCT.findall(r"偏 $+17.5\%$，方向是 $-3.9\%$，本表 16.2%"), ["+17.5", "-3.9", "16.2"])
+    ERRORS.clear()
+
+    print()
+    print("=" * 72)
     print("③ SILENT-NEGLECT：**「这一项不可忽略」是最负责任的一句话，不许骂它**")
     print("=" * 72)
     _neg = _NEGATED_NEGLECT          # ★ 用同一个对象——自检必须测「真的在跑的那份正则」
@@ -1355,6 +1771,11 @@ def main() -> int:
         # ★★ 这两道是 CLAUDE.md 教训 4 说「目前没有机械检查能发现」的那两件事
         ("check_stale_values",     lambda: check_stale_values(workspace, md, problem_md, spec or {})),
         ("check_criterion_matrix", lambda: check_criterion_matrix(spec or {})),
+        # ★★★ 这三道来自 r3 审稿：STALE-VALUE 只在「值变了」时看得见，
+        #     而「忘了改」的定义就是「值没变」——它对自己要抓的主要形态结构性失明。
+        ("check_spec_selfcontradict", lambda: check_spec_selfcontradict(spec or {})),
+        ("check_closed_forms",     lambda: check_closed_forms(spec or {})),
+        ("check_review_citations", lambda: check_review_citations(workspace, md)),
         ("check_residue",          lambda: check_residue(md)),
         ("check_sections",         lambda: check_sections(md)),
     ]

@@ -468,7 +468,7 @@
     },
     "targets": {
       "type": "array",
-      "description": "要算出来的目标量。analytical_prediction 是 Skill 2 的对拍基准——数值解和它差太远，先怀疑代码，再怀疑模型。",
+      "description": "要算出来的目标量。analytical_prediction 是 Skill 2 的对拍基准——数值解和它差太远，先怀疑代码，再怀疑模型。\n\n★★★ **每个 baseline_value 必须能被机械复算**（`closed_form`），**或显式声明它无闭式**（`numerical_recipe`）。**不许沉默地跳过。**\n\n**为什么**（真实事故）：`targets[\\gamma].baseline_value = 2.5978` 在 r1/r2/r3 **三代一字未动**，而它自己的公式算出 **2.3454**（偏 +10.8%）。\n两轮审稿逐字点过它，修订记录写着「全部清掉」—— **而 `STALE-VALUE` 对它彻底失明**，因为那道门第一行就是 `if 值没变: continue`。\n> **而「忘了改」的定义，就是「值没变」。**",
       "items": {
         "type": "object",
         "required": [
@@ -489,7 +489,7 @@
           },
           "analytical_prediction": {
             "type": "string",
-            "description": "Model-0 的闭式预测 (LaTeX)"
+            "description": "闭式预测（**LaTeX，给人读**）。可执行的那份写在 `closed_form`。"
           },
           "baseline_value": {
             "type": "number",
@@ -498,8 +498,39 @@
           "scaling_law": {
             "type": "string",
             "description": "如 \"v_t \\propto B^{-2} \\sigma^{-1}\"。幂律指数是零自由参数预测——最有说服力的东西。"
+          },
+          "closed_form": {
+            "type": "string",
+            "description": "★★★ **可执行的 Python 表达式**，求值后必须等于 `baseline_value`（容差 1%），否则 `SPEC-SELFCONTRADICT`。\n\n可用的名字：`parameters[].symbol` 和其他 `targets[].symbol` —— LaTeX 会被自动归一化成标识符（`\\gamma_{oc}` → `gamma_oc`，`\\mu_0` → `mu_0`/`mu0`，`\\ell_c` → `ell_c`/`l_c`，`t^*` → `t_star`）。\n\n★ **单位换算必须显式写进表达式**（如 SI 的 1/(s·m²) → 契约声明的 1/(s·mm²)：`* 1e-6`）。\n★ **基准条件也必须写进表达式**（如短路就写 `(0 + R_c)`，不要写 `(R + R_c)`）——见 `baseline_conditions`。"
+          },
+          "numerical_recipe": {
+            "type": "string",
+            "description": "★ 这个量**只能数值求解**时（如「(6) 的极值点」），在这里**显式声明**，并说清怎么算。\n**它是 `closed_form` 的替代品，不是逃生舱** —— 两者必居其一，否则这个 baseline **没有任何机械校验**，它可以三代原封不动地错下去。"
+          },
+          "baseline_conditions": {
+            "type": "string",
+            "description": "★★ 这个 baseline 是**在什么条件下**算的：哪个 R、哪个 z_0、哪个 A_0。\n\n**为什么必须写**（真实事故）：同一份契约里，`\\gamma` 和 `c_2` 的 baseline 用 **R = 20 Ω**，而 `t^*` 和 `A_c` 用 **短路 R = 0** —— **这个区别以前只活在作者脑子里。**\n> **一个 baseline 复算不出来，第一嫌疑不是「值错了」，而是「它的基准条件从来没被写下来」。**"
           }
-        }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "closed_form"
+            ]
+          },
+          {
+            "required": [
+              "numerical_recipe"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "baseline_value"
+              ]
+            }
+          }
+        ]
       }
     },
     "figures": {

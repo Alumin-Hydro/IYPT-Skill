@@ -779,7 +779,8 @@
       "unit": "Wb/m",
       "analytical_prediction": "由 (6) 数值求极值（点偶极子 + 薄线圈）",
       "baseline_value": 0.8466,
-      "scaling_law": "G ∝ N·m；|G'(0)| ∝ (a² + ℓ_c²/4)^(-5/2)"
+      "scaling_law": "G ∝ N·m；|G'(0)| ∝ (a² + ℓ_c²/4)^(-5/2)",
+      "numerical_recipe": "由 (6) 数值求极值（点偶极子 + 薄线圈）——**无闭式**，极值点须数值求解。见 01-criteria/criterion_matrix.py 的 G_true/ZPK。"
     },
     {
       "symbol": "z_{\\rm pk}",
@@ -787,7 +788,8 @@
       "unit": "m",
       "analytical_prediction": "(6) 的极值。**≈ ℓ_c/2 = 10 mm，不是 a/2 = 5.40 mm**",
       "baseline_value": 0.01046,
-      "scaling_law": "长线圈极限：z_pk → ℓ_c/2；短线圈（单匝环）极限：z_pk → a/2（解析）"
+      "scaling_law": "长线圈极限：z_pk → ℓ_c/2；短线圈（单匝环）极限：z_pk → a/2（解析）",
+      "numerical_recipe": "(6) 的极值点，数值求解 ——**无闭式**。≈ ℓ_c/2 = 10 mm（长线圈极限），**不是** a/2 = 5.40 mm。"
     },
     {
       "symbol": "\\gamma",
@@ -795,7 +797,9 @@
       "unit": "1/s",
       "analytical_prediction": "\\gamma = \\gamma_{oc} + G(z_0)^2/[2M_{\\rm eff}(R+R_c)]",
       "baseline_value": 2.5978,
-      "scaling_law": "γ − γ_oc ∝ (R + R_c)^(-1)；γ − γ_oc ∝ G(z_0)²"
+      "scaling_law": "γ − γ_oc ∝ (R + R_c)^(-1)；γ − γ_oc ∝ G(z_0)²",
+      "closed_form": "gamma_oc + G_max**2/(2*M_eff*(R + R_c))",
+      "baseline_conditions": "R = 20 Ω，z_0 = z_pk（⟹ G(z_0) = G_max）"
     },
     {
       "symbol": "\\zeta",
@@ -803,7 +807,9 @@
       "unit": "1",
       "analytical_prediction": "\\zeta = G(z_0)^2/[2\\sqrt{M_{\\rm eff}k}\\,(R+R_c)]",
       "baseline_value": 0.122,
-      "scaling_law": "ζ ∝ 1/(R+R_c)"
+      "scaling_law": "ζ ∝ 1/(R+R_c)",
+      "closed_form": "G_max**2/(2*sqrt(M_eff*k)*(R + R_c))",
+      "baseline_conditions": "R = 20 Ω，z_0 = z_pk"
     },
     {
       "symbol": "t^*",
@@ -811,7 +817,9 @@
       "unit": "s",
       "analytical_prediction": "t^* = 4M_{\\rm eff}/(\\beta A_0^2),\\ \\beta = G'(0)^2/(R+R_c)",
       "baseline_value": 1.012,
-      "scaling_law": "t* ∝ 1/A_0²；t* ∝ (R + R_c)"
+      "scaling_law": "t* ∝ 1/A_0²；t* ∝ (R + R_c)",
+      "closed_form": "4*M_eff/((1.5*mu_0*N*m*a**2*(a**2 + ell_c**2/4)**-2.5)**2/(0 + R_c) * A_0**2)",
+      "baseline_conditions": "★ **短路 R = 0**（不是基准点的 20 Ω！），居中 z_0 = 0，A_0 = 3 mm。⟹ β = G'(0)²/(0 + R_c)。**这个条件以前只活在作者脑子里。**"
     },
     {
       "symbol": "A_c",
@@ -819,7 +827,9 @@
       "unit": "m",
       "analytical_prediction": "A_c = \\sqrt{8M\\gamma_{oc}/\\beta}",
       "baseline_value": 0.000868,
-      "scaling_law": "A_c ∝ sqrt(γ_oc (R+R_c)) / |G'(0)|"
+      "scaling_law": "A_c ∝ sqrt(γ_oc (R+R_c)) / |G'(0)|",
+      "closed_form": "sqrt(8*M_eff*gamma_oc/((1.5*mu_0*N*m*a**2*(a**2 + ell_c**2/4)**-2.5)**2/(0 + R_c)))",
+      "baseline_conditions": "★ **短路 R = 0**，居中 z_0 = 0。⟹ β = G'(0)²/(0 + R_c)。"
     },
     {
       "symbol": "c_2",
@@ -827,7 +837,9 @@
       "unit": "1/(s mm^2)",
       "analytical_prediction": "c_2 = G'(0)^2 / [2 M_{\\rm eff} (R + R_c)]  （(7) 直接给 G'(0)）",
       "baseline_value": 0.0344,
-      "scaling_law": "c_2 ∝ 1/(R + R_c)  —— **又一条零自由参数交叉检验**"
+      "scaling_law": "c_2 ∝ 1/(R + R_c)  —— **又一条零自由参数交叉检验**",
+      "closed_form": "(1.5*mu_0*N*m*a**2*(a**2 + ell_c**2/4)**-2.5)**2/(2*M_eff*(R + R_c)) * 1e-6",
+      "baseline_conditions": "R = 20 Ω。**闭式给 SI（1/(s m²)），×1e-6 换成契约声明的 1/(s mm²)** —— 单位换算必须显式写进代码。"
     }
   ],
   "figures": [
@@ -842,7 +854,7 @@
       "y": "左：G(z) (Wb/m)；右：b(z_0) (N s/m)",
       "series": "Model-0（点偶极子 + 薄线圈，闭式）/ Model-2（有限磁体 + 厚绕组，数值）",
       "kind": "line",
-      "expected_shape": "**G(z) 是严格的奇函数**（G(−z) = −G(z)，机器精度 < 1e-12），**G(0) = 0 精确**，双峰，峰位 |z| = z_pk = 10.46 mm ≈ ℓ_c/2（**不是** a/2 = 5.40 mm）。\n**b(z₀) = G²/(R+R_c) ⟹ 偶函数、双峰、中心一个精确的零点、b ∝ z₀²。**\n\n★★ **r3 的验收（每条都在 01-criteria/matrix.json 里双向跑过）**：\n对每个 z₀ 的包络拟合 (23a) 拿到 Γ(z₀)，**在 |z₀| ≤ 4 mm 上**做抛物线拟合。\n★ **拟合区间由物理定，不是随手画的**：±4 mm 处 G 的非线性度 <1% ⟹ Γ ∝ G² ⟹ 偏差 <2%。\n  **（r2 用的 ±6 mm 会让顶点偏 +27.7% —— 判死一个完全正确的模型。和 r1 的 P1 是同一个错误。）**\n  · **P1a【结构】Γ(z₀) 在中心取极小**（不是极大）。naive「磁通最大处阻尼最大」给的是**极大**。**极小 vs 极大 —— 离散。**\n  · **P1b【零参】顶点值 = γ_oc**（开路实测值）。⟸ **这才是 b(0)=0 的检验。**★ 它是唯一能抓到「模型形状对但有常数偏置」（bug-E）的那条。\n  · **P1c【零参】曲率 = c₂ = G'(0)²/[2·M_eff·(R+R_c)] = 0.0344 s⁻¹mm⁻²**（高斯计 + 欧姆表）。\n  · 顶点位置 z_off **把定位偏差自己测出来了** —— 不必去「对准」中心。",
+      "expected_shape": "**G(z) 是严格的奇函数**（G(−z) = −G(z)，机器精度 < 1e-12），**G(0) = 0 精确**，双峰，峰位 |z| = z_pk = 10.46 mm ≈ ℓ_c/2（**不是** a/2 = 5.40 mm）。\n**b(z₀) = G²/(R+R_c) ⟹ 偶函数、双峰、中心一个精确的零点、b ∝ z₀²。**\n\n★★ **r3 的验收（每条都在 01-criteria/matrix.json 里双向跑过）**：\n对每个 z₀ 的包络拟合 (23a) 拿到 Γ(z₀)，**在 |z₀| ≤ 4 mm 上**做抛物线拟合。\n★ **拟合区间由物理定，不是随手画的**：±4 mm 处 G 的非线性度 <1% ⟹ Γ ∝ G² ⟹ 偏差 <2%。\n  **（r2 用的 ±6 mm 会让顶点偏 +16.2%（9 点）/ +17.5%（r2 协议的 7 点，01-review-r2.md L123）—— 判死一个完全正确的模型。和 r1 的 P1 是同一个错误。）**\n  · **P1a【结构】Γ(z₀) 在中心取极小**（不是极大）。naive「磁通最大处阻尼最大」给的是**极大**。**极小 vs 极大 —— 离散。**\n  · **P1b【零参】顶点值 = γ_oc**（开路实测值）。⟸ **这才是 b(0)=0 的检验。**★ 它是唯一能抓到「模型形状对但有常数偏置」（bug-E）的那条。\n  · **P1c【零参】曲率 = c₂ = G'(0)²/[2·M_eff·(R+R_c)] = 0.0344 s⁻¹mm⁻²**（高斯计 + 欧姆表）。\n  · 顶点位置 z_off **把定位偏差自己测出来了** —— 不必去「对准」中心。",
       "compare_with": "(6) 的闭式；(3) 的对称性论证"
     },
     {

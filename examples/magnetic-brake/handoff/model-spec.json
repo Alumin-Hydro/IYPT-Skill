@@ -444,7 +444,9 @@
       "unit": "m/s",
       "analytical_prediction": "v_t = \\dfrac{1024}{45}\\dfrac{M g a^4}{\\mu_0^2 m^2 \\sigma w}",
       "baseline_value": 0.0274,
-      "scaling_law": "v_t \\propto \\sigma^{-1} w^{-1} a^{4} B_r^{-2} M^{+1} n^{-1}   【r2 · P5 降级】这是 A-1 的 pass_criterion 里**预先注册**的应对动作（「若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明」），实测 k = 3.4392、|k-4| = 0.5608 > 0.3，触发。降级内容：a^4 这一项**仅在 a >> L（点偶极子极限）下成立**；本设定 a/L = 0.55–1.2，判据全程不满足 ⇒ **a^4 在本实验设定下不适用**。σ^-1、B_r^-2、M^+1 三项**不受影响**——它们来自感应链条的线性/二次结构，与场的空间分布无关（F-1 的 σ 面板数值证实：斜率精确 -1.0000）。w^-1 亦被 A-2 的失效削弱，适用域收窄到 w/a ≲ 0.03。**保留下来的可证伪内容：指数必须显著小于 4** —— 这是 A-1 崩溃的定性后果，在计算之前就已写进 expected_shape。**注意：数值给出的有效指数 3.44 不是一个零自由参数的预测，不能拿它去「验证」模型 —— 那是事后拟合（审稿模式 P16）。**"
+      "scaling_law": "v_t \\propto \\sigma^{-1} w^{-1} a^{4} B_r^{-2} M^{+1} n^{-1}   【r2 · P5 降级】这是 A-1 的 pass_criterion 里**预先注册**的应对动作（「若 |k-4| > 0.3，则 P5 被数值判定为不可靠，必须在 01-analysis.md 的预测表中把 P5 降级并说明」），实测 k = 3.4392、|k-4| = 0.5608 > 0.3，触发。降级内容：a^4 这一项**仅在 a >> L（点偶极子极限）下成立**；本设定 a/L = 0.55–1.2，判据全程不满足 ⇒ **a^4 在本实验设定下不适用**。σ^-1、B_r^-2、M^+1 三项**不受影响**——它们来自感应链条的线性/二次结构，与场的空间分布无关（F-1 的 σ 面板数值证实：斜率精确 -1.0000）。w^-1 亦被 A-2 的失效削弱，适用域收窄到 w/a ≲ 0.03。**保留下来的可证伪内容：指数必须显著小于 4** —— 这是 A-1 崩溃的定性后果，在计算之前就已写进 expected_shape。**注意：数值给出的有效指数 3.44 不是一个零自由参数的预测，不能拿它去「验证」模型 —— 那是事后拟合（审稿模式 P16）。**",
+      "closed_form": "1024*M*g*a**4/(45*mu_0**2*m**2*sigma*w)",
+      "baseline_conditions": "薄壁管、准静态、点偶极子（式 (11)）"
     },
     {
       "symbol": "\\tau",
@@ -452,7 +454,9 @@
       "unit": "s",
       "analytical_prediction": "\\tau = M/b = v_t/g",
       "baseline_value": 0.0028,
-      "scaling_law": "\\tau \\propto v_t"
+      "scaling_law": "\\tau \\propto v_t",
+      "closed_form": "v_t/g",
+      "baseline_conditions": "τ = M/b = v_t/g（终速与重力加速度之比）"
     },
     {
       "symbol": "b",
@@ -460,7 +464,9 @@
       "unit": "N s/m",
       "analytical_prediction": "b = \\dfrac{45}{1024}\\dfrac{\\mu_0^2 m^2 \\sigma w}{a^4}",
       "baseline_value": 2.1068,
-      "scaling_law": "b \\propto \\sigma w a^{-4} m^{2}"
+      "scaling_law": "b \\propto \\sigma w a^{-4} m^{2}",
+      "closed_form": "45*mu_0**2*m**2*sigma*w/(1024*a**4)",
+      "baseline_conditions": "薄壁管、准静态、点偶极子（式 (10)）"
     }
   ],
   "figures": [
