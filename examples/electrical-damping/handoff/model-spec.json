@@ -1175,6 +1175,7 @@
       }
     ],
     "verdict": "PASS",
+    "source_sha256": "60540f3d8d01663f8495f19f050ff3d8d4c439467703963717b4924a403d8edd",
     "script": "01-criteria/criterion_matrix.py"
   }
 }

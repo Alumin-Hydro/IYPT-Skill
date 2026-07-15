@@ -127,5 +127,6 @@
       ]
     }
   ],
-  "verdict": "PASS"
+  "verdict": "PASS",
+  "source_sha256": "7d0bb911b021984efbd52b6dd769604a7ac66cc94a1b2785e2282e80c36d3f93"
 }

@@ -235,6 +235,11 @@ Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Sk
       **① 探针挡**已知**盲区**（写死 selftest，不 regress）；**② 对抗审稿挖**未知**盲区**（**每改 / 每加一道门 → 派一次 fresh `iypt-physics-review`**，让它专门构造「让这道门失明」的输入）。**缺一不可。**
     - **⇒ 已机械化（r7）**：`CRIT-MATRIX-DESYNC`（内嵌 == matrix.json，等式不是启发式）；`SKILL.md` 的假描述改掉；`robustness_scan` 加 `systematic_error_budget` 给 `scan_upper_bound` 上下限；措辞表明写为**启发式**（不再扩词表，靠对抗审稿兜底）。
     - **★ 诚实的边界**：`CRIT-MATRIX-DESYNC` 只堵「改内嵌一处」；「内嵌+matrix.json 两处一起改」仍能骗过 —— 那靠「提交前重跑 `criterion_matrix.py`」+ 对抗审稿。**每一道机械门都有这样一条边界，写出来，别假装没有。**
+    - **★★★ r7 审稿（第八次）—— 而且它把根挖得更深**：我为补 r6 又加了两道门（budget 下限、DESYNC），**两道又各有一个新失明**：
+      · **H1 = P17 长在我自己的门里**：budget 门查的是 `scan_upper_bound ≥ 3×budget`（δ 扫多远），**却从没查那个 load-bearing 的量 `margin = delta_max/budget`**（判死悬崖在不在噪声外）——`delta_max=0.05mm < budget` 照过，正确模型在实操里被自己的判据误杀。**「判据界错了量」这条我审稿抓过无数次，自己写门照样犯。**（r8 补：finite 分支 `delta_max ≥ budget` + criterion_matrix 的 PASS 读 margin。）
+      · **H2**：DESYNC 栓了「内嵌↔matrix.json」，没栓「matrix.json↔源码新鲜输出」——删/改 `criterion_matrix.py` 不重跑，0 ERROR。（r8 补：`source_sha256` 戳，门重算比对，抓「改源码忘重跑」。）
+      · **★ 一个能让盲区探针更系统的工具（r7 审稿 ③ —— wrong-quantity 元探针）**：**对门用的**每一个不等式**，探一次「把该比、却没比的那个量换进去，门放不放行」** —— 这正是「找 P17-at-gate-level」的系统方法，本可抓到 H1。**每加一道带不等式的门，先跑这个元探针。**
+    - **⇒ 停环点（用户裁定）**：第八次后，真 bug（H1/H2）廉价修掉、③ 落地，**然后停止自动循环** —— 元教训（没有不动点、流程即交付物）已证明得淋漓尽致，继续只会重现它。**这道题的 skill 拷打到此为止：8 轮审稿、~16 道机械门、盲区探针 + 元流程 + wrong-quantity 元探针。**
 
 10. **机械检查全绿 ≠ 可以交付。** 幻灯片 12 道门全绿之后，**用眼睛看又打出了 3 个 REVISE** —— 角标压住图的标题、公式字号不一致、宽图被挤到读不了。**这三个在语法上、在包围盒上、在字号上全都合法。**
     > **机械检查负责「不可能撒谎」；眼睛负责「看得见」。两个都要。**

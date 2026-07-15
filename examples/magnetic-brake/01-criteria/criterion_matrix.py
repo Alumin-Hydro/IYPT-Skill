@@ -208,6 +208,8 @@ DA_BUDGET = 0.02e-3                                   # ★ r6-H2：游标卡尺
 da_max, da_bracket = _delta_star(0.0, DA_SCAN_HI)    # ★ 二分定边界（非网格）
 DA_SAFE = 0.10e-3
 _da_margin = (da_max / DA_SAFE) if da_max else float("inf")
+# ★ r7 审稿 H1（回填）：判死悬崖必须在噪声（游标卡尺）外，否则正确模型被噪声推过悬崖误杀。
+bad |= (da_max is not None and da_max < DA_BUDGET)
 print(f"\n  ⟹ **判据的有效窗口：δa < {(da_max or 999)*1e3:.4f} mm**（**二分定出**，"
       f"括在 [{da_bracket[0]*1e3:.4f}, {da_bracket[1]*1e3:.4f}] mm）"
       if da_max else "\n  ⟹ 全范围不误杀")
@@ -280,6 +282,7 @@ WHY = {
         "**⇒ 只有 K3（绝对值）看得见它。而没有 bug-E，K3 就会显得多余。**",
 }
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -335,6 +338,11 @@ out = {
                      if not m.startswith("★ 正确") and not rows[(cid, m)][0]]}
         for cid, name, _ in CRITS],
     "verdict": "FAIL" if bad else "PASS",
+    # ★ r7 审稿 H2（回填）：源码 sha256 戳 —— DESYNC 门重算比对，抓「改源码忘重跑」。
+    #   规范化行尾（\r\n→\n）后再哈希，免得跨平台 checkout 误报。
+    "source_sha256": hashlib.sha256(
+        Path(__file__).read_text(encoding="utf-8").replace("\r\n", "\n").encode("utf-8")
+    ).hexdigest(),
 }
 Path(__file__).with_name("matrix.json").write_text(
     json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
