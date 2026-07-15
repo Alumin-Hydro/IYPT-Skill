@@ -419,22 +419,52 @@ print("  " + "─" * 96)
 print("  ② ★ 「不误杀」扫 **残余定心误差 δ** —— §9 白纸黑字：「**不要试图把磁体对准中心**」")
 print("  " + "─" * 96)
 correct = MODELS["★ 正确 (Model-2)"]
-DELTAS = [0.0, 0.05e-3, 0.10e-3, 0.17e-3, 0.25e-3]
+
+
+def _correct_survives(dl):
+    """正确模型在残余偏心 δ=dl 下，五条判据**没有一条判死它**（不误杀）。"""
+    res = [rows[(c, "★ 正确 (Model-2)")][0] if dl == 0 else fn(correct, delta=dl)[0]
+           for c, _, fn in CRITS]
+    return all(r is not False for r in res)
+
+
+def _delta_star(lo, hi, tol=2e-6):
+    """★★ r4-H1：**二分**找「第一个判死正确模型的 δ」—— **不再靠网格撞**。
+
+    r4 之前用固定网格 [0, 0.05, 0.10, 0.17, 0.25] mm，从 0.10（过）直接跳到 0.17（判死），
+    **跳过了 0.11–0.16 mm** —— 真边界 ≈0.134 mm 就藏在那段里，delta_max 报虚了 30%。
+    `eps_star` 早就会二分了，δ 却还在用网格 —— **同一个病，换了个维度**（P18 ④）。
+    返回 (boundary, (last_pass, first_fail))；hi 处仍不误杀 ⟹ (None, None)。"""
+    if _correct_survives(hi):
+        return None, None
+    assert _correct_survives(lo), "δ=lo 就误杀正确模型 ⟹ 这是 CRIT-FALSEKILL，不是 robustness"
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        if _correct_survives(mid):
+            lo = mid
+        else:
+            hi = mid
+    return hi, (lo, hi)
+
+
+# 展示用的粗扫（只为打印一张人看的表；**边界不从它取**，从二分取）
 print(f"  {'δ [mm]':>8}" + "".join(f"{c:>10}" for c, _, _ in CRITS))
-delta_max = None
-for dl in DELTAS:
+for dl in [0.0, 0.05e-3, 0.10e-3, 0.13e-3, 0.14e-3, 0.17e-3, 0.25e-3]:
     res = [rows[(c, "★ 正确 (Model-2)")][0] if dl == 0 else fn(correct, delta=dl)[0]
            for c, _, fn in CRITS]
     mark = "".join(f"{'✓' if r else ('✗✗ 判死' if r is False else '—'):>10}" for r in res)
     print(f"  {dl*1e3:>8.2f}{mark}")
-    if delta_max is None and any(r is False for r in res):
-        delta_max = dl
-DELTA_SAFE = 0.10e-3 if delta_max is None else max(d for d in DELTAS if d < delta_max)
-print(f"\n  ⟹ **判据的有效窗口：δ < {(delta_max or 1):.4g} m** "
-      f"（第一个判死正确模型的 δ）")
-print(f"  ⟹ **协议必须把 z_off 定到 {DELTA_SAFE*1e3:.2f} mm 以内** —— "
-      f"这个数以前**不在文档的任何地方**。")
-print(f"     （§9 的视频噪声预算是 ±0.1 mm —— 距离悬崖只有 {(delta_max or 1)/0.1e-3:.1f} 倍。）")
+
+DELTA_SCAN_HI = 0.30e-3                                     # ★ r5-H1：扫描上界必须写进契约
+delta_max, delta_bracket = _delta_star(0.0, DELTA_SCAN_HI)  # ★ 二分定边界（非网格）
+DELTA_SAFE = 0.10e-3                                        # 协议要求 = §9 视频噪声底 ±0.1 mm
+_margin = (delta_max / DELTA_SAFE) if delta_max else float("inf")
+print(f"\n  ⟹ **判据的有效窗口：δ < {(delta_max or 1)*1e3:.4f} mm**（**二分定出**，"
+      f"括在 [{delta_bracket[0]*1e3:.4f}, {delta_bracket[1]*1e3:.4f}] mm）"
+      if delta_max else "\n  ⟹ 扫描范围内都不误杀")
+print(f"  ⟹ **协议要求 z_off < {DELTA_SAFE*1e3:.2f} mm ⟹ 安全裕度 {_margin:.2f}×** —— "
+      f"**不是网格撞出来的 1.7×，是二分定出来的 {_margin:.1f}×**（r4-H1）。")
+print(f"     （§9 的视频噪声预算是 ±0.1 mm —— 一次涨落就能把偏心推到悬崖。）")
 
 # ═════════════════════════════════════════ ③ ★ 扫错误幅度 ε，报 ε*（P18 ②）
 print()
@@ -494,11 +524,20 @@ out = {
         "parameter": "δ = 残余定心误差 [m]",
         "why": "★ §9 白纸黑字：「**不要试图「把磁体对准中心」**」—— "
                "而 r3 的 crit_P3/P3b 把 z₀ 钉死在**精确的 0.0**。\n"
-               "**「不误杀」必须在协议自己承认的每一项系统误差上各跑一遍**（P18 ④）。",
-        "delta_max": None if delta_max is None else round(float(delta_max), 6),
-        "verdict": (f"判据的有效窗口：**δ < {delta_max*1e3:.2f} mm**。"
-                    f"协议必须把 z_off 定到 **{DELTA_SAFE*1e3:.2f} mm** 以内。"
-                    f"（§9 的视频噪声是 ±0.1 mm —— 距离悬崖 {delta_max/0.1e-3:.1f} 倍。）"
+               "**「不误杀」必须在协议自己承认的每一项系统误差上各跑一遍**（P18 ④）。\n"
+               "★★ r4-H1：边界**必须二分定出**，不能靠网格撞 —— "
+               "固定网格会跳过真边界，把 delta_max 报虚（0.17 vs 真值 0.134）。\n"
+               "★★ r5-H1：必须报 `scan_upper_bound`（扫到多远）—— 否则 delta_max=None"
+               "（「处处稳健」）与「扫描范围太小」不可区分。",
+        "scan_upper_bound": round(float(DELTA_SCAN_HI), 7),
+        "delta_max": None if delta_max is None else round(float(delta_max), 7),
+        "delta_max_bracket": (None if delta_bracket is None else
+                              [round(float(delta_bracket[0]), 7),
+                               round(float(delta_bracket[1]), 7)]),
+        "verdict": (f"判据的有效窗口：**δ < {delta_max*1e3:.3f} mm**（**二分定出**，"
+                    f"括在 [{delta_bracket[0]*1e3:.3f}, {delta_bracket[1]*1e3:.3f}] mm）。"
+                    f"协议要求 z_off < **{DELTA_SAFE*1e3:.2f} mm** ⟹ 安全裕度 **{_margin:.1f}×** "
+                    f"（不是网格撞出的 1.7×）。（§9 视频噪声 ±0.1 mm。）"
                     if delta_max else "在扫描的全部 δ 上都不误杀"),
     },
     "min_detectable": {

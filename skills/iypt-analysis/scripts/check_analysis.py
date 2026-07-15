@@ -8,6 +8,24 @@
     python check_analysis.py iypt/magnetic-brake
 
 退出码: 0 = 无 error（可能有 warning）；1 = 有 error；2 = 用不了（文件缺失等）
+
+★★★ 盲区探针（BLINDNESS PROBES）—— 本文件最贵的一条纪律（第六次复发才逼出来）
+────────────────────────────────────────────────────────────────────────────
+一道门的 `--selftest` **本身也是一份自评**（P18「双向表是自评」再上一层楼）。
+「它在诚实实例上判得对、`--selftest` 全绿」**不算验证** —— 那只跑了两种用例：
+「该抓的 → 抓到」「诚实的 → 放行」，**从没跑「它号称要挡、但换个形状 → 该抓却放行」。**
+
+**实测（electrical-damping r5，真实翻车）**：`CRIT-ROBUSTNESS-COARSE` 和
+`PROSE-FORMULA-GHOST` 两道门 `--selftest` 全绿、真实工作区 0 ERROR，而审稿一构造就穿：
+`delta_max=None` 整道门被跳过、手写窄括号复活虚报值、非-target 的公式幽灵漏网……
+**更糟：`none_ok` 用例亲手把「None ⟹ 放行」钉成了「预期行为」，给盲区盖了章。**
+
+**⟹ 每加一道门（或改一道门），`--selftest` 必须包含「盲区探针」：**
+  ① **造出让门失明的输入。造不出 = 你还没理解它守的是什么。**
+  ② 能修的 → 修（探针从「放行」翻成「抓到」）；
+  ③ **修不了的（如「非 spec 量的幽灵」「provenance 靠重跑保证」）→ 明写「已知局限」**
+     —— 探针断言「它放行」并注明为什么，**而不是假装门覆盖了它**（诚实 scope 胜过虚假安全感）。
+本文件的 `selftest()` 里，每道门后都跟着一组这样的探针（搜 `盲区探针` / `BLINDNESS`）。
 """
 
 import json
@@ -1113,9 +1131,61 @@ def check_criterion_matrix(spec: dict) -> None:
             "并报出它的**有效窗口**。\n"
             "        （r3 真实翻车：`crit_P3` 把 z₀ 钉死在**精确的 0.0**，"
             "而同一份分析的 §9 写着「**不要试图把磁体对准中心**」——\n"
-            "        实算：**残余偏心 0.17 mm 就判死正确模型**，而噪声预算是 ±0.1 mm。\n"
-            "        **同一个病第三次**：r1 死于 ±0.5 mm 定位，r2 死于 ±6 mm 拟合区间。）\n"
-            "        字段：`{parameter, why, delta_max, verdict}`。")
+            "        实算：**残余偏心就判死正确模型**，而噪声预算是 ±0.1 mm。）\n"
+            "        字段：`{parameter, why, scan_upper_bound, delta_max, delta_max_bracket, verdict}`。")
+    else:
+        # ★★★ r5 审稿 H1：这道门原来挂在 `elif isinstance(delta_max,(int,float))` 上 ——
+        #   **`delta_max=None` 时整道门被静默跳过。** 而「扫描范围太小」恰好产出 None
+        #   （`criterion_matrix` 的 `_delta_star`：扫描上界 hi < 真边界 ⟹ `return None`）
+        #   ⟹「作者挑的扫描端点」这个病从「网格间距」（r4）升到了「扫描上界」（r5），门又瞎。
+        #   **更糟：我的 `--selftest` 里 `none_ok` 用例把这个跳过钉成了「预期行为」，给盲区盖了章**
+        #   —— 见文件头「★ 盲区探针」：一道门的 selftest 本身也是自评。
+        #   ⟹ `delta_max=None` 不再是逃生舱：**必须报 `scan_upper_bound`**，否则「处处稳健」不可证伪。
+        dm = rs.get("delta_max")
+        sub = rs.get("scan_upper_bound")
+        if not isinstance(sub, (int, float)):
+            err("CRIT-ROBUSTNESS-COARSE",
+                "`robustness_scan` 缺 `scan_upper_bound`（δ 到底扫了多远）—— "
+                "**没有它，`delta_max=None`（「处处稳健」）不可证伪。**\n"
+                "        「扫描范围太小 ⟹ 没撞到边界 ⟹ `delta_max=None`」与「真的处处稳健」"
+                "编码成了同一个 `None`。\n"
+                "        （r5 真实翻车：门挂在 `elif delta_max is number` 上，None 时整道门被跳过，"
+                "而 selftest 把这个跳过钉成「预期行为」——盲区被写进了自检。）\n"
+                "        必须报 `scan_upper_bound`；「处处稳健」= 在 `[0, scan_upper_bound]` 上不误杀，"
+                "而该上界要 ≥ 协议自报系统误差的几倍 —— **这一步是物理判断，门只保证这个数被写出来。**")
+        elif dm is None:
+            # 「处处稳健」：门已保证 scan_upper_bound 写出来了（上面查过）。
+            # 「扫得够不够远」（对比噪声预算）是**物理判断** —— 门不冒充能判它（诚实 scope）。
+            pass
+        elif isinstance(dm, (int, float)):
+            # ★★ r4-H1：有边界 ⟹ 必须**二分定出**（暴露窄 bracket），不能靠网格撞。
+            dm = float(dm)
+            br = rs.get("delta_max_bracket")
+            if not (isinstance(br, (list, tuple)) and len(br) == 2
+                    and all(isinstance(x, (int, float)) for x in br)):
+                err("CRIT-ROBUSTNESS-COARSE",
+                    f"`robustness_scan.delta_max = {dm:g}` 有值，却**没有 `delta_max_bracket`** —— "
+                    f"没法证明这个边界是二分定出来的（r4：网格 0.10→0.17 跳过真边界 0.135）。\n"
+                    f"        像 `eps_star` 那样二分，暴露 `delta_max_bracket = [last_pass, first_fail]`。")
+            elif not (0 <= float(br[0]) <= dm <= float(br[1]) <= float(sub)):
+                err("CRIT-ROBUSTNESS-COARSE",
+                    f"`delta_max_bracket = [{br[0]:g}, {br[1]:g}]` 不合法 —— 必须 "
+                    f"`0 ≤ last_pass ≤ delta_max ≤ first_fail ≤ scan_upper_bound`"
+                    f"（delta_max={dm:g}, scan_upper_bound={sub:g}）。")
+            elif (float(br[1]) - float(br[0])) > 0.05 * float(br[1]):
+                lo, hi = float(br[0]), float(br[1])
+                err("CRIT-ROBUSTNESS-COARSE",
+                    f"`robustness_scan` 的边界**太粗**：括号 [{lo:g}, {hi:g}] 相对宽 "
+                    f"**{(hi-lo)/hi:.0%}**（门槛 5%）—— 网格撞的，不是二分定的。\n"
+                    f"        （r4-H1：网格报 0.17，二分定出真值 0.135 —— 虚高 30%，裕度 1.3→谎报 1.7 倍。）\n"
+                    f"        二分到 `last_pass` 与 `first_fail` 相邻（像 `eps_star`）。")
+            # ★ 诚实 scope（r5-H1②）：宽度检查只证 bracket **自洽**，**证不了它真是二分跑出来的** ——
+            #   手写一个窄括号（把 r4 判死的虚报值 0.17 配上 [0.169,0.170]）照样过。
+            #   **provenance 靠「先跑 `criterion_matrix.py` 重新生成 `matrix.json`」保证，不靠这道门。**
+            #   （所以这条盲区探针在 selftest 里是**记录在案的已知局限**，不是「已修好」。）
+        else:
+            err("CRIT-ROBUSTNESS-COARSE",
+                f"`robustness_scan.delta_max` 类型非法（{type(dm).__name__}）—— 只能是数或 `null`。")
 
     # ── ④ ★★ 错模型的「错误幅度」不许是挑出来的 —— 扫 ε，报 ε*（P18 ②）
     md = cm.get("min_detectable")
@@ -1441,6 +1511,123 @@ def check_review_citations(ws: Path, md: str) -> None:
                 f"        > {line.strip()[:100]}")
 
 
+# ---------------------------------------------------------------- ★★ 散文里的「公式幽灵」
+#
+#  **教训（electrical-damping r4 审稿，真实发生 —— 出现在最讽刺的地方）**：
+#  §11 那一节的标题是「我为查错值造的门自己也是瞎的」，它在讲怎么消灭一个三代未动的
+#  错值 `targets[γ] = 2.5978`。**而就在那段散文里，作者自己手打了一个幽灵：**
+#
+#  > 「`targets[\gamma]` … 而它自己的**公式算出来是 2.3454**」——
+#  > **公式实际算出来是 2.3554**（契约里就是 2.3554，`SPEC-SELFCONTRADICT` 已验）。
+#  > `2.3454` 是 r3 审稿在**旧几何**下手算的数，被逐字搬进正文、没随重标定重算。
+#
+#  **为什么现有的门都看不见它**：
+#  - `SPEC-SELFCONTRADICT` 查的是**契约字段** baseline↔closed_form（都是 2.3554，对）；
+#  - `REVIEW-CITE-GHOST` 查「归给 r{n} 审稿的数」（而 2.3454 **确实**在 r3 报告里，放行）。
+#  - **没有门去查「散文里归给『公式/真值』的数，代回那个 target 对不对」。**
+#
+#  > **零号规则的镜像第三次**（r3 是 +27.7% 归给审稿；r4 是 2.3454 归给「公式」）。
+#
+#  ★ **一个坑（差点又建一把瞎锁）**：幽灵 2.3454 与真值 2.3554 只差 **0.42%** ——
+#  **审稿建议的「相对容差 1%」会漏掉它自己要抓的那个 bug。**
+#  ∴ 必须在**散文写出的那个精度**上比（ULP）：`2.3454` 写到小数点后 4 位，
+#  它与 2.3554 在第 4 位上差了 100 个单位 —— **那不是四舍五入，是另一个数。**
+
+_GREEK_TEX2U = {r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
+                r"\epsilon": "ε", r"\zeta": "ζ", r"\eta": "η", r"\theta": "θ",
+                r"\kappa": "κ", r"\lambda": "λ", r"\mu": "μ", r"\nu": "ν",
+                r"\rho": "ρ", r"\sigma": "σ", r"\tau": "τ", r"\phi": "φ",
+                r"\omega": "ω", r"\Gamma": "Γ", r"\Delta": "Δ", r"\Omega": "Ω"}
+
+#: 「这个数是某个量的**计算 / 真实值**」的措辞。**present-tense —— 无版本豁免**：
+#  说「公式算出来是 N」就是断言「**现在**的公式给出 N」，它必须等于**现在**的 baseline / value。
+#  （想引旧值？把它归给 r{n}（走 `REVIEW-CITE-GHOST`），不能归给「公式」。）
+#  ★ r5 审稿 H2：措辞不许写死成一种。补了「约为 / 大约 / ≈」，桥放宽到 15 字。
+#    （但**没有**加裸「=」—— 见下面 `check_prose_formula_values` 的诚实 scope 声明。）
+_VALUE_CLAIM = re.compile(
+    r"(公式算出来|闭式算出来|公式给出|闭式给出|真值|正确值|约为|大约(?:是|为)?|≈)"
+    r"[^0-9\n]{0,15}?([-+]?\d+(?:\.\d+)?)")
+
+
+def _quantity_prose_refs(sym: str, prefix: str) -> set[str]:
+    """一个具名量在正文里 `prefix[...]` 的写法（LaTeX / ASCII / 希腊 unicode）。
+    `prefix` ∈ {`targets`, `parameters`}。"""
+    out: set[str] = set()
+    for form in {sym} | _ascii_variants(sym):
+        out.add(f"{prefix}[{form}]")
+    for tex, uni in _GREEK_TEX2U.items():
+        if sym == tex:
+            out.add(f"{prefix}[{uni}]")
+        elif sym.startswith(tex) and (len(sym) == len(tex) or not sym[len(tex)].isalpha()):
+            out.add(f"{prefix}[{uni}{sym[len(tex):]}]")   # \gamma_{oc} → γ_{oc}
+            out.add(f"{prefix}[{uni}]")
+    return out
+
+
+def check_prose_formula_values(md: str, spec: dict) -> None:
+    r"""★★ 正文里归给「公式 / 真值」、且锚定 `targets[X]` / `parameters[X]` 的数，
+    必须 = 那个量的 baseline / value（在**散文写出的精度**上比，ULP，不是相对容差 ——
+    幽灵 2.3454 与真值 2.3554 只差 0.42%，相对容差 1% 会漏，ULP 在第 4 位上抓得到）。
+
+    ★★★ **诚实 scope（r5 审稿 H2 —— 这道门守的是「一类」，不是「所有幽灵」）**：
+      · **管**：`targets[X]` / `parameters[X]` 显式锚 + 值断言措辞（`_VALUE_CLAIM`），数字在锚**之后**。
+      · **★ 不管（需人读 / 靠对抗审稿）—— 明写出来，不冒充「幽灵数都归我管」**：
+        - **纯散文派生量**（`|G'(0)|`、A-1 的孤立角峰值 `0.8083`）—— **契约里没有它们的「正确值」，无从比**；
+          这正是 r5-H4 那个 live stale 活着的地方，**本门对它结构性失明，且我认这一点。**
+        - **裸赋值** `targets[X] = N`（不带值断言词）—— 契约侧归 `SPEC-SELFCONTRADICT`，散文侧需人读；
+        - **数字写在锚**之前** 的措辞**（`N 就是 X 的真值`）。
+      **⟹ 把这些当「已知局限」钉进 `--selftest` 的盲区探针（该抓的抓、抓不到的记录在案），
+        而不是假装门覆盖了它们 —— 这是本轮（第六次复发）的元教训。**
+    ★ **按位置归属**：一行里若同时出现两个锚，「真值 N」归给它**前面最近**的那个 —— 不硬套给全行。
+    """
+    if not spec:
+        return
+    tmap: dict[str, tuple[str, float]] = {}
+    for t in spec.get("targets", []):
+        sym, bl = t.get("symbol"), t.get("baseline_value")
+        if sym and isinstance(bl, (int, float)) and bl != 0:
+            for ref in _quantity_prose_refs(str(sym), "targets"):
+                tmap.setdefault(ref, (f"targets[{sym}]", float(bl)))
+    for p in spec.get("parameters", []):
+        sym, v = p.get("symbol"), p.get("value")
+        if sym and isinstance(v, (int, float)) and v != 0:
+            for ref in _quantity_prose_refs(str(sym), "parameters"):
+                tmap.setdefault(ref, (f"parameters[{sym}]", float(v)))
+    if not tmap:
+        return
+
+    lines = md.splitlines()
+    for i, line in enumerate(lines):
+        window = line + ("\n" + lines[i + 1] if i + 1 < len(lines) else "")
+        anchors: list[tuple[int, str, float]] = []          # (end_pos, label, value)
+        for ref, (label, val) in tmap.items():
+            start = 0
+            while (k := window.find(ref, start)) >= 0:
+                anchors.append((k + len(ref), label, val))
+                start = k + 1
+        if not anchors:
+            continue
+        anchors.sort()
+        for m in _VALUE_CLAIM.finditer(window):
+            cand = [a for a in anchors if a[0] <= m.start()]     # 前面最近的锚
+            if not cand:
+                continue
+            _, label, val = cand[-1]
+            num = m.group(2)
+            n = float(num)
+            dp = len(num.split(".")[1]) if "." in num else 0
+            if abs(n - val) > 10.0 ** (-dp):                     # ★ ULP，不是相对容差
+                err("PROSE-FORMULA-GHOST",
+                    f"01-analysis.md:{i+1} 把 `{num}` 说成 `{label}` 的"
+                    f"「{m.group(1)}」，但它的记录值 = `{val:.6g}`。\n"
+                    f"        **归给「公式 / 真值」的散文数，必须等于那个量的 baseline / value**"
+                    f"（`SPEC-SELFCONTRADICT` 已保证 target 的 baseline = closed_form 的输出）。\n"
+                    f"        （r4 真实翻车：§11「消灭错值」那段自己手打了幽灵 `2.3454`，"
+                    f"而公式算出来是 `2.3554` —— **零号规则的镜像第三次**。）\n"
+                    f"        > {line.strip()[:90]}")
+                break
+
+
 def check_residue(md: str) -> None:
     """TODO / [GAP] 残留：允许存在，但必须在文首声明。"""
     head = md[:1500]
@@ -1581,7 +1768,8 @@ def selftest() -> int:
              "catches": [{"id": "n-A", "detail": "k=2.1"}, {"id": "n-B", "detail": "k=1.0"}]},
             {"id": "K2", "passes_correct": True, "tolerance_source": _SRC,
              "catches": ["bug-C"]}],                     # ★ 旧格式 [str] 必须仍然收得住
-        "robustness_scan": {"parameter": "δ = 残余定心误差", "delta_max": 1.7e-4},
+        "robustness_scan": {"parameter": "δ = 残余定心误差", "scan_upper_bound": 3.0e-4,
+                            "delta_max": 1.35e-4, "delta_max_bracket": [1.34e-4, 1.35e-4]},
         "min_detectable": {"bug-C": {"eps_star": 0.13, "caught_by": ["K2"]}},
         "verdict": "PASS"}}
     eq("合格的表（catches 新旧两种格式混用）⟹ 无 ERROR", _crit(good), [])
@@ -1626,6 +1814,54 @@ def selftest() -> int:
     norob = copy.deepcopy(good)
     del norob["criterion_matrix"]["robustness_scan"]
     eq("★★ 没有 robustness_scan ⟹ CRIT-NO-ROBUSTNESS", _crit(norob), ["CRIT-NO-ROBUSTNESS"])
+
+    # ★★★ r4-H1 —— 边界必须**二分**定出，不能靠网格撞（新锁：CRIT-ROBUSTNESS-COARSE）
+    coarse_nobr = copy.deepcopy(good)
+    del coarse_nobr["criterion_matrix"]["robustness_scan"]["delta_max_bracket"]
+    eq("★★★ 有 delta_max 却没 bracket ⟹ CRIT-ROBUSTNESS-COARSE（证明不了是二分）",
+       _crit(coarse_nobr), ["CRIT-ROBUSTNESS-COARSE"])
+
+    coarse_wide = copy.deepcopy(good)
+    coarse_wide["criterion_matrix"]["robustness_scan"]["delta_max"] = 1.7e-4
+    coarse_wide["criterion_matrix"]["robustness_scan"]["delta_max_bracket"] = [1.0e-4, 1.7e-4]
+    eq("★★★ 网格撞的宽括号 [0.10,0.17]（宽 41%）⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(coarse_wide), ["CRIT-ROBUSTNESS-COARSE"])
+
+    coarse_bad = copy.deepcopy(good)
+    coarse_bad["criterion_matrix"]["robustness_scan"]["delta_max_bracket"] = [2e-4, 3e-4]
+    eq("★ delta_max 不在 bracket 内（1.35e-4 ∉ [2e-4,3e-4]）⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(coarse_bad), ["CRIT-ROBUSTNESS-COARSE"])
+
+    # ═══════════ ★★★ r5 审稿 H1 —— 盲区探针（BLINDNESS PROBES）═══════════
+    #  上一版这里只写「delta_max=None ⟹ 不报」——**亲手把盲区钉成了「预期行为」，给它盖了章**。
+    #  **一道门的 `--selftest` 本身也是一份自评（P18 再上一层）**：只测「该抓的→抓到、诚实的→放行」
+    #  不算验证；必须**造出让门失明的输入**去探它。造不出 = 你还没理解它守的是什么。
+    none_blind = copy.deepcopy(good)
+    none_blind["criterion_matrix"]["robustness_scan"] = {"parameter": "δ", "delta_max": None}
+    eq("★★★ 探针：delta_max=None 却没 scan_upper_bound（可能没扫够远）⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(none_blind), ["CRIT-ROBUSTNESS-COARSE"])
+
+    none_ok = copy.deepcopy(good)
+    none_ok["criterion_matrix"]["robustness_scan"] = {
+        "parameter": "δ", "delta_max": None, "scan_upper_bound": 5e-4}
+    eq("★ delta_max=None + 报了 scan_upper_bound（诚实的「处处稳健」）⟹ 不报",
+       _crit(none_ok), [])
+
+    nosub = copy.deepcopy(good)
+    del nosub["criterion_matrix"]["robustness_scan"]["scan_upper_bound"]
+    eq("★★ 探针：有限 delta_max 但缺 scan_upper_bound ⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(nosub), ["CRIT-ROBUSTNESS-COARSE"])
+
+    # ★★ r5-H1② 探针（**记录在案的已知局限**，不是「已修好」）：手写一个窄括号，把 r4 判死的
+    #    虚报值 0.17 塞回来。门只查自洽性（宽度），**证不了它是二分跑出来的** ⟹ **它照样过**。
+    #    provenance 靠「先重跑 `criterion_matrix.py` 再 check」保证，不靠这道门。**探针断言「它过」——
+    #    明写这是局限，而不是假装门修好了它。**（诚实 scope 胜过虚假安全感。）
+    handwritten = copy.deepcopy(good)
+    handwritten["criterion_matrix"]["robustness_scan"] = {
+        "parameter": "δ", "scan_upper_bound": 3e-4,
+        "delta_max": 1.7e-4, "delta_max_bracket": [1.69e-4, 1.70e-4]}
+    eq("★★ 探针（已知局限）：手写窄括号复活虚报值 0.17 ⟹ 门放行（provenance 靠重跑，不靠门）",
+       _crit(handwritten), [])
 
     # ★★ P18 ② —— 错误幅度是挑出来的
     nomin = copy.deepcopy(good)
@@ -1823,6 +2059,63 @@ def selftest() -> int:
 
     print()
     print("=" * 72)
+    print("⑦ ★★ PROSE-FORMULA-GHOST（r4）：散文归给「公式/真值」的数必须 = target 的 baseline")
+    print("=" * 72)
+
+    def _pf(md, spec):
+        ERRORS.clear()
+        check_prose_formula_values(md, spec)
+        return [e.split("]")[0].lstrip("[") for e in ERRORS]
+
+    _tg = {"targets": [{"symbol": r"\gamma", "baseline_value": 2.3554174},
+                       {"symbol": "c_2", "baseline_value": 0.0345832}]}
+    # ★★★ 真实事故：幽灵 2.3454 归给「公式」，而真值 2.3554（**只差 0.42%**）。
+    eq("★★★ 幽灵 2.3454 归给「公式算出来」（真值 2.3554）⟹ PROSE-FORMULA-GHOST",
+       _pf(r"`targets[\gamma]` 而它自己的公式算出来是 **2.3454**（偏 +10.3%）。", _tg),
+       ["PROSE-FORMULA-GHOST"])
+    eq("改对了 2.3554 ⟹ 不报",
+       _pf(r"`targets[\gamma]` 的公式算出来是 **2.3554**。", _tg), [])
+    # ★ 关键坑：相对容差 1% 会漏掉它（0.42%）—— 必须在**写出的精度**上比（ULP）。
+    eq("★ ULP 抓得到 0.42% 的「4 位幽灵」（而相对容差 1% 会漏）",
+       abs(2.3454 - 2.3554174) > 10 ** -4, True)
+    eq("★ 四舍五入合法：真值写成 2.36（2 位）⟹ 不报",
+       _pf(r"`targets[\gamma]` 的真值 2.36。", _tg), [])
+    # ★ 老值 2.5978 归给「三代未动」（版本语境），不是归给「公式」⟹ 不误报。
+    eq("★ 同一句里的老值 2.5978（版本语境）+ 真值 2.3554 ⟹ 不误报",
+       _pf(r"`targets[γ]` = 2.5978 三代未动（真值 2.3554）", _tg), [])
+    # ★ 跨行归属：targets[γ] 在上一行，claim 在下一行。
+    eq("★ 跨行归属（targets[γ] 上一行，公式在下一行）⟹ 抓到",
+       _pf("`targets[\\gamma]` 三代未动，\n而公式算出来是 2.3454。", _tg),
+       ["PROSE-FORMULA-GHOST"])
+    # ★★ 位置归属：一行两个 target，「真值 N」归给**最近**的那个 —— 不许硬套给行里所有 target。
+    eq("★★ 位置归属：真值 0.0345 属最近的 c_2（不硬套给 γ）⟹ 不误报",
+       _pf(r"`targets[\gamma]` 与 `targets[c_2]` 的真值 0.0345。", _tg), [])
+    eq("★★ 反向：同一行 c_2 的真值写错 0.099 ⟹ 归给 c_2 抓到（证明归属真在工作）",
+       _pf(r"`targets[\gamma]` 与 `targets[c_2]` 的真值 0.099。", _tg),
+       ["PROSE-FORMULA-GHOST"])
+
+    # ═══════════ ★★★ r5 审稿 H2 —— 盲区探针（BLINDNESS PROBES）═══════════
+    #  上一版的 8 个用例**全部** anchored 到 target、**全部**用那两三个关键词 ——
+    #  **没有一个探「它号称要挡、但换个形状 → 该抓却放行」**，r5 审稿一构造就穿了。
+    #  ⟹ 把 r5 的每个构造钉成探针：**能修的修（该抓的抓），修不了的明写「已知局限」**（诚实 scope）。
+    _tgp = {"targets": [{"symbol": r"\gamma", "baseline_value": 2.3554174}],
+            "parameters": [{"symbol": "R_c", "value": 3.71}]}
+    # —— 能修的（本轮扩了措辞 + 扩了 parameters 锚）：现在该抓到 ——
+    eq("★★ 探针·扩措辞：`targets[γ] 约为 2.9999` ⟹ 现在抓到（r5 之前漏）",
+       _pf(r"`targets[γ]` 约为 2.9999", _tgp), ["PROSE-FORMULA-GHOST"])
+    eq("★★ 探针·扩锚：`parameters[R_c] 的真值 9.99`（value=3.71）⟹ 现在抓到",
+       _pf(r"`parameters[R_c]` 的真值 9.99", _tgp), ["PROSE-FORMULA-GHOST"])
+    # —— ★ 修不了的（记录在案的已知局限，靠对抗审稿 + 人读，不是本门的活）——
+    eq("★ 探针（已知局限）：`|G'(0)| 公式算出来 999.99`（非 spec 量、无正确值可比）⟹ 门不管",
+       _pf(r"`|G'(0)|` 公式算出来 999.99（非 target/parameter）", _tgp), [])
+    eq("★ 探针（已知局限）：`targets[γ] = 9.9999`（裸「=」）⟹ 门不管（契约归 SPEC-SELFCONTRADICT，散文需人读）",
+       _pf(r"`targets[γ]` = 9.9999", _tgp), [])
+    eq("★ 探针（已知局限）：`9.9999 就是 targets[γ] 的真值`（数字在锚之前）⟹ 门不管",
+       _pf(r"9.9999 就是 `targets[γ]` 的真值", _tgp), [])
+    ERRORS.clear()
+
+    print()
+    print("=" * 72)
     if fails:
         print(f"✗ {len(fails)} 项自检未通过 —— **检查器自己坏了，先修它**\n")
         print("\n".join(fails))
@@ -1877,6 +2170,8 @@ def main() -> int:
         ("check_spec_selfcontradict", lambda: check_spec_selfcontradict(spec or {})),
         ("check_closed_forms",     lambda: check_closed_forms(spec or {})),
         ("check_review_citations", lambda: check_review_citations(workspace, md)),
+        # ★★ r4 审稿：散文里归给「公式/真值」的数，没有门代回公式验过（幽灵 2.3454）
+        ("check_prose_formula_values", lambda: check_prose_formula_values(md, spec or {})),
         ("check_residue",          lambda: check_residue(md)),
         ("check_sections",         lambda: check_sections(md)),
     ]

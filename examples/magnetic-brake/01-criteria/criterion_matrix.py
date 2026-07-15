@@ -175,18 +175,43 @@ for m in MODELS:
 print("\n  " + "─" * 100)
 print("  ② ★ 「不误杀」扫 **管内径公差 δa** —— v_t ∝ a⁴，这是协议里最敏感的一项系统误差")
 print("  " + "─" * 100)
-DAS = [0.0, 0.02e-3, 0.05e-3, 0.10e-3, 0.15e-3]
+def _correct_survives(da):
+    """正确模型在管内径公差 δa 下，判据**没有一条判死它**（不误杀）。"""
+    return all(fn("★ 正确", da=da)[0] for _, _, fn in CRITS)
+
+
+def _delta_star(lo, hi, tol=2e-6):
+    """★★ r4-H1（回填 electrical-damping 逼出来的教训）：**二分**找边界，不靠网格撞。
+
+    固定网格会跳过真边界、把 delta_max 报虚（electrical-damping 实测：网格报 0.17 mm，
+    二分定出真值 ≈0.134 mm，虚高 30%）。`_eps_star` 早就会二分了，δ 却还在用网格 ——
+    **同一个病换个维度**（P18 ④）。返回 (boundary, (last_pass, first_fail))。"""
+    if _correct_survives(hi):
+        return None, None
+    assert _correct_survives(lo), "δa=lo 就误杀正确模型 ⟹ CRIT-FALSEKILL，不是 robustness"
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        if _correct_survives(mid):
+            lo = mid
+        else:
+            hi = mid
+    return hi, (lo, hi)
+
+
+DAS = [0.0, 0.02e-3, 0.05e-3, 0.10e-3, 0.15e-3]      # 展示用粗扫（边界从二分取，不从它撞）
 print(f"  {'δa [mm]':>9}" + "".join(f"{c:>10}" for c, _, _ in CRITS))
-da_max = None
 for da in DAS:
     res = [fn("★ 正确", da=da)[0] for _, _, fn in CRITS]
     print(f"  {da*1e3:>9.2f}" + "".join(f"{'✓' if r else '✗✗ 判死':>10}" for r in res))
-    if da_max is None and not all(res):
-        da_max = da
-DA_SAFE = 0.10e-3 if da_max is None else max(d for d in DAS if d < da_max)
-print(f"\n  ⟹ **判据的有效窗口：δa < {(da_max or 999):.4g} m**"
-      f"（第一个判死正确模型的 δa）")
-print(f"  ⟹ **协议必须把管内径量到 {DA_SAFE*1e3:.2f} mm 以内**（游标卡尺 ±0.02 mm ⟹ 够）。")
+DA_SCAN_HI = 0.20e-3                                  # ★ r5-H1：扫描上界必须写进契约
+da_max, da_bracket = _delta_star(0.0, DA_SCAN_HI)    # ★ 二分定边界（非网格）
+DA_SAFE = 0.10e-3
+_da_margin = (da_max / DA_SAFE) if da_max else float("inf")
+print(f"\n  ⟹ **判据的有效窗口：δa < {(da_max or 999)*1e3:.4f} mm**（**二分定出**，"
+      f"括在 [{da_bracket[0]*1e3:.4f}, {da_bracket[1]*1e3:.4f}] mm）"
+      if da_max else "\n  ⟹ 全范围不误杀")
+print(f"  ⟹ **协议必须把管内径量到 {DA_SAFE*1e3:.2f} mm 以内**"
+      f"（游标卡尺 ±0.02 mm ⟹ 够；安全裕度 {_da_margin:.1f}×）。")
 
 # ═══════════════════════════ ③ ★★ 扫错误幅度 ε，报 ε*（P18 ②）
 print("\n  " + "─" * 100)
@@ -265,12 +290,19 @@ out = {
     "robustness_scan": {
         "parameter": "δa = 管内径的加工/测量公差 [m]",
         "why": "★ **「不误杀」必须在协议自己承认的系统误差上跑过**（P18 ④）。\n"
-               "**v_t ∝ a⁴ ⟹ 管内径是最敏感的一项**：a 偏 1% ⟹ v_t 偏 4%。",
-        "delta_max": None if da_max is None else round(float(da_max), 6),
-        "verdict": (f"判据的有效窗口：**δa < {da_max*1e3:.2f} mm**。"
+               "**v_t ∝ a⁴ ⟹ 管内径是最敏感的一项**：a 偏 1% ⟹ v_t 偏 4%。\n"
+               "★★ r4-H1（回填）：边界**必须二分定出**，不能靠网格撞（网格会把 delta_max 报虚）。\n"
+               "★★ r5-H1（回填）：必须报 `scan_upper_bound` —— 否则 delta_max=None 与「没扫够远」不可区分。",
+        "scan_upper_bound": round(float(DA_SCAN_HI), 7),
+        "delta_max": None if da_max is None else round(float(da_max), 7),
+        "delta_max_bracket": (None if da_bracket is None else
+                              [round(float(da_bracket[0]), 7),
+                               round(float(da_bracket[1]), 7)]),
+        "verdict": (f"判据的有效窗口：**δa < {da_max*1e3:.3f} mm**（**二分定出**，"
+                    f"括在 [{da_bracket[0]*1e3:.3f}, {da_bracket[1]*1e3:.3f}] mm）。"
                     f"协议必须把管内径量到 **{DA_SAFE*1e3:.2f} mm** 以内"
-                    f"（游标卡尺 ±0.02 mm ⟹ 够）。"
-                    if da_max else "在 δa ≤ 0.15 mm 的全范围内都不误杀"),
+                    f"（游标卡尺 ±0.02 mm ⟹ 够，裕度 {_da_margin:.1f}×）。"
+                    if da_max else "在 δa ≤ 0.20 mm 的全范围内都不误杀"),
     },
     "min_detectable": {
         "why": "★★ 一个错模型「被抓到了 ✓」**没有信息量 —— 因为幅度是作者挑的**（P18 ②）。\n"
