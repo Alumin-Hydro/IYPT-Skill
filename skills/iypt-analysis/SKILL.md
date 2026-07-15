@@ -529,11 +529,17 @@ $\pm4$ mm（非线性 $<1\%$）就干净了。
 
 ```bash
 python examples/<题>/01-criteria/criterion_matrix.py     # 必须 exit 0，且写出 matrix.json
+# ★★ 把 matrix.json 逐字同步进 model-spec.json 的 criterion_matrix（保留 script 字段）——
+#    check_analysis 读的是**内嵌那份**，不是 matrix.json 本身。忘了同步，CRIT-MATRIX-DESYNC 会抓。
 python skills/iypt-analysis/scripts/check_analysis.py examples/<题>   # 零 ERROR
 ```
 
-`check_analysis.py` 会把 `matrix.json` 读进 `model-spec.json` 的 `criterion_matrix` 并逐条查
-（`CRIT-MATRIX-MISSING` / `CRIT-FALSEKILL` / `CRIT-BLIND` / `CRIT-MODEL-UNCAUGHT` / `CRIT-CATCH-DANGLING`）。
+`check_analysis.py` 逐条查 `model-spec.json` 里**内嵌**的 `criterion_matrix`
+（`CRIT-MATRIX-MISSING` / `CRIT-FALSEKILL` / `CRIT-BLIND` / `CRIT-MODEL-UNCAUGHT` / `CRIT-CATCH-DANGLING`
+/ `CRIT-ROBUSTNESS-COARSE` / `CRIT-NO-MIN-DETECTABLE`）。
+**★ 它不读 `matrix.json`**（r6 审稿 H1：以前这句写反了）—— 内嵌是**手工同步**进去的一份副本，
+靠 `CRIT-MATRIX-DESYNC` 校验「内嵌 == matrix.json」（不校验的话，篡改内嵌一处、matrix.json 不动，
+全套 CRIT 门 0 ERROR —— r6 审稿端到端证明过）。
 
 > **文档里的劝诫会被忽略；机械检查不会。**
 > **但这五条上面，机械检查是零 ERROR —— 洞在物理里，不在语法里。**

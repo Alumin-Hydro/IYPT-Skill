@@ -5,6 +5,7 @@
     "parameter": "δa = 管内径的加工/测量公差 [m]",
     "why": "★ **「不误杀」必须在协议自己承认的系统误差上跑过**（P18 ④）。\n**v_t ∝ a⁴ ⟹ 管内径是最敏感的一项**：a 偏 1% ⟹ v_t 偏 4%。\n★★ r4-H1（回填）：边界**必须二分定出**，不能靠网格撞（网格会把 delta_max 报虚）。\n★★ r5-H1（回填）：必须报 `scan_upper_bound` —— 否则 delta_max=None 与「没扫够远」不可区分。",
     "scan_upper_bound": 0.0002,
+    "systematic_error_budget": 2e-05,
     "delta_max": 0.0001453,
     "delta_max_bracket": [
       0.0001437,

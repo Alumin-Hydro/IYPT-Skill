@@ -203,7 +203,8 @@ print(f"  {'δa [mm]':>9}" + "".join(f"{c:>10}" for c, _, _ in CRITS))
 for da in DAS:
     res = [fn("★ 正确", da=da)[0] for _, _, fn in CRITS]
     print(f"  {da*1e3:>9.2f}" + "".join(f"{'✓' if r else '✗✗ 判死':>10}" for r in res))
-DA_SCAN_HI = 0.20e-3                                  # ★ r5-H1：扫描上界必须写进契约
+DA_SCAN_HI = 0.20e-3                                  # ★ r5-H1：扫描上界写进契约（≥3×卡尺 0.02mm）
+DA_BUDGET = 0.02e-3                                   # ★ r6-H2：游标卡尺精度 ±0.02 mm
 da_max, da_bracket = _delta_star(0.0, DA_SCAN_HI)    # ★ 二分定边界（非网格）
 DA_SAFE = 0.10e-3
 _da_margin = (da_max / DA_SAFE) if da_max else float("inf")
@@ -294,6 +295,7 @@ out = {
                "★★ r4-H1（回填）：边界**必须二分定出**，不能靠网格撞（网格会把 delta_max 报虚）。\n"
                "★★ r5-H1（回填）：必须报 `scan_upper_bound` —— 否则 delta_max=None 与「没扫够远」不可区分。",
         "scan_upper_bound": round(float(DA_SCAN_HI), 7),
+        "systematic_error_budget": round(float(DA_BUDGET), 7),
         "delta_max": None if da_max is None else round(float(da_max), 7),
         "delta_max_bracket": (None if da_bracket is None else
                               [round(float(da_bracket[0]), 7),

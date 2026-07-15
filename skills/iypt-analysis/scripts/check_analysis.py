@@ -26,6 +26,18 @@
   ③ **修不了的（如「非 spec 量的幽灵」「provenance 靠重跑保证」）→ 明写「已知局限」**
      —— 探针断言「它放行」并注明为什么，**而不是假装门覆盖了它**（诚实 scope 胜过虚假安全感）。
 本文件的 `selftest()` 里，每道门后都跟着一组这样的探针（搜 `盲区探针` / `BLINDNESS`）。
+
+★★★ 而「盲区探针」本身也不完备 —— 这是最后一层（r6 审稿，第七次复发）
+────────────────────────────────────────────────────────────────────────────
+r6 审稿又构造出两个盲区（`CRIT-MATRIX-DESYNC` 之前的内嵌脱钩、`PROSE` 门措辞表外的词），
+**两个都不在当轮的探针集里**。**「列几个探针」= r3 那张「全绿表」在探针层的翻版 —— 它证明不了
+自己穷尽了。** 这正是 P18「你怎么知道判据集完备」的同一个未解问题，只是又升了一层楼。
+
+**⟹ 机械门（含它的探针）无法机械地证明自己完备。收敛不靠更完美的门，靠**流程**：**
+  · **探针挡**已知**盲区**（写死在 selftest，不会 regress）；
+  · **对抗审稿挖**未知**盲区**（每改一道门 / 每加一道门 → 派一次 fresh 的 `iypt-physics-review`，
+    让它专门构造「让这道门失明」的输入）。**缺一不可。**
+七次复发是这件事的经验证明：每一轮我都以为「这次的门/探针够了」，每一轮审稿都构造出新的失明。
 """
 
 import json
@@ -1143,6 +1155,7 @@ def check_criterion_matrix(spec: dict) -> None:
         #   ⟹ `delta_max=None` 不再是逃生舱：**必须报 `scan_upper_bound`**，否则「处处稳健」不可证伪。
         dm = rs.get("delta_max")
         sub = rs.get("scan_upper_bound")
+        budget = rs.get("systematic_error_budget")   # ★ r6-H2：scan_upper_bound 的下限参照
         if not isinstance(sub, (int, float)):
             err("CRIT-ROBUSTNESS-COARSE",
                 "`robustness_scan` 缺 `scan_upper_bound`（δ 到底扫了多远）—— "
@@ -1151,8 +1164,19 @@ def check_criterion_matrix(spec: dict) -> None:
                 "编码成了同一个 `None`。\n"
                 "        （r5 真实翻车：门挂在 `elif delta_max is number` 上，None 时整道门被跳过，"
                 "而 selftest 把这个跳过钉成「预期行为」——盲区被写进了自检。）\n"
-                "        必须报 `scan_upper_bound`；「处处稳健」= 在 `[0, scan_upper_bound]` 上不误杀，"
-                "而该上界要 ≥ 协议自报系统误差的几倍 —— **这一步是物理判断，门只保证这个数被写出来。**")
+                "        必须报 `scan_upper_bound`；「处处稳健」= 在 `[0, scan_upper_bound]` 上不误杀。")
+        elif not (isinstance(budget, (int, float)) and budget > 0):
+            err("CRIT-ROBUSTNESS-COARSE",
+                "`robustness_scan` 缺 `systematic_error_budget`（协议自报的系统误差量级，如 §9 噪声预算）——\n"
+                "        **没有它，`scan_upper_bound` 够不够远无法机械判定**"
+                "（r6-H2：`scan_upper_bound=0.05mm` < 0.10mm 噪声预算，照样报「处处稳健」）。\n"
+                "        ★ budget 是作者报的数，门只保证 `scan_upper_bound ≥ 3×budget`；"
+                "**budget 本身诚不诚实（对比 §9）靠人读/审稿**（诚实 scope）。")
+        elif float(sub) < 3 * float(budget):
+            err("CRIT-ROBUSTNESS-COARSE",
+                f"`scan_upper_bound={sub:g}` < 3×`systematic_error_budget={budget:g}` —— "
+                f"**δ 扫得不够远，「处处稳健 / 有效窗口」不足信**（r6-H2）。\n"
+                f"        扫到 ≥ 3× 系统误差，边界才在噪声够不到的地方。")
         elif dm is None:
             # 「处处稳健」：门已保证 scan_upper_bound 写出来了（上面查过）。
             # 「扫得够不够远」（对比噪声预算）是**物理判断** —— 门不冒充能判它（诚实 scope）。
@@ -1203,6 +1227,79 @@ def check_criterion_matrix(spec: dict) -> None:
             "「标称 B_r 公差 ±5% ⟹ **b 偏 ±10%**」。\n"
             "        **10% < 12% ⟹ 他亲手描述的那个真实场景，五条判据一条都抓不到。**）\n"
             "        字段：`{<错模型>: {eps_star, caught_by, note}}`。")
+
+
+# ------------------------------------------------------- ★★★ 内嵌副本 vs matrix.json 脱钩
+#
+#  **教训（electrical-damping r6 审稿，真实发生 —— 第七次复发的真 MAJOR）**：
+#  上面 `check_criterion_matrix` 读的是 `model-spec.json` **内嵌**的 `criterion_matrix`
+#  （一份**手拷**副本），而它能和 `01-criteria/matrix.json`（`criterion_matrix.py` 的真输出）
+#  **静默脱钩**。实测：把 `delta_max=0.17`（r4 判死的虚报值）+ 手写窄括号塞进**内嵌**副本、
+#  `matrix.json` 留 0.1348 不动，端到端喂真 `check_analysis.py` ⟹ **0 ERROR，两份差 26%。**
+#
+#  > **r5/r6 那句「provenance 靠重跑 matrix.json 保证」是一张空标签 —— 重跑碰不到门消费的数据。**
+#  > **而 `SKILL.md` 还谎称门会把 matrix.json 读进 model-spec。文档里的劝诫会被忽略；这道门不会。**
+
+
+def _first_json_diff(a, b, path: str = "") -> str:
+    """两个 JSON 结构的第一处差异（给 DESYNC 一个可定位的消息）。相等 ⟹ 空串。"""
+    if type(a) is not type(b):
+        return f"{path or '根'}：类型 {type(a).__name__} vs {type(b).__name__}"
+    if isinstance(a, dict):
+        for k in sorted(set(a) | set(b)):
+            if k not in a:
+                return f"{path}.{k}：matrix.json 有、内嵌无"
+            if k not in b:
+                return f"{path}.{k}：内嵌有、matrix.json 无"
+            if d := _first_json_diff(a[k], b[k], f"{path}.{k}"):
+                return d
+        return ""
+    if isinstance(a, list):
+        if len(a) != len(b):
+            return f"{path}：长度 {len(a)} vs {len(b)}"
+        for i, (x, y) in enumerate(zip(a, b)):
+            if d := _first_json_diff(x, y, f"{path}[{i}]"):
+                return d
+        return ""
+    return "" if a == b else f"{path}：{a!r} vs {b!r}"
+
+
+def check_matrix_desync(spec: dict, workspace: Path) -> None:
+    """★★★ 内嵌 `criterion_matrix`（去掉 `script`）必须**逐字 == `01-criteria/matrix.json`**。
+
+    ★ 诚实 scope：这把「只改内嵌一处」的攻击**堵死了**（等式检查，不是启发式）。它**证不了
+      `matrix.json` 本身是不是 `criterion_matrix.py` 的新鲜输出**（「内嵌+matrix.json 两处一起改」
+      仍能骗过）—— 那要 build 步骤 subprocess 重跑源码再比。**本门只保证「内嵌 == matrix.json」；
+      matrix.json 的新鲜度靠「提交前先重跑 criterion_matrix.py」+ 对抗审稿兜底。**（见文件头「盲区探针」。）
+    """
+    if not spec:
+        return
+    cm = spec.get("criterion_matrix")
+    if not isinstance(cm, dict):
+        return                                     # 缺失归 CRIT-MATRIX-MISSING
+    mp = workspace / "01-criteria" / "matrix.json"
+    if not mp.exists():
+        err("CRIT-MATRIX-DESYNC",
+            f"内嵌 `criterion_matrix` 存在，但找不到源 `01-criteria/matrix.json` —— "
+            f"**无法校验内嵌副本是不是 `criterion_matrix.py` 跑出来的。**\n"
+            f"        先 `python 01-criteria/criterion_matrix.py` 生成，再同步进契约。")
+        return
+    try:
+        mat = json.loads(mp.read_text(encoding="utf-8"))
+    except Exception as e:                         # noqa: BLE001
+        err("CRIT-MATRIX-DESYNC", f"`01-criteria/matrix.json` 解析失败：{type(e).__name__}: {e}")
+        return
+    embedded = {k: v for k, v in cm.items() if k != "script"}
+    if embedded != mat:
+        err("CRIT-MATRIX-DESYNC",
+            f"**契约内嵌的 `criterion_matrix` 与 `01-criteria/matrix.json` 对不上** "
+            f"（第一处：{_first_json_diff(embedded, mat)}）。\n"
+            f"        （r6 真实翻车：门读**内嵌手拷副本**、不读 matrix.json —— 有人把 delta_max 篡改进内嵌、"
+            f"matrix.json 不动，全套门 0 ERROR。这道门补那个洞。）\n"
+            f"        **重跑 `criterion_matrix.py`，再把 matrix.json 逐字同步进 "
+            f"`model-spec.criterion_matrix`（保留 `script`）。**\n"
+            f"        ★ 本门只保证「内嵌 == matrix.json」；matrix.json 是不是源码新鲜输出，"
+            f"靠「提交前重跑」+ 对抗审稿。")
 
 
 # ---------------------------------------------------------------- ★★ 闭式里的孤儿
@@ -1542,11 +1639,13 @@ _GREEK_TEX2U = {r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ
 #: 「这个数是某个量的**计算 / 真实值**」的措辞。**present-tense —— 无版本豁免**：
 #  说「公式算出来是 N」就是断言「**现在**的公式给出 N」，它必须等于**现在**的 baseline / value。
 #  （想引旧值？把它归给 r{n}（走 `REVIEW-CITE-GHOST`），不能归给「公式」。）
-#  ★ r5 审稿 H2：措辞不许写死成一种。补了「约为 / 大约 / ≈」，桥放宽到 15 字。
-#    （但**没有**加裸「=」—— 见下面 `check_prose_formula_values` 的诚实 scope 声明。）
+#  ★ r6 审稿 H4：r6 加的「约为 / 大约 / ≈」**引入了误报**（`parameters[a] … 磁场约为 0.3 T`
+#    把 0.3 硬套给 a=10.784mm）—— 太泛的措辞抓到的是**别的量**的数。**r7 回退它们。**
+#  ★★ r6 审稿 H3：措辞表怎么扩都不全（`计算得/等于/求得` 仍漏）——「同一个病换更大的有限数」。
+#    ⟹ **本表是一个启发式**（挡最常见的形态），**不追求完备；未覆盖的措辞靠对抗审稿兜底**（见文件头）。
 _VALUE_CLAIM = re.compile(
-    r"(公式算出来|闭式算出来|公式给出|闭式给出|真值|正确值|约为|大约(?:是|为)?|≈)"
-    r"[^0-9\n]{0,15}?([-+]?\d+(?:\.\d+)?)")
+    r"(公式算出来|闭式算出来|公式给出|闭式给出|真值|正确值)"
+    r"[^0-9\n]{0,10}?([-+]?\d+(?:\.\d+)?)")
 
 
 def _quantity_prose_refs(sym: str, prefix: str) -> set[str]:
@@ -1768,7 +1867,8 @@ def selftest() -> int:
              "catches": [{"id": "n-A", "detail": "k=2.1"}, {"id": "n-B", "detail": "k=1.0"}]},
             {"id": "K2", "passes_correct": True, "tolerance_source": _SRC,
              "catches": ["bug-C"]}],                     # ★ 旧格式 [str] 必须仍然收得住
-        "robustness_scan": {"parameter": "δ = 残余定心误差", "scan_upper_bound": 3.0e-4,
+        "robustness_scan": {"parameter": "δ = 残余定心误差", "scan_upper_bound": 4.0e-4,
+                            "systematic_error_budget": 1.0e-4,   # ★ r6-H2：scan ≥ 3×budget
                             "delta_max": 1.35e-4, "delta_max_bracket": [1.34e-4, 1.35e-4]},
         "min_detectable": {"bug-C": {"eps_star": 0.13, "caught_by": ["K2"]}},
         "verdict": "PASS"}}
@@ -1843,8 +1943,9 @@ def selftest() -> int:
 
     none_ok = copy.deepcopy(good)
     none_ok["criterion_matrix"]["robustness_scan"] = {
-        "parameter": "δ", "delta_max": None, "scan_upper_bound": 5e-4}
-    eq("★ delta_max=None + 报了 scan_upper_bound（诚实的「处处稳健」）⟹ 不报",
+        "parameter": "δ", "delta_max": None, "scan_upper_bound": 5e-4,
+        "systematic_error_budget": 1e-4}      # 5e-4 ≥ 3×1e-4 ✓
+    eq("★ delta_max=None + scan_upper_bound 且 ≥3×budget（诚实的「处处稳健」）⟹ 不报",
        _crit(none_ok), [])
 
     nosub = copy.deepcopy(good)
@@ -1852,15 +1953,27 @@ def selftest() -> int:
     eq("★★ 探针：有限 delta_max 但缺 scan_upper_bound ⟹ CRIT-ROBUSTNESS-COARSE",
        _crit(nosub), ["CRIT-ROBUSTNESS-COARSE"])
 
+    # ★★ r6 审稿 H2 探针 —— scan_upper_bound 必须有下限（否则 None 逃生舱没真堵死）
+    nobudget = copy.deepcopy(good)
+    del nobudget["criterion_matrix"]["robustness_scan"]["systematic_error_budget"]
+    eq("★★ 探针（r6-H2）：缺 systematic_error_budget ⟹ scan 无下限 ⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(nobudget), ["CRIT-ROBUSTNESS-COARSE"])
+
+    shallow = copy.deepcopy(good)
+    shallow["criterion_matrix"]["robustness_scan"]["scan_upper_bound"] = 2.0e-4  # < 3×budget(3e-4)
+    eq("★★ 探针（r6-H2）：scan=2e-4 < 3×budget(3e-4) ⟹ 扫得不够远 ⟹ CRIT-ROBUSTNESS-COARSE",
+       _crit(shallow), ["CRIT-ROBUSTNESS-COARSE"])
+
     # ★★ r5-H1② 探针（**记录在案的已知局限**，不是「已修好」）：手写一个窄括号，把 r4 判死的
     #    虚报值 0.17 塞回来。门只查自洽性（宽度），**证不了它是二分跑出来的** ⟹ **它照样过**。
     #    provenance 靠「先重跑 `criterion_matrix.py` 再 check」保证，不靠这道门。**探针断言「它过」——
     #    明写这是局限，而不是假装门修好了它。**（诚实 scope 胜过虚假安全感。）
     handwritten = copy.deepcopy(good)
     handwritten["criterion_matrix"]["robustness_scan"] = {
-        "parameter": "δ", "scan_upper_bound": 3e-4,
+        "parameter": "δ", "scan_upper_bound": 4e-4, "systematic_error_budget": 1e-4,
         "delta_max": 1.7e-4, "delta_max_bracket": [1.69e-4, 1.70e-4]}
-    eq("★★ 探针（已知局限）：手写窄括号复活虚报值 0.17 ⟹ 门放行（provenance 靠重跑，不靠门）",
+    eq("★★ 探针（已知局限）：手写窄括号复活虚报值 0.17 ⟹ 门放行"
+       "（r6-H1 起：CRIT-MATRIX-DESYNC 现在抓「内嵌≠matrix.json」，但**两处一起改**仍靠重跑+审稿）",
        _crit(handwritten), [])
 
     # ★★ P18 ② —— 错误幅度是挑出来的
@@ -1871,6 +1984,39 @@ def selftest() -> int:
 
     eq("契约里没有 criterion_matrix ⟹ CRIT-MATRIX-MISSING",
        _crit({"tasks": [{"id": "T-1"}]}), ["CRIT-MATRIX-MISSING"])
+    ERRORS.clear()
+
+    print()
+    print("=" * 72)
+    print("②c″ ★★★ CRIT-MATRIX-DESYNC（r6 审稿 H1）：门读内嵌手拷副本，它必须 == matrix.json")
+    print("=" * 72)
+    import os as _os
+    import tempfile as _tf
+
+    def _desync(embedded_cm, matrix_content, write_matrix=True):
+        with _tf.TemporaryDirectory() as d:
+            if write_matrix:
+                _os.makedirs(_os.path.join(d, "01-criteria"))
+                with open(_os.path.join(d, "01-criteria", "matrix.json"),
+                          "w", encoding="utf-8") as f:
+                    json.dump(matrix_content, f, ensure_ascii=False)
+            ERRORS.clear()
+            check_matrix_desync({"criterion_matrix": embedded_cm}, Path(d))
+            return [e.split("]")[0].lstrip("[") for e in ERRORS]
+
+    _mj = {"verdict": "PASS", "robustness_scan": {"delta_max": 1.35e-4}}
+    eq("内嵌（去 script）== matrix.json ⟹ 不报",
+       _desync({**_mj, "script": "x.py"}, _mj), [])
+    # ★★★ 探针：把 r4 判死的 0.17 篡改进内嵌、matrix.json 留 0.135 ⟹ 抓到（r6-H1 端到端 0 ERROR 的那个洞）
+    eq("★★★ 探针：内嵌 delta_max 篡改为 0.17、matrix.json 留 0.135 ⟹ CRIT-MATRIX-DESYNC",
+       _desync({"verdict": "PASS", "robustness_scan": {"delta_max": 1.7e-4}, "script": "x.py"}, _mj),
+       ["CRIT-MATRIX-DESYNC"])
+    # ★ 探针（已知局限）：内嵌+matrix.json **两处一起改** ⟹ 门放行（新鲜度靠「提交前重跑」+ 对抗审稿）
+    eq("★ 探针（已知局限）：内嵌+matrix.json 两处一起改成 0.17 ⟹ 门放行（本门只保证两份一致）",
+       _desync({"verdict": "PASS", "robustness_scan": {"delta_max": 1.7e-4}, "script": "x.py"},
+               {"verdict": "PASS", "robustness_scan": {"delta_max": 1.7e-4}}), [])
+    eq("★ matrix.json 缺失 ⟹ CRIT-MATRIX-DESYNC（无法校验内嵌是不是源码跑的）",
+       _desync({**_mj, "script": "x.py"}, _mj, write_matrix=False), ["CRIT-MATRIX-DESYNC"])
     ERRORS.clear()
 
     print()
@@ -2101,8 +2247,10 @@ def selftest() -> int:
     _tgp = {"targets": [{"symbol": r"\gamma", "baseline_value": 2.3554174}],
             "parameters": [{"symbol": "R_c", "value": 3.71}]}
     # —— 能修的（本轮扩了措辞 + 扩了 parameters 锚）：现在该抓到 ——
-    eq("★★ 探针·扩措辞：`targets[γ] 约为 2.9999` ⟹ 现在抓到（r5 之前漏）",
-       _pf(r"`targets[γ]` 约为 2.9999", _tgp), ["PROSE-FORMULA-GHOST"])
+    # ★ r6 审稿 H4：r6 加过「约为」抓这个，但它**引入了误报**（`parameters[a] 磁场约为 0.3 T`）——
+    #   r7 回退。「约为」这类太泛的措辞归**已知局限**（措辞表是启发式，靠对抗审稿兜底），不硬扩。
+    eq("★ 探针（已知局限）：`targets[γ] 约为 2.9999`（太泛的措辞，回退后不抓）⟹ 门不管",
+       _pf(r"`targets[γ]` 约为 2.9999", _tgp), [])
     eq("★★ 探针·扩锚：`parameters[R_c] 的真值 9.99`（value=3.71）⟹ 现在抓到",
        _pf(r"`parameters[R_c]` 的真值 9.99", _tgp), ["PROSE-FORMULA-GHOST"])
     # —— ★ 修不了的（记录在案的已知局限，靠对抗审稿 + 人读，不是本门的活）——
@@ -2165,6 +2313,8 @@ def main() -> int:
         # ★★ 这两道是 CLAUDE.md 教训 4 说「目前没有机械检查能发现」的那两件事
         ("check_stale_values",     lambda: check_stale_values(workspace, md, problem_md, spec or {})),
         ("check_criterion_matrix", lambda: check_criterion_matrix(spec or {})),
+        # ★★★ r6 审稿 H1：门读的是内嵌手拷副本 —— 它必须 == 01-criteria/matrix.json
+        ("check_matrix_desync",    lambda: check_matrix_desync(spec or {}, workspace)),
         # ★★★ 这三道来自 r3 审稿：STALE-VALUE 只在「值变了」时看得见，
         #     而「忘了改」的定义就是「值没变」——它对自己要抓的主要形态结构性失明。
         ("check_spec_selfcontradict", lambda: check_spec_selfcontradict(spec or {})),

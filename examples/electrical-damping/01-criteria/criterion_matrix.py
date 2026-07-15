@@ -455,7 +455,8 @@ for dl in [0.0, 0.05e-3, 0.10e-3, 0.13e-3, 0.14e-3, 0.17e-3, 0.25e-3]:
     mark = "".join(f"{'✓' if r else ('✗✗ 判死' if r is False else '—'):>10}" for r in res)
     print(f"  {dl*1e3:>8.2f}{mark}")
 
-DELTA_SCAN_HI = 0.30e-3                                     # ★ r5-H1：扫描上界必须写进契约
+DELTA_SCAN_HI = 0.40e-3                                     # ★ r5-H1：扫描上界写进契约（≥3×噪声 0.10mm）
+NOISE_BUDGET = 0.10e-3                                      # ★ r6-H2：§9 视频噪声预算 ±0.1 mm
 delta_max, delta_bracket = _delta_star(0.0, DELTA_SCAN_HI)  # ★ 二分定边界（非网格）
 DELTA_SAFE = 0.10e-3                                        # 协议要求 = §9 视频噪声底 ±0.1 mm
 _margin = (delta_max / DELTA_SAFE) if delta_max else float("inf")
@@ -530,6 +531,7 @@ out = {
                "★★ r5-H1：必须报 `scan_upper_bound`（扫到多远）—— 否则 delta_max=None"
                "（「处处稳健」）与「扫描范围太小」不可区分。",
         "scan_upper_bound": round(float(DELTA_SCAN_HI), 7),
+        "systematic_error_budget": round(float(NOISE_BUDGET), 7),
         "delta_max": None if delta_max is None else round(float(delta_max), 7),
         "delta_max_bracket": (None if delta_bracket is None else
                               [round(float(delta_bracket[0]), 7),
