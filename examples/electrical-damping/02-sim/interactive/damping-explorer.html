@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Electrical damping · interactive explorer (SIMULATION)</title>
+<style>
+ :root{--ink:#0b0b0b;--soft:#52514e;--muted:#898781;--grid:#e1e0d9;--blue:#2a78d6;
+       --green:#008300;--red:#e34948;--bg:#faf9f6}
+ body{font-family:Georgia,serif;background:var(--bg);color:var(--ink);margin:0;
+      padding:24px 30px;max-width:1180px;margin:auto}
+ h1{font-size:22px;margin:0 0 2px}
+ .stamp{display:inline-block;font-family:monospace;font-weight:bold;font-size:12px;
+        color:#fff;background:var(--red);padding:2px 10px;border-radius:3px;
+        letter-spacing:.5px;vertical-align:middle;margin-left:12px}
+ .sub{color:var(--soft);font-size:14px;margin-bottom:14px}
+ .row{display:flex;gap:22px;flex-wrap:wrap}
+ .panel{background:#fff;border:1px solid var(--grid);border-radius:8px;padding:14px}
+ canvas{display:block}
+ .ctl{font-size:14.5px;margin:8px 0;font-family:monospace}
+ .ctl input[type=range]{width:300px;vertical-align:middle}
+ .readout{font-family:monospace;font-size:13.5px;background:#fff;
+          border:1px solid var(--grid);border-radius:8px;padding:10px 14px;margin-top:14px}
+ .regime{font-weight:bold}
+ .foot{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.5}
+ label{display:inline-block;width:220px}
+</style></head><body>
+<h1>Electrical damping — envelope-mode explorer<span class="stamp">SIMULATION</span></h1>
+<div class="sub">IYPT 2026 · P2 — magnet on a spring inside a coil.
+ Damping switches itself off at the coil center: watch the envelope morph from a
+ straight line (exponential) to a curved power law as z<sub>0</sub> → 0.</div>
+<div class="row">
+ <div class="panel">
+  <div class="ctl"><label>magnet rest position z<sub>0</sub> =
+    <b id="z0v"></b> mm</label>
+   <input type="range" id="z0" min="0" max="15" step="0.25" value="0"></div>
+  <div class="ctl"><label>initial amplitude A<sub>0</sub> = <b id="a0v"></b> mm</label>
+   <input type="range" id="a0" min="0.5" max="8" step="0.25" value="3"></div>
+  <div class="ctl"><label>external resistor</label>
+   <select id="rsel"><option value="0" selected>R = 0 (short)</option>
+   <option value="20">R = 20 &Omega;</option></select>
+   <span style="font-size:12.5px;color:var(--muted)"> &nbsp;overlay:
+   <input type="checkbox" id="ode" checked> baked ODE peaks (z0=0, R=0)</span></div>
+  <canvas id="env" width="640" height="420"></canvas>
+ </div>
+ <div class="panel">
+  <div style="font-size:13.5px;color:var(--soft);margin-bottom:6px">
+    regime map — boundaries baked from the run</div>
+  <canvas id="map" width="380" height="420"></canvas>
+ </div>
+</div>
+<div class="readout" id="out"></div>
+<div class="foot">Curve = contract closed forms (23a) + (15): (A0/A)&sup2; = (1+Q)e<sup>2&Gamma;t</sup> &minus; Q with
+ &Gamma;(z<sub>0</sub>;R) = &gamma;_oc + G(z<sub>0</sub>)&sup2;/[2M_eff(R+R_c)] (eq. 15, valid on the whole
+ slider range — the parabola &gamma;_oc + c&#8322;z<sub>0</sub>&sup2; is fitted only on |z<sub>0</sub>| &le; 4 mm), Q = c&#8322;(R)A<sub>0</sub>&sup2;/(4&Gamma;).
+ G(z<sub>0</sub>) is a <b>baked eq.-27 table</b> (0.25 mm grid, linear interp); c&#8322;(R) = c&#8322;(0)&middot;R_c/(R+R_c).
+ All coefficients and the ODE overlay points are <b>baked from the Python run</b> that produced
+ results.json — this page computes no physics of its own. Wire data: DATA object below. SIMULATION, not experiment.</div>
+<script>
+const DATA = {"gamma_oc": 0.0413, "omega0": 18.850608275659457, "M_eff": 0.006557, "R_c": 3.70964293, "R_test": 20.0, "c2_sc": 229949.63728191814, "z_pk": 0.010453332154144868, "A_c": 0.0008475955287761001, "A_lin": 0.007647742007659473, "G_z0_step": 0.00025, "G_table": [-0.0, -0.026443, -0.05289, -0.079346, -0.105813, -0.132292, -0.158781, -0.185276, -0.211769, -0.238248, -0.264695, -0.291089, -0.317404, -0.343605, -0.369654, -0.395508, -0.421116, -0.446425, -0.471374, -0.495902, -0.519943, -0.543429, -0.566293, -0.588467, -0.609887, -0.630487, -0.650207, -0.668992, -0.686791, -0.703555, -0.719241, -0.733814, -0.747241, -0.759494, -0.770549, -0.780388, -0.788997, -0.796363, -0.80248, -0.807344, -0.810955, -0.813315, -0.81443, -0.814309, -0.812966, -0.810417, -0.806681, -0.801782, -0.795748, -0.788612, -0.780411, -0.771187, -0.760986, -0.74986, -0.737867, -0.725069, -0.711532, -0.697326, -0.682527, -0.667211, -0.651455], "nu_boundary": {"z0": [0.0005, 0.000872, 0.001244, 0.001615, 0.001987, 0.002359, 0.002731, 0.003103, 0.003474, 0.003846, 0.004218, 0.00459, 0.004962, 0.005333, 0.005705, 0.006077, 0.006449, 0.006821, 0.007192, 0.007564, 0.007936, 0.008308, 0.008679, 0.009051, 0.009423, 0.009795, 0.010167, 0.010538, 0.01091, 0.011282, 0.011654, 0.012026, 0.012397, 0.012769, 0.013141, 0.013513, 0.013885, 0.014256, 0.014628, 0.015], "A": [5e-05, 8.7e-05, 0.000124, 0.000161, 0.000199, 0.000236, 0.000274, 0.000312, 0.000352, 0.000392, 0.000435, 0.000481, 0.000529, 0.000582, 0.00064, 0.000705, 0.000777, 0.000858, 0.000951, 0.001057, 0.001179, 0.00132, 0.001484, 0.001676, 0.0019, 0.002159, 0.002459, 0.002802, 0.002702, 0.002393, 0.002127, 0.001901, 0.00171, 0.001548, 0.001412, 0.001297, 0.001199, 0.001117, 0.001048, 0.00099]}, "ode_envelopes": [{"A0": 0.002, "t": [0.3335, 0.667, 1.0003, 1.3337, 1.667, 2.0003, 2.3337, 2.667, 3.0004, 3.3337, 3.667, 4.0004, 4.3337, 4.667, 5.0004, 5.3337, 5.667, 6.0004, 6.3335, 6.6669, 7.0002, 7.3335, 7.6669, 8.0002, 8.3335, 8.6669, 9.0001, 9.3334, 9.6667, 10.0001, 10.3334, 10.6667, 11.0001, 11.3332, 11.6666, 11.9999, 12.3332, 12.6666, 12.9999, 13.3332, 13.6666, 13.9997, 14.3331, 14.6664, 14.9997, 15.3331, 15.6664, 15.9998, 16.3331, 16.6663, 16.9996, 17.3329, 17.6663, 17.9996, 18.3329, 18.6663, 18.9994, 19.3328, 19.6661, 19.9994, 20.3328, 20.6661, 20.9994, 21.3328, 21.666, 21.9993, 22.3326, 22.666, 22.9993, 23.3326, 23.666, 23.9993, 24.3325, 24.6658, 24.9991, 25.3325, 25.6658, 25.9991, 26.3325, 26.6658, 26.999, 27.3323, 27.6657, 27.999, 28.3323, 28.6657, 28.999, 29.3323, 29.6655, 29.9988], "A": [0.00183828, 0.0017072, 0.00159802, 0.00150512, 0.00142474, 0.00135422, 0.00129166, 0.00123561, 0.00118499, 0.00113894, 0.0010968, 0.00105801, 0.00102214, 0.00098883, 0.00095777, 0.00092871, 0.00090143, 0.00087576, 0.00085153, 0.00082861, 0.00080688, 0.00078624, 0.00076659, 0.00074785, 0.00072995, 0.00071283, 0.00069643, 0.0006807, 0.00066559, 0.00065106, 0.00063708, 0.0006236, 0.00061061, 0.00059806, 0.00058594, 0.00057422, 0.00056287, 0.00055188, 0.00054123, 0.0005309, 0.00052087, 0.00051114, 0.00050168, 0.00049249, 0.00048354, 0.00047484, 0.00046637, 0.00045811, 0.00045007, 0.00044222, 0.00043458, 0.00042711, 0.00041983, 0.00041272, 0.00040577, 0.00039899, 0.00039235, 0.00038587, 0.00037953, 0.00037332, 0.00036725, 0.00036131, 0.0003555, 0.0003498, 0.00034423, 0.00033876, 0.00033341, 0.00032816, 0.00032302, 0.00031798, 0.00031303, 0.00030818, 0.00030343, 0.00029876, 0.00029418, 0.00028968, 0.00028527, 0.00028094, 0.00027669, 0.00027251, 0.00026841, 0.00026438, 0.00026042, 0.00025653, 0.00025271, 0.00024896, 0.00024526, 0.00024164, 0.00023807, 0.00023457]}, {"A0": 0.003, "t": [0.3342, 0.668, 1.0015, 1.335, 1.6685, 2.0018, 2.3353, 2.6687, 3.002, 3.3354, 3.6687, 4.002, 4.3354, 4.6687, 5.002, 5.3354, 5.6687, 6.002, 6.3352, 6.6685, 7.0019, 7.3352, 7.6685, 8.0019, 8.3352, 8.6685, 9.0017, 9.3351, 9.6684, 10.0017, 10.3351, 10.6684, 11.0017, 11.3349, 11.6682, 12.0016, 12.3349, 12.6682, 13.0016, 13.3349, 13.6682, 14.0014, 14.3347, 14.6681, 15.0014, 15.3348, 15.6681, 16.0014, 16.3346, 16.6679, 17.0013, 17.3346, 17.6679, 18.0013, 18.3346, 18.6679, 19.0011, 19.3344, 19.6678, 20.0011, 20.3344, 20.6678, 21.0011, 21.3345, 21.6676, 22.001, 22.3343, 22.6676, 23.001, 23.3343, 23.6676, 24.001, 24.3341, 24.6675, 25.0008, 25.3341, 25.6675, 26.0008, 26.3341, 26.6675, 27.0007, 27.334, 27.6673, 28.0007, 28.334, 28.6673, 29.0007, 29.334, 29.6672], "A": [0.00255394, 0.00225525, 0.00203668, 0.00186744, 0.00173114, 0.00161815, 0.00152238, 0.00143976, 0.00136747, 0.00130346, 0.00124622, 0.0011946, 0.00114771, 0.00110484, 0.00106543, 0.00102901, 0.00099522, 0.00096374, 0.0009343, 0.00090669, 0.00088071, 0.00085621, 0.00083304, 0.00081109, 0.00079023, 0.00077039, 0.00075148, 0.00073342, 0.00071615, 0.00069961, 0.00068375, 0.00066852, 0.00065389, 0.0006398, 0.00062623, 0.00061314, 0.00060051, 0.0005883, 0.0005765, 0.00056508, 0.00055402, 0.00054331, 0.00053292, 0.00052283, 0.00051304, 0.00050353, 0.00049428, 0.00048529, 0.00047654, 0.00046802, 0.00045972, 0.00045164, 0.00044376, 0.00043607, 0.00042857, 0.00042125, 0.00041411, 0.00040713, 0.00040031, 0.00039365, 0.00038714, 0.00038077, 0.00037454, 0.00036844, 0.00036248, 0.00035664, 0.00035092, 0.00034532, 0.00033983, 0.00033446, 0.00032919, 0.00032403, 0.00031897, 0.000314, 0.00030913, 0.00030436, 0.00029967, 0.00029508, 0.00029056, 0.00028614, 0.00028179, 0.00027752, 0.00027333, 0.00026921, 0.00026517, 0.0002612, 0.00025729, 0.00025346, 0.00024969]}, {"A0": 0.005, "t": [0.3382, 0.673, 1.0072, 1.3408, 1.6743, 2.0078, 2.3413, 2.6747, 3.008, 3.3414, 3.6749, 4.0082, 4.3415, 4.6749, 5.0082, 5.3414, 5.6747, 6.008, 6.3414, 6.6747, 7.008, 7.3414, 7.6747, 8.008, 8.3412, 8.6745, 9.0079, 9.3412, 9.6746, 10.0079, 10.3412, 10.6746, 11.0077, 11.3411, 11.6744, 12.0077, 12.3411, 12.6744, 13.0077, 13.3409, 13.6742, 14.0076, 14.3409, 14.6742, 15.0076, 15.3409, 15.6743, 16.0074, 16.3408, 16.6741, 17.0074, 17.3408, 17.6741, 18.0074, 18.3408, 18.6739, 19.0073, 19.3406, 19.6739, 20.0073, 20.3406, 20.6739, 21.0071, 21.3405, 21.6738, 22.0071, 22.3405, 22.6738, 23.0071, 23.3405, 23.6736, 24.007, 24.3403, 24.6736, 25.007, 25.3403, 25.6736, 26.007, 26.3401, 26.6735, 27.0068, 27.3402, 27.6735, 28.0068, 28.3402, 28.6735, 29.0067, 29.34, 29.6733], "A": [0.00351846, 0.00286009, 0.00246382, 0.00219087, 0.00198764, 0.00182841, 0.00169907, 0.00159116, 0.00149922, 0.00141959, 0.00134968, 0.00128761, 0.00123197, 0.00118169, 0.00113593, 0.00109403, 0.00105545, 0.00101977, 0.00098662, 0.00095571, 0.00092678, 0.00089962, 0.00087405, 0.00084992, 0.00082708, 0.00080543, 0.00078486, 0.00076527, 0.00074659, 0.00072875, 0.00071168, 0.00069532, 0.00067964, 0.00066457, 0.00065008, 0.00063613, 0.00062269, 0.00060973, 0.00059721, 0.00058512, 0.00057342, 0.0005621, 0.00055114, 0.00054051, 0.0005302, 0.0005202, 0.00051048, 0.00050104, 0.00049186, 0.00048294, 0.00047425, 0.00046579, 0.00045755, 0.00044952, 0.00044169, 0.00043406, 0.00042661, 0.00041934, 0.00041224, 0.0004053, 0.00039852, 0.0003919, 0.00038543, 0.0003791, 0.0003729, 0.00036684, 0.00036091, 0.0003551, 0.00034942, 0.00034385, 0.00033839, 0.00033304, 0.00032781, 0.00032267, 0.00031763, 0.0003127, 0.00030785, 0.0003031, 0.00029844, 0.00029387, 0.00028938, 0.00028497, 0.00028064, 0.0002764, 0.00027223, 0.00026813, 0.0002641, 0.00026015, 0.00025627]}, {"A0": 0.008, "t": [0.3507, 0.6867, 1.0212, 1.355, 1.6887, 2.0222, 2.3557, 2.689, 3.0224, 3.3559, 3.6892, 4.0225, 4.3559, 4.6892, 5.0225, 5.3559, 5.6892, 6.0225, 6.3557, 6.689, 7.0224, 7.3557, 7.689, 8.0224, 8.3557, 8.689, 9.0224, 9.3556, 9.6889, 10.0222, 10.3556, 10.6889, 11.0222, 11.3556, 11.6887, 12.0221, 12.3554, 12.6887, 13.0221, 13.3554, 13.6887, 14.0221, 14.3552, 14.6886, 15.0219, 15.3553, 15.6886, 16.0219, 16.3553, 16.6884, 17.0218, 17.3551, 17.6884, 18.0218, 18.3551, 18.6884, 19.0218, 19.3549, 19.6883, 20.0216, 20.3549, 20.6883, 21.0216, 21.355, 21.6883, 22.0215, 22.3548, 22.6881, 23.0215, 23.3548, 23.6881, 24.0215, 24.3548, 24.688, 25.0213, 25.3546, 25.688, 26.0213, 26.3546, 26.688, 27.0213, 27.3545, 27.6878, 28.0212, 28.3545, 28.6878, 29.0212, 29.3545, 29.6878], "A": [0.00419273, 0.00319648, 0.00267505, 0.00233964, 0.00209993, 0.00191721, 0.00177169, 0.00165206, 0.00155131, 0.00146486, 0.00138953, 0.00132307, 0.00126381, 0.00121051, 0.00116219, 0.00111811, 0.00107764, 0.00104032, 0.00100573, 0.00097354, 0.00094348, 0.00091531, 0.00088883, 0.00086387, 0.00084029, 0.00081796, 0.00079677, 0.00077661, 0.00075741, 0.00073909, 0.00072157, 0.00070481, 0.00068874, 0.00067331, 0.00065849, 0.00064423, 0.0006305, 0.00061726, 0.00060449, 0.00059215, 0.00058022, 0.00056868, 0.00055751, 0.00054669, 0.00053619, 0.00052601, 0.00051613, 0.00050653, 0.0004972, 0.00048813, 0.0004793, 0.00047071, 0.00046235, 0.00045419, 0.00044625, 0.0004385, 0.00043094, 0.00042357, 0.00041637, 0.00040934, 0.00040247, 0.00039576, 0.0003892, 0.00038278, 0.00037651, 0.00037037, 0.00036436, 0.00035849, 0.00035273, 0.00034709, 0.00034157, 0.00033616, 0.00033086, 0.00032566, 0.00032057, 0.00031557, 0.00031068, 0.00030587, 0.00030116, 0.00029653, 0.00029199, 0.00028754, 0.00028317, 0.00027887, 0.00027466, 0.00027052, 0.00026645, 0.00026246, 0.00025853]}]};
+const z0s=document.getElementById('z0'), a0s=document.getElementById('a0'),
+      rs=document.getElementById('rsel'), ode=document.getElementById('ode');
+const env=document.getElementById('env').getContext('2d');
+const map=document.getElementById('map').getContext('2d');
+// c2(R) = c2(0)·R_c/(R+R_c)  — contract scaling law c2 ∝ 1/(R+R_c), exact for every R
+function c2(R){ return DATA.c2_sc*DATA.R_c/(R+DATA.R_c); }
+// G(z0) from the baked table (linear interp) — eq. 27 values, no client-side physics
+function Gz(z0){ const s=DATA.G_z0_step, i=Math.min(Math.floor(z0/s), DATA.G_table.length-2),
+  f=z0/s-i; return DATA.G_table[i]*(1-f)+DATA.G_table[i+1]*f; }
+// Γ(z0;R) by contract eq. 15 — valid on the whole slider range, unlike the parabola
+// γ_oc + c2·z0² which is fitted only on |z0| ≤ 4 mm (r1 design review: at z0=10.5 the
+// parabola over-reads Γ by ~85% vs eq. 15 / targets[γ])
+function Gamma15(z0,R){ const g=Gz(z0);
+  return DATA.gamma_oc + g*g/(2*DATA.M_eff*(R+DATA.R_c)); }
+function draw(){
+ const z0=+z0s.value*1e-3, A0=+a0s.value*1e-3, R=+rs.value;
+ document.getElementById('z0v').textContent=(+z0s.value).toFixed(2);
+ document.getElementById('a0v').textContent=(+a0s.value).toFixed(2);
+ const Gm=Gamma15(z0,R), Q=c2(R)*A0*A0/(4*Gm), tstar=4*DATA.M_eff/(c2(R)*2*DATA.M_eff*A0*A0);
+ // ---- envelope panel (semilog y)
+ const W=640,H=420,L=58,B=44,T=16,Rt=12; env.clearRect(0,0,W,H);
+ env.fillStyle='#fff'; env.fillRect(0,0,W,H);
+ const tmax=Math.min(30, Math.max(6, 5/Gm)), Amin=1e-2; // mm
+ const x=t=>L+(W-L-Rt)*t/tmax;
+ const y=A=>T+(H-T-B)*(Math.log10(8.5)-Math.log10(A))/(Math.log10(8.5)-Math.log10(Amin));
+ env.strokeStyle='#e1e0d9'; env.fillStyle='#898781'; env.font='11px monospace';
+ for(const g of [0.01,0.1,1,8]){ if(g<Amin) continue;
+   env.beginPath(); env.moveTo(L,y(g)); env.lineTo(W-Rt,y(g)); env.stroke();
+   env.fillText(g+' mm',4,y(g)+4); }
+ for(let t=0;t<=tmax;t+=Math.ceil(tmax/6)){ env.beginPath(); env.moveTo(x(t),T);
+   env.lineTo(x(t),H-B); env.stroke(); env.fillText(t+' s',x(t)-8,H-B+16); }
+ // A_c line
+ env.strokeStyle='#52514e'; env.setLineDash([6,4]); env.beginPath();
+ env.moveTo(L,y(DATA.A_c*1e3)); env.lineTo(W-Rt,y(DATA.A_c*1e3)); env.stroke();
+ env.setLineDash([]); env.fillText('A_c (background takes over)',W-Rt-212,y(DATA.A_c*1e3)-5);
+ // (23a) curve
+ env.strokeStyle='#2a78d6'; env.lineWidth=2.4; env.beginPath();
+ for(let i=0;i<=400;i++){ const t=tmax*i/400;
+   const A=A0/Math.sqrt((1+Q)*Math.exp(2*Gm*t)-Q)*1e3;
+   if(A<Amin) break; const px=x(t),py=y(A); i? env.lineTo(px,py):env.moveTo(px,py); }
+ env.stroke(); env.lineWidth=1;
+ // baked ODE overlay
+ if(ode.checked && R===0 && z0<0.4e-3){ env.fillStyle='#e34948';
+  for(const e of DATA.ode_envelopes){ if(Math.abs(e.A0-A0)>2.6e-4) continue;
+   for(let i=0;i<e.t.length;i++){ const A=e.A[i]*1e3; if(A<Amin||e.t[i]>tmax) continue;
+     env.beginPath(); env.arc(x(e.t[i]),y(A),2.5,0,7); env.fill(); } } }
+ // ---- regime map
+ const MW=380,MH=420,ml=46,mb=40,mt=14,mr=10; map.clearRect(0,0,MW,MH);
+ map.fillStyle='#fff'; map.fillRect(0,0,MW,MH);
+ const zx=z=>ml+(MW-ml-mr)*z/15e-3;
+ const ay=A=>mt+(MH-mt-mb)*(Math.log10(9e-3)-Math.log10(A))/(Math.log10(9e-3)-Math.log10(4e-4));
+ map.strokeStyle='#0b0b0b'; map.lineWidth=2; map.beginPath();
+ DATA.nu_boundary.z0.forEach((z,i)=>{const px=zx(z),py=ay(DATA.nu_boundary.A[i]);
+   i?map.lineTo(px,py):map.moveTo(px,py)}); map.stroke(); map.lineWidth=1;
+ map.fillStyle='#52514e'; map.font='11px monospace';
+ map.fillText('nu = 0.1',zx(8.4e-3),ay(DATA.nu_boundary.A[25])-14);
+ map.strokeStyle='#52514e'; map.setLineDash([6,4]); map.beginPath();
+ map.moveTo(ml,ay(DATA.A_c)); map.lineTo(MW-mr,ay(DATA.A_c)); map.stroke();
+ map.setLineDash([]); map.fillText('A_c',MW-mr-26,ay(DATA.A_c)-5);
+ map.strokeStyle='#898781'; map.setLineDash([2,3]); map.beginPath();
+ map.moveTo(ml,ay(DATA.A_lin)); map.lineTo(MW-mr,ay(DATA.A_lin)); map.stroke();
+ map.setLineDash([]); map.fillText('A_lin',MW-mr-34,ay(DATA.A_lin)+12);
+ map.fillStyle='#898781';
+ map.fillText('0',ml-10,MH-mb+14); map.fillText('z0 (mm)  15',MW-90,MH-mb+14);
+ map.save(); map.translate(12,MH/2); map.rotate(-Math.PI/2);
+ map.fillText('A0 (mm, log)',0,0); map.restore();
+ map.fillStyle='#e34948'; map.beginPath();
+ map.arc(zx(z0),ay(Math.max(A0,4.2e-4)),6,0,7); map.fill();
+ // ---- readout
+ let regime;
+ if(A0<DATA.A_c) regime='(4) background-dominated: exponential at gamma_oc';
+ else { // nu at (z0,A0) via boundary lookup
+   const zb=DATA.nu_boundary.z0, Ab=DATA.nu_boundary.A;
+   let Ast=Ab[Ab.length-1];
+   for(let i=0;i<zb.length-1;i++){ if(z0>=zb[i]&&z0<=zb[i+1]){
+     const f=(z0-zb[i])/(zb[i+1]-zb[i]); Ast=Ab[i]*(1-f)+Ab[i+1]*f; break; } }
+   if(z0<zb[0]) Ast=Ab[0];
+   const nonlinear = A0>Ast || z0<1e-3;
+   regime = !nonlinear ? '(1) linear: exponential decay'
+     : (z0+A0<DATA.A_lin ? '(3) power law: A ~ t^(-1/2) window (eq. 23)'
+                         : '(2) nonlinear: envelope departs from exponential');
+ }
+ document.getElementById('out').innerHTML=
+  `&Gamma;(z<sub>0</sub>) = ${Gm.toFixed(4)} 1/s &nbsp;·&nbsp; Q = ${Q.toFixed(2)}
+   &nbsp;·&nbsp; regime: <span class="regime">${regime}</span>
+   &nbsp;·&nbsp; (baked: c&#8322;(R) = ${(c2(R)/1e6).toFixed(4)} 1/(s·mm&sup2;),
+   &gamma;_oc = ${DATA.gamma_oc}, A_c = ${(DATA.A_c*1e3).toFixed(2)} mm)`;
+}
+for(const el of [z0s,a0s,rs,ode]) el.addEventListener('input',draw);
+draw();
+</script></body></html>
