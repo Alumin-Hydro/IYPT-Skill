@@ -118,16 +118,19 @@ def load(workspace: Path):
         problem_md = ""
         err("PROBLEM-MISSING", "00-problem.md 不存在——原题和设定书没有落盘")
 
-    spec = None
+    spec, spec_raw = None, ""
     if spec_path.is_file():
+        # spec_raw 是**文件原文** —— SPEC-SELFCONTRADICT 要从 baseline_value 的
+        # 字面量数有效位数（json.dumps 重排会把 0.0350 吞成 0.035，尾零就是精度声明）。
+        spec_raw = spec_path.read_text(encoding="utf-8")
         try:
-            spec = json.loads(spec_path.read_text(encoding="utf-8"))
+            spec = json.loads(spec_raw)
         except json.JSONDecodeError as e:
             err("SPEC-PARSE", f"model-spec.json 不是合法 JSON: {e}")
     else:
         err("SPEC-MISSING", "handoff/model-spec.json 不存在——Skill 2 没有输入，流水线断了")
 
-    return md, problem_md, spec
+    return md, problem_md, spec, spec_raw
 
 
 # ---------------------------------------------------------------- 任务挖掘
@@ -1510,16 +1513,58 @@ def _spec_env(spec: dict) -> dict:
     return env
 
 
-def check_spec_selfcontradict(spec: dict) -> None:
-    """★★★ 每个 `targets[].baseline_value`，必须能由它自己的 `closed_form` 复算出来。"""
+def _sig_figs(lit: str) -> int:
+    """字面量的有效位数。尾零**算**有效（写出来就是精度声明：0.0350 是 3 位）。"""
+    m = re.match(r"-?(\d*)\.?(\d*)(?:[eE][-+]?\d+)?$", lit.strip())
+    if not m:
+        return 0
+    digits = (m.group(1) + m.group(2)).lstrip("0")
+    return len(digits)
+
+
+def _baseline_literals(spec_raw: str) -> list:
+    """按 targets 顺序取每个 baseline_value 在**文件原文**里的字面量。
+
+    用 parse_float/parse_int 钩子做第二次受控解析 —— 和 json.loads 用同一个解析器，
+    转义、字段顺序、criterion_matrix 里的同名字段全都不用自己对齐。
+    （正则全局 findall 的对齐是猜的；猜错时门会安静地看错行 —— 那是一把新瞎锁。）
+    """
+    class _Lit(float):
+        def __new__(cls, s):
+            o = super().__new__(cls, s)
+            o._lit = s
+            return o
+
+    try:
+        d = json.loads(spec_raw, parse_float=_Lit, parse_int=_Lit)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    return [getattr(t.get("baseline_value"), "_lit", None)
+            for t in d.get("targets", []) if isinstance(t, dict)]
+
+
+def check_spec_selfcontradict(spec: dict, spec_raw: str = "") -> None:
+    """★★★ 每个 `targets[].baseline_value`，必须能由它自己的 `closed_form` 复算出来。
+
+    容差**按字面量的有效位数定标**：s 位 ⟹ tol = 10^(1-s)（clamp 到 [5e-13, 1e-2]）。
+    固定 1% 的旧门槛抓不到「一位数字的笔误」—— 实测 electrical-damping 的
+    `targets[c_2]` 第 4 位 4→5（偏 +0.29%）从 1% 门下溜走，三代未响。
+    合法的存储舍入 ≤ 0.5 ulp ≪ 10^(1-s)，不会误报；写得越精，管得越严 ——
+    **baseline 的书写精度本身就是一份声明，门按声明执行。**
+    没有原文（spec_raw 为空）时退回 1% —— 没有字面量就没有精度声明（已知局限，
+    selftest 盲区探针记录在案）。
+    """
     if not spec:
         return
     targets = spec.get("targets", [])
     if not targets:
         return
     env = _spec_env(spec)
+    lits = _baseline_literals(spec_raw) if spec_raw else []
+    if len(lits) != len(targets):                    # 原文与 dict 对不上 ⟹ 不猜
+        lits = [None] * len(targets)
 
-    for t in targets:
+    for t, lit in zip(targets, lits):
         sym = t.get("symbol", "?")
         bl = t.get("baseline_value")
         cf = t.get("closed_form")
@@ -1551,19 +1596,25 @@ def check_spec_selfcontradict(spec: dict) -> None:
 
         if not isinstance(got, (int, float)) or bl == 0:
             continue
+        s = _sig_figs(lit) if lit else 0
+        tol = max(min(10.0 ** (1 - s), 1e-2), 5e-13) if s > 0 else 1e-2
         dev = got / bl - 1
-        if abs(dev) > 0.01:
+        if abs(dev) > tol:
+            src = (f"{s} 位有效数字（字面量 `{lit}`）⟹ 门槛 {tol:.0e}" if s > 0
+                   else "无字面量可读 ⟹ 退回 1%")
             err("SPEC-SELFCONTRADICT",
                 f"★★ `targets[{sym}]` **和它自己的公式对不上**：\n"
-                f"        `baseline_value` = **{bl:.6g}**，而 `closed_form` 算出 **{got:.6g}** "
-                f"（偏 **{dev:+.1%}**，门槛 1%）。\n"
+                f"        `baseline_value` = **{bl:.8g}**，而 `closed_form` 算出 **{got:.8g}** "
+                f"（偏 **{dev:+.2%}**；容差按存储精度定标：{src}）。\n"
                 f"        > {cf[:90]}\n"
                 f"        **这是下游会直接撞上的一个伪失败** —— Skill 2 拿 baseline 对质，"
                 f"然后去「修」一段本来正确的代码。\n"
-                f"        **两个嫌疑，按顺序查**：\n"
-                f"        **① 值就是错的**（最常见 —— 一个从没被改过的旧值。"
-                f"`STALE-VALUE` 对它结构性失明：`old == new` ⟹ 那道门根本不响）。\n"
-                f"        **② 基准条件没写进公式**（如 `t^*` 是**短路** R=0 算的，"
+                f"        **三个嫌疑，按顺序查**：\n"
+                f"        **① 一位数字的笔误**（实测：`targets[c_2]` 第 4 位 4→5，偏 +0.29% —— "
+                f"固定 1% 的旧门放它三代未响）。\n"
+                f"        **② 值整个是旧的**（`STALE-VALUE` 对它结构性失明："
+                f"`old == new` ⟹ 那道门根本不响）。\n"
+                f"        **③ 基准条件没写进公式**（如 `t^*` 是**短路** R=0 算的，"
                 f"而 `\\gamma` 是 R=20 Ω —— **这件事以前只活在作者脑子里**）。")
 
 
@@ -2091,9 +2142,9 @@ def selftest() -> int:
     print("②c′ ★★★ SPEC-SELFCONTRADICT：抓「值**压根没改过**」——STALE-VALUE 看不见的那一半")
     print("=" * 72)
 
-    def _sc(spec):
+    def _sc(spec, txt=""):
         ERRORS.clear()
-        check_spec_selfcontradict(spec)
+        check_spec_selfcontradict(spec, txt)
         return [e.split("]")[0].lstrip("[") for e in ERRORS]
 
     _P = [{"symbol": r"\gamma_{oc}", "value": 0.0413}, {"symbol": "M_eff", "value": 0.006557},
@@ -2124,6 +2175,47 @@ def selftest() -> int:
        _sc({"parameters": _P, "targets": [
            {"symbol": r"\gamma", "baseline_value": 2.5978, "closed_form": "gamma_oc + nonexistent"}]}),
        ["TARGET-CF-BROKEN"])
+
+    # ★★★ 容差按存储精度定标（r9 收紧）—— 固定 1% 抓不到「一位数字的笔误」。
+    #     真实事故：electrical-damping 的 targets[c_2] 第 4 位 4→5（偏 +0.29%），
+    #     1% 门下三代未响；6 位字面量 ⟹ 门槛 1e-5 ⟹ 必须抓到。
+    def _one(bl_lit, cf):
+        spec = {"targets": [{"symbol": "c_2", "baseline_value": float(bl_lit),
+                             "closed_form": cf}]}
+        txt = ('{"targets": [{"symbol": "c_2", "baseline_value": ' + bl_lit +
+               ', "closed_form": "' + cf + '"}]}')
+        return spec, txt
+    eq("★★★ c_2 数位笔误（0.0345832 vs 公式 0.0344832，+0.29%，6 位字面量）⟹ 抓到",
+       _sc(*_one("0.0345832", "0.0344832")), ["SPEC-SELFCONTRADICT"])
+    eq("末位舍入（2.3554174 vs 2.35541744，2e-9 < 1e-7）⟹ 放行",
+       _sc(*_one("2.3554174", "2.35541744")), [])
+    # ★ 精度即声明：同一个数，写 3 位管 3 位、写 6 位管 6 位。
+    eq("字面量 0.0350（3 位 ⟹ 门槛 1e-2）vs 公式 0.0352（0.57%）⟹ 放行",
+       _sc(*_one("0.0350", "0.0352")), [])
+    eq("字面量 0.035000（6 位 ⟹ 1e-5）vs 同一个公式 0.0352 ⟹ 抓到",
+       _sc(*_one("0.035000", "0.0352")), ["SPEC-SELFCONTRADICT"])
+    # ★ 盲区探针（wrong-quantity 元探针，r7-③）：门数的必须是**文件原文**的位数。
+    #   若门改从 f"{bl:g}" 数（repr 会把 0.010000 吞成 0.01 ⟹ 1 位 ⟹ 门槛 1e-2），
+    #   这条就会漏 —— 它钉死「精度声明活在字面量里，不在 float 的 repr 里」。
+    eq("★ 探针：0.010000（6 位）vs 0.010002（2e-4）—— repr 门会放行，原文门必须抓",
+       _sc(*_one("0.010000", "0.010002")), ["SPEC-SELFCONTRADICT"])
+    # ★ 探针：clamp 方向 —— 位数再少，门也**永不比旧 1% 更松**。
+    eq("★ 探针：字面量 2（1 位 ⟹ min(10^0,1e-2)=1e-2）vs 公式 2.1（5%）⟹ 照抓",
+       _sc(*_one("2", "2.1")), ["SPEC-SELFCONTRADICT"])
+    eq("指数形式 3.45832e-2（6 位）与十进制同判 ⟹ 抓到",
+       _sc(*_one("3.45832e-2", "0.0344832")), ["SPEC-SELFCONTRADICT"])
+    # ★ 已知局限（诚实 scope，不假装门覆盖了它）：没有原文 ⟹ 没有精度声明 ⟹ 退回 1%。
+    #   2e-4 的笔误在无 txt 时放行 —— 这不是 bug：调用方不给字面量，门就只能按 1% 管。
+    #   main 永远传 spec_raw（load() 保证）；会踩到这条的只有忘传参数的新调用点。
+    eq("已知局限：同样的 2e-4 笔误、txt=\"\" ⟹ 退回 1% ⟹ 放行（记录在案）",
+       _sc({"targets": [{"symbol": "c_2", "baseline_value": 0.010000,
+                         "closed_form": "0.010002"}]}), [])
+    # ★ 探针：txt 与 dict 的 targets 数量对不上 ⟹ **不猜对齐**，全部退回 1%。
+    eq("★ 探针：原文只有 1 个 target、dict 有 2 个 ⟹ 不猜，按 1% 判（0.29% 放行）",
+       _sc({"targets": [{"symbol": "c_2", "baseline_value": 0.0345832,
+                         "closed_form": "0.0344832"},
+                        {"symbol": "x", "baseline_value": 1.0, "closed_form": "1.0"}]},
+           '{"targets": [{"symbol": "c_2", "baseline_value": 0.0345832}]}'), [])
     ERRORS.clear()
 
     print()
@@ -2355,7 +2447,7 @@ def main() -> int:
         print(f"工作区不存在: {workspace}", file=sys.stderr)
         return 2
 
-    md, problem_md, spec = load(workspace)
+    md, problem_md, spec, spec_raw = load(workspace)
 
     # ★ 每道门单独兜住异常。
     #
@@ -2384,7 +2476,7 @@ def main() -> int:
         ("check_matrix_desync",    lambda: check_matrix_desync(spec or {}, workspace)),
         # ★★★ 这三道来自 r3 审稿：STALE-VALUE 只在「值变了」时看得见，
         #     而「忘了改」的定义就是「值没变」——它对自己要抓的主要形态结构性失明。
-        ("check_spec_selfcontradict", lambda: check_spec_selfcontradict(spec or {})),
+        ("check_spec_selfcontradict", lambda: check_spec_selfcontradict(spec or {}, spec_raw)),
         ("check_closed_forms",     lambda: check_closed_forms(spec or {})),
         ("check_review_citations", lambda: check_review_citations(workspace, md)),
         # ★★ r4 审稿：散文里归给「公式/真值」的数，没有门代回公式验过（幽灵 2.3454）

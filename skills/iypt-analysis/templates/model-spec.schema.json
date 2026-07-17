@@ -493,7 +493,7 @@
           },
           "baseline_value": {
             "type": "number",
-            "description": "代入基准参数后的预测数值"
+            "description": "代入基准参数后的预测数值。★ **写几位有效数字，SPEC-SELFCONTRADICT 就管几位**（容差 = 10^(1−位数)，clamp 到 [5e-13, 1e-2]）——书写精度本身是一份声明：写 6 位就必须与 closed_form 复算一致到 1e-5。**尾零算有效**（0.0350 声明 3 位）。"
           },
           "scaling_law": {
             "type": "string",
@@ -501,7 +501,7 @@
           },
           "closed_form": {
             "type": "string",
-            "description": "★★★ **可执行的 Python 表达式**，求值后必须等于 `baseline_value`（容差 1%），否则 `SPEC-SELFCONTRADICT`。\n\n可用的名字：`parameters[].symbol` 和其他 `targets[].symbol` —— LaTeX 会被自动归一化成标识符（`\\gamma_{oc}` → `gamma_oc`，`\\mu_0` → `mu_0`/`mu0`，`\\ell_c` → `ell_c`/`l_c`，`t^*` → `t_star`）。\n\n★ **单位换算必须显式写进表达式**（如 SI 的 1/(s·m²) → 契约声明的 1/(s·mm²)：`* 1e-6`）。\n★ **基准条件也必须写进表达式**（如短路就写 `(0 + R_c)`，不要写 `(R + R_c)`）——见 `baseline_conditions`。"
+            "description": "★★★ **可执行的 Python 表达式**，求值后必须等于 `baseline_value`（容差按 baseline 字面量的有效位数定标：s 位 ⟹ 10^(1−s)，见 baseline_value 的说明），否则 `SPEC-SELFCONTRADICT`。\n\n可用的名字：`parameters[].symbol` 和其他 `targets[].symbol` —— LaTeX 会被自动归一化成标识符（`\\gamma_{oc}` → `gamma_oc`，`\\mu_0` → `mu_0`/`mu0`，`\\ell_c` → `ell_c`/`l_c`，`t^*` → `t_star`）。\n\n★ **单位换算必须显式写进表达式**（如 SI 的 1/(s·m²) → 契约声明的 1/(s·mm²)：`* 1e-6`）。\n★ **基准条件也必须写进表达式**（如短路就写 `(0 + R_c)`，不要写 `(R + R_c)`）——见 `baseline_conditions`。"
           },
           "numerical_recipe": {
             "type": "string",

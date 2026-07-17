@@ -289,6 +289,13 @@ IYPT 的题目是**故意欠定的**：
 
 **扫参数画曲线，只能回答"依赖关系"型的任务。"本质"型、"条件边界"型、"模式分类"型的任务，需要的是上面那些图。**
 
+**★ 定完静态图，再问一句：本质是否值得一张 `kind: animation` / `interactive` 图？**
+过程本质上是**时空演化**（涡流在壁上流、磁体穿过线圈、模式随参数切换），一张会动的图
+比六张静态图更快让人「看懂这个系统是什么」——**但它必须由契约点名，Skill 2 才会做**
+（magnetic-brake 的 F-5 涡流动画是契约点名的；electrical-damping 的契约没写，Skill 2
+就只能事后补——那个决定本该在这里做）。判据：**模式分类型任务（因变量第三层）几乎总值得**；
+纯依赖关系型通常不值得。要求与静态图相同：`expected_shape` 必须预注册。
+
 ### ★ `model_validation_checks[]`：验证「中间量」，不只验证最终结果
 
 > **"最终结果对了"不代表"模型对了"——两个错误可以互相抵消，而你永远不会知道。**
@@ -565,7 +572,7 @@ python skills/iypt-analysis/scripts/check_analysis.py examples/<题>   # 零 ERR
 
 | 门 | 查什么 | 它抓到了什么 |
 |---|---|---|
-| **`SPEC-SELFCONTRADICT`** | 每个 `targets[].baseline_value` 必须能由它自己的 **`closed_form`**（可执行 Python）复算出来，容差 1% | `targets[\gamma]` = 2.5978 vs 公式的 2.3454 |
+| **`SPEC-SELFCONTRADICT`** | 每个 `targets[].baseline_value` 必须能由它自己的 **`closed_form`**（可执行 Python）复算出来。**容差按字面量的有效位数定标**：写 s 位 ⟹ 容差 10^(1−s)（clamp 到 [5e-13, 1e-2]）——**baseline 写几位，门就管几位**。固定 1% 的旧门槛抓不到「一位数字的笔误」（实测：`targets[c_2]` 第 4 位 4→5、偏 +0.29%，三代未响） | `targets[\gamma]` = 2.5978 vs 公式的 2.3454；`targets[c_2]` = 0.0345832 vs 0.0344832 |
 | **`TARGET-NO-RECIPE`** | 没有 `closed_form` 的 target，**必须**写 `numerical_recipe` 显式声明它无闭式 | **不许沉默地跳过** —— 一个没有任何机械校验的数，可以三代原封不动地错下去 |
 | **`CLOSED-FORM-ORPHAN`** | `equations[].closed_form` 里的每个自由标识符，必须在 `parameters`/`symbols`/`targets` 里存在 | `gamma0` —— 一个 r2 就改名成 `\gamma_{oc}`、**在契约里根本不存在**的标识符，三代存活（`STALE-SYMBOL` 只查**正文**，不查 `closed_form` 里的**代码**） |
 | **`REVIEW-CITE-GHOST`** | 凡是把一个数归给「r{n} 审稿」的，那个数必须能在 `01-review-r{n}.md` 里**逐字 grep 到** | 一个凭记忆填的 `+27.7%`（r2 报告里出现 **0 次**，它写的是 17.5%）—— **而它已经进了 `CLAUDE.md` 的教训表和审稿人的弹药库** |

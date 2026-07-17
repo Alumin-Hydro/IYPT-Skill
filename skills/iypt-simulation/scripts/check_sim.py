@@ -121,6 +121,23 @@ def check_quotes(spec: dict, res: dict) -> None:
     for e in spec.get("equations", []):
         pool[f"equation_limit:{e.get('id')}"] = \
             ((e.get("numerical_notes") or "") + " " + (e.get("suggested_method") or ""))
+    # ★ 中间量验证（V-*）与假设（A-*）也是可引用的字段。
+    #   magnetic-brake 恰好把 V 图写进了契约 figures[]，所以没暴露这个洞；
+    #   electrical-damping 的契约里 V-1..V-3 只活在 model_validation_checks[] ——
+    #   没有这两类池子，从 V 检查抄来的引文只能落 QUOTE-NOSRC（真引文被判成假的）。
+    #   assumptions[].impact_if_false 则是 must_not「陷阱值」的常见出处（如 c₂ 的
+    #   0.0345 → 0.0360）。
+    for v in spec.get("model_validation_checks", []):
+        pool[f"validation:{v.get('id')}"] = " ".join(
+            (v.get("intermediate_quantity") or "",
+             v.get("why_it_can_fail_silently") or "",
+             " ".join(v.get("independent_checks") or []),
+             v.get("experimental_check") or ""))
+    for a in spec.get("assumptions", []):
+        pool[f"assumption:{a.get('id')}"] = " ".join(
+            (a.get("statement") or "", a.get("criterion") or "",
+             a.get("criterion_check") or "", a.get("breaks_when") or "",
+             a.get("impact_if_false") or ""))
 
     normed = {k: norm(v) for k, v in pool.items()}
     all_spec_text = norm(json.dumps(spec, ensure_ascii=False))
@@ -179,7 +196,11 @@ def check_quotes(spec: dict, res: dict) -> None:
                                f"        你写的：{q[:110]}\n"
                                f"        原文是：{src[:110]}")
 
-    # Gate 0 的配方也要逐字
+    # Gate 0 的配方也要逐字。
+    # ★ 对「解析后的字段池」查，不能对 json.dumps 的原文查 —— dumps 会把真换行转义成
+    #   反斜杠+n 两个字符，norm() 折叠不了它 ⟹ **任何多行 recipe 必然误报 DRIFT**
+    #   （electrical-damping 实测：recipe 是程序化切片、字面逐字，照样报）。
+    #   断言引文没这个病，因为 check_quotes 用的本来就是解析后的 pool。
     for g in res.get("gates", []):
         if g.get("id") != "gate-0-limit":
             continue
@@ -187,7 +208,7 @@ def check_quotes(spec: dict, res: dict) -> None:
         if not q:
             err("GATE0-NORECIPE", "Gate 0 没有 recipe —— 必须逐字抄写 equations[].numerical_notes "
                                   "里的极限对拍配方。抄不上说明你没读它。")
-        elif q not in all_spec_text:
+        elif not any(q in v for v in normed.values()) and q not in all_spec_text:
             warn("GATE0-RECIPE-DRIFT",
                  "Gate 0 的 recipe 不是 model-spec 的逐字子串。\n"
                  "        如果你是**有意**改正了一个错误的配方，那应当在 spec_defects[] 里"
@@ -251,12 +272,17 @@ def check_coverage(spec: dict, res: dict, workspace: Path) -> None:
     # --- 图
     spec_figs = {f.get("id"): f for f in spec.get("figures", [])}
     res_figs = {f.get("id"): f for f in res.get("figures", [])}
+    # ★ model_validation_checks[].figure 点名的 V-* 也是契约要求的图 ——
+    #   magnetic-brake 的契约把 V 图直接写进了 figures[]，所以这个洞两道题才暴露：
+    #   electrical-damping 的 V-1..V-3 只活在 validation checks 里，曾被误报「装饰」。
+    val_figs = {v.get("figure") for v in spec.get("model_validation_checks", [])
+                if v.get("figure")}
 
     for fid in spec_figs:
         if fid not in res_figs:
             err("FIG-MISSING", f"model-spec 要求画 {fid}，但 results.json 里没有它")
     for fid in res_figs:
-        if fid not in spec_figs:
+        if fid not in spec_figs and fid not in val_figs:
             warn("FIG-EXTRA", f"results.json 里的 {fid} 不在 model-spec 的 figures[] 里 —— "
                               f"没有 expected_shape 的图没有验收标准，它只是装饰")
 

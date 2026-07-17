@@ -152,7 +152,8 @@
           },
           "source_kind": {
             "type": "string",
-            "enum": ["figure", "target", "risky_check", "equation_limit", "convergence"]
+            "enum": ["figure", "target", "risky_check", "equation_limit", "convergence", "validation", "assumption"],
+            "description": "validation = model_validation_checks[]（V-*，中间量验证的独立路径）；assumption = assumptions[]（must_not 的「陷阱值」常出自 impact_if_false）。这两类是 electrical-damping 压出来的：没有它们，从 V 检查抄来的真引文会被 QUOTE-NOSRC 判成假的。"
           },
 
           "quoted_expectation": {
@@ -237,7 +238,8 @@
         "required": ["id", "path", "assertion_ids", "verdict", "simulation_stamped"],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^F-[0-9]+$" },
+          "id": { "type": "string", "pattern": "^[FVI]-[0-9]+$",
+                  "description": "F-* = 契约 figures[] 的图；V-* = 中间量验证图（model_validation_checks 的证据）；I-* = 补充交互页（契约未点名，FIG-EXTRA 会 WARN 提示）。旧 pattern 只写了 ^F-，而 magnetic-brake 从第一天就带着 V-1..V-4 —— schema 与例子矛盾了两道题才被发现。" },
           "path": { "type": "string", "description": "相对工作区的路径，如 \"02-sim/figures/F-1.png\"" },
           "path_svg": { "type": "string" },
           "path_interactive": { "type": "string", "description": "animation/interactive 类型的图：自包含单文件 HTML" },
