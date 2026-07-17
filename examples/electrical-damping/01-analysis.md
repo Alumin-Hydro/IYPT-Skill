@@ -1335,6 +1335,17 @@ P1 的抛物线只在 $\lvert z_0\rvert\le 4$ mm 上拟合 —— **因为那里
   修订前快照已归档 `handoff/model-spec-r8.json`（r5–r8 期间契约未变，
   该快照即 r4 修订后的现行版）。
 
+### r10 · Skill 3 反向边的契约清洁（任务陈述去污）
+
+- **`tasks[T-1].statement`：清掉内嵌的 r2 修订日志。** 原陈述把「★ r2 改了措辞（审稿 H1）：
+  r1 写的是…」整段修订理由 + 一条免费证伪检验塞进了**任务陈述本身**（361 字）——
+  而 `run_all.py` 把它逐字透传成 `results.json` 的 `tasks_answered[T-1].quoted_statement`，
+  Skill 3 的**总结页 checklist** 直接渲染它 ⟹ `TOO-DENSE`（386 字 > 320）。
+  **一个面向裁判的任务陈述，不该背着修订史。** 已收敛为 81 字的干净陈述（保留 r2 的
+  实质洞见「开路读数必含线圈导线涡流、开路分离不出纯机械」，删掉元日志）。
+  同步改 `handoff/model-spec.json` 与 `02-sim/results.json`（二者本是逐字拷贝，保持可复现）；
+  修订前快照归档 `handoff/model-spec-r9.json`。**这是 Skill 3 作为下游消费者暴露出的契约缺陷。**
+
 ---
 
 ### ★★★ r4 的核心教训：**我为 P17 造的那道机械门，自己也是瞎的**
