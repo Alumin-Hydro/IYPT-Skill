@@ -77,7 +77,7 @@
 | ID | 项目 | 取值 | 理由 | 结论对它敏感吗 |
 |---|---|---|---|---|
 | **S-1** | 漆膜（防守相） | 稀释丙烯漆，厚度 $h = 0.30$ mm，黏度 $\mu_2 = 0.10$ Pa·s（由稀释度定） | 薄到进入 Hele-Shaw/润滑区、又厚到肉眼可见；黏度取「明显高于醇墨、但仍能流动」 | **敏感** $\lambda^\ast\propto h^{1/2}$（自然耦合，H1）；**★ $\lambda^\ast$ 对 $\mu_2$ 近乎不敏感**（$U\propto1/\mu_2$ 抵消，H1）——$\mu_2$ 主要定失稳存在性与时标 |
-| **S-2** | 液滴（入侵相） | 醇-墨，黏度 $\mu_1 = 1.5\times10^{-3}$ Pa·s，半径 $R = 3.0$ mm | 低黏（醇为主）造成大黏度反差 $\mu_2/\mu_1\approx 67$；$R$ 取常见微升级液滴 | 敏感：$N\propto R$ |
+| **S-2** | 液滴（入侵相） | 醇-墨，黏度 $\mu_1 = 1.5\times10^{-3}$ Pa·s，半径 $R = 3.0$ mm | 低黏（醇为主）造成大黏度反差 $\mu_2/\mu_1\approx 67$；$R$ 取常见微升级液滴 | 敏感：**自然耦合下 $N\propto\sqrt{R/h}$**（H1；固定 $U$ 下才是 $N\propto R$） |
 | **S-3** | 界面张力（醇墨/漆之间） | $\gamma = 5\times10^{-3}$ N/m（**估值，不确定度大**） | 两相都含水、互溶性强 ⇒ 有效界面张力小；**无表值**，必须实验独立测 | **极敏感**且**最不确定**：$\lambda^\ast\propto\gamma^{1/2}$（→ robustness scan） |
 | **S-4** | Marangoni 反差（自由面） | $\Delta\gamma = 2.5\times10^{-2}$ N/m | 醇滴自由面 $\approx 25$ mN/m vs 漆自由面 $\approx 50$ mN/m；这是**铺展的驱动** | 决定前沿速度 $U$ |
 | **S-5** | 前沿速度（观测/导出） | $U = 1.0\times10^{-2}$ m/s（基准，由影像实测） | Marangoni 铺展的典型量级（mm/s–cm/s）；它是 Model-0 的输入，不是自由拟合量 | 敏感：$\lambda^\ast\propto U^{-1/2}$ |
@@ -92,6 +92,6 @@
 | 漆黏度 $\mu_2$（稀释度） | 0.02 – 0.5 Pa·s | 覆盖「黏度比不够、不长指」到「大反差、密集分形」。★ **注意（H1）：固定驱动下扫 $\mu_2$ 不移动 Ca**（$U\propto1/\mu_2$ 抵消，$\mathrm{Ca}=\Delta\gamma h/R\gamma$）——它是 T-5 相图的**失稳边界轴**（$\mu_2>\mu_1$）与时标轴，**不是 Ca 轴** |
 | 前沿速度 $U$（经醇分数 $\varphi$ / 温度调 $\Delta\gamma$） | 2 – 50 mm/s | ★ **这才是真正的 Ca 旋钮**（$\mathrm{Ca}=\Delta\gamma h/(R\gamma)$，经 $\Delta\gamma(\varphi)$，H1）。$\lambda^\ast\propto U^{-1/2}$ 是最干净的零参预测；扫一个十进位 ⇒ $\lambda^\ast$ 变 $\sqrt{10}\approx3.2$ 倍，足以定斜率 |
 | 醇质量分数 $\varphi$ | 0.1 – 0.9 | 同时改 $\Delta\gamma$（驱动，**即 Ca 旋钮**）、蒸发率（寿命）、互溶性（界面是否锐利）—— **它是相图 F-3 的一根主轴，也是坍缩 F-2 的真杠杆** |
-| 膜厚 $h$ | 0.1 – 1.0 mm | 自然耦合下 $\lambda^\ast\propto h^{1/2}$（$U\propto h$，H1，**不是** $h^1$）；$h$ 在 $\lambda^\ast/h$-vs-Ca 图上退化。扫它主要检验 Hele-Shaw 边界（$h\ll R\to0.33$，见 A-1/H2） |
+| 膜厚 $h$ | 0.1 – 1.0 mm | 自然耦合下 $\lambda^\ast\propto h^{1/2}$（$U\propto h$，H1，**不是** $h^1$）；★ **$h$ 是有效的坍缩杠杆**（$\mathrm{Ca}=\Delta\gamma h/R\gamma$ 里有 $h$，扫 $h$ 真移动 Ca、沿 $-1/2$ 线滑动，10× 量程最宽，r2 订正 r1「退化」口误）。也检验 Hele-Shaw 边界（$h\ll R\to0.33$，见 A-1/H2） |
 
-**范围选择的意图**：$\mu_2$ 与 $\varphi$ 的扫描会把系统从「不长指」推到「密集分形」再推到「完全互溶」，让 F-3 相图上出现**两条形态边界**；而 **$\Delta\gamma(\varphi)$ 的扫描**给出零自由参数标度律（指数 $-1/2$）的证伪机会（★ H1：$U$/$h$/$\mu_2$ 单独扫在 Marangoni 耦合下指数被污染或退化，**真正沿 Ca 挪的干净旋钮只有 $\Delta\gamma$ 与 $\gamma$**，见 §6.2）。**一个不知道自己何时失效的模型，在 Physics Fight 上活不过第一轮提问。**
+**范围选择的意图**：$\mu_2$ 与 $\varphi$ 的扫描会把系统从「不长指」推到「密集分形」再推到「完全互溶」，让 F-3 相图上出现**两条形态边界**；而 **$\Delta\gamma(\varphi)$ 或 $h$ 的扫描**给出零自由参数标度律（指数 $-1/2$）的证伪机会（★ H1/r2：能沿 Ca 挪的干净旋钮是 $\{\Delta\gamma(\varphi),\gamma,h,R\}$——**只有 $\mu_2$ 退化相消**；单变量指数在 Marangoni 耦合下被改写（$\lambda^\ast\propto h^{0.5}$、$N\propto\sqrt{R/h}$），见 §6.2）。**一个不知道自己何时失效的模型，在 Physics Fight 上活不过第一轮提问。**

@@ -16,7 +16,7 @@ $$\lambda^\ast = \pi h\sqrt{\dfrac{\gamma}{U(\mu_2-\mu_1)}}\;=\;\pi h\,\big[\mat
 
 > **★★ 控制参数不独立（r1 审稿 H1，MAJOR，已订正）**：$U$ 不是自由量，由 Marangoni 定（式 13）$U=\Delta\gamma h/(\mu_2 R)$。代进 $\mathrm{Ca}=\mu_2 U/\gamma$，**$\mu_2$ 精确抵消**：
 > $$\boxed{\;\mathrm{Ca}=\dfrac{\Delta\gamma\,h}{R\,\gamma}\;}\qquad(\mu_2\ \text{不进 Ca}).$$
-> **⟹ 稀释漆（$\mu_2$，题面唯一明给的旋钮）在固定驱动下根本不移动 Ca、也几乎不改 $\lambda^\ast$。** 真正的 Ca 旋钮是 $\Delta\gamma$（经醇分数 $\varphi$）与 $\gamma$。稀释的**正确**预言是「**固定 Marangoni 驱动下 $\lambda^\ast\approx\pi\sqrt{h\gamma R/\Delta\gamma}$、与 $\mu_2$ 近乎无关**」——它改变的是**失稳存在与否**（$\mu_2>\mu_1$）与**时标**，不是指宽。旗舰指数 $-1/2$ 不受影响（经 $\Delta\gamma$ 扫仍可证伪）。详见 §6.2、§8、§11。
+> **⟹ 稀释漆（$\mu_2$，题面唯一明给的旋钮）在固定驱动下根本不移动 Ca、也几乎不改 $\lambda^\ast$。** 真正的 Ca 旋钮是 $\{\Delta\gamma(\varphi),\,\gamma,\,h,\,R\}$（**只有 $\mu_2$ 退化相消**；$h$、$R$ 都真移动 Ca，r2 审稿订正）。稀释的**正确**预言是「**固定 Marangoni 驱动下 $\lambda^\ast\approx\pi\sqrt{h\gamma R/\Delta\gamma}$、与 $\mu_2$ 近乎无关**」——它改变的是**失稳存在与否**（$\mu_2>\mu_1$）与**时标**，不是指宽。旗舰指数 $-1/2$ 不受影响（经 $\Delta\gamma$ 扫仍可证伪）。详见 §6.2、§8、§11。
 
 最软的软肋是 **A-2**（醇与水互溶 ⇒ 界面张力 $\gamma$ 是否真的存在、是否足以选出 $\lambda^\ast$）与 **A-3**（丙烯漆剪切变稀）。分形维数 $D\approx1.71$ 是 **DLA 普适类的文献结论**（不是本模型的推导，见 §10）。
 
@@ -185,7 +185,9 @@ $$\dfrac{\lambda^\ast}{h}=\pi\,\big[\mathrm{Ca}(1-r)\big]^{-1/2}\;\xrightarrow{r
 
 **数据坍缩预言**：把实测指宽画成 $\lambda^\ast/h$ vs $\mathrm{Ca}$，**应坍缩到斜率 $-1/2$ 的直线**（log-log，→ F-2）。
 
-> ★★ **杠杆点必须老实标（r1 审稿 H1）**：$\mathrm{Ca}=\mu_2 U/\gamma$ 在 Marangoni 耦合（式 13）下 $=\Delta\gamma h/(R\gamma)$。**能沿 Ca 挪动的干净旋钮只有 $\Delta\gamma$（经醇分数 $\varphi$）与 $\gamma$**——$\mu_2$ **相消**（扫稀释把你钉在坍缩图同一点）、$h$ 在 $\lambda^\ast/h$-vs-Ca 图上**天然退化**（Ca 里没有 $h$）。而且 **Model-0 输出的坍缩是代数恒等式（恒真、不构成检验）**——任取 $(U,\mu_2,\gamma,h)$ 都精确落线。**真正的检验是实验：扫 $\Delta\gamma(\varphi)$ 沿 Ca 挪、看真实系统的斜率是不是 $-1/2$。** 若实验不坍缩或斜率不对，多半是 A-3（剪切变稀，$\mathrm{Ca}$ 不再唯一控制）或 A-2（无 $\gamma$）破了。
+> ★★ **杠杆点必须老实标（r1 审稿 H1，r2 审稿再订正）**：$\mathrm{Ca}=\mu_2 U/\gamma$ 在 Marangoni 耦合（式 13）下 $=\Delta\gamma h/(R\gamma)$。**能沿 Ca 挪的干净旋钮是 $\{\Delta\gamma(\varphi),\,\gamma,\,h,\,R\}$——四个都真移动 Ca、沿 $-1/2$ 线滑动**（实算扫 $h$：Ca 从 0.17 到 1.67、$\log(\lambda^\ast/h)$-$\log\mathrm{Ca}$ 斜率恰 $-0.500$；$h$ 量程 10× 反而是最宽的杠杆）。**只有 $\mu_2$ 退化（相消）**——扫稀释把你钉在坍缩图同一点。
+> ★ **r2 审稿订正 r1 的口误**：修订后的 $\mathrm{Ca}=\Delta\gamma h/(R\gamma)$ 分子里**有 $h$**，$h$ **不退化**；「Ca 里没有 $h$」只对**旧的** $\mathrm{Ca}=\mu_2 U/\gamma$ 成立——把旧口误搬进新公式，正是「拆掉一把瞎锁、换上一把镜像的新瞎锁」。教训：审稿给的说法也要在新公式上**重新推一遍**，不能照抄。
+> 而 **Model-0 输出的坍缩是代数恒等式（恒真、不构成检验）**——真检验是实验沿 Ca（扫 $\Delta\gamma$ 或 $h$）挪、看斜率是不是 $-1/2$。若不坍缩，多半 A-3（剪切变稀）或 A-2（无 $\gamma$）破了。
 
 > 技巧 3（零自由参数）：$\mathrm{Ca}^{-1/2}$ 里的 **指数 $-1/2$** 不含任何可调参数——测得斜率是 $-0.5$ 还是 $-1$、$0$，直接判 Model-0 的生死（见 P1、criterion K1）。
 
@@ -272,7 +274,7 @@ $$U\sim\dfrac{\Delta\gamma\,h}{\mu_2 R}\quad(\text{量级})\;\Rightarrow\;\dfrac
 > ★★ **这条关系锁死了控制参数的独立性（r1 审稿 H1，MAJOR，本轮订正的头号洞）。** 把 (13) 代进 $\mathrm{Ca}=\mu_2 U/\gamma$，**$\mu_2$ 精确抵消**：$\mathrm{Ca}=\Delta\gamma h/(R\gamma)$。三条连带后果：
 > 1. **$\mu_2$（稀释）不进 Ca**：固定驱动下扫 $\mu_2$ 不移动 Ca，$\lambda^\ast$ 只因 $(1-r)$ 项变几个百分点（$\mu_2$ 扫 25× ⟹ $\lambda^\ast$ 变 3.7%）。**故参数表原先「扫 $\mu_2$ 让 Ca 跨量级」是错的。**
 > 2. **单变量指数被 $U$-耦合污染**：把 (13) 代进 (9)，$r\ll1$ ⟹ $\lambda^\ast\approx\pi\sqrt{h\gamma R/\Delta\gamma}$。于是**自然耦合下** $\lambda^\ast\propto h^{1/2}$（不是 (9) 表面的 $h^{1}$）、$\propto R^{1/2}$，$N=2\pi R/\lambda^\ast\propto\sqrt{R/h}$（不是 (12) 表面的 $R^{1}$）。表面的 $h^1$/$R^1$ 只在**固定 $U$** 下成立，而 $U$ 不能在固定下扫 $h$/$R$（同样需 $\Delta\gamma$ 反向补偿，物理做不到）。
-> 3. **能沿 Ca 挪的干净旋钮只有 $\Delta\gamma$（经醇分数 $\varphi$）与 $\gamma$**。这**不弱化旗舰指数** $-1/2$（$\lambda^\ast/h\propto\mathrm{Ca}^{-1/2}$ 是恒等式，经 $\Delta\gamma$ 扫仍可证伪），但改写了「几何/动力学如何依赖参数」的骨架、以及 T-5（稀释）的答案——见 §8 P3/P4/P7、§11。
+> 3. **能沿 Ca 挪的干净旋钮是 $\{\Delta\gamma(\varphi),\,\gamma,\,h,\,R\}$——只有 $\mu_2$ 退化（相消，Ca=Δγh/Rγ 里没有 μ2）**。$h$、$R$ 都真移动 Ca（实算扫 $h$ 斜率恰 $-0.500$，见 §4；r2 审稿订正 r1「$h$ 退化」的口误）。这**不弱化旗舰指数** $-1/2$（$\lambda^\ast/h\propto\mathrm{Ca}^{-1/2}$ 是恒等式，经 $\Delta\gamma$ 或 $h$ 扫仍可证伪），但改写了「几何/动力学如何依赖参数」的骨架、以及 T-5（稀释）的答案——见 §8 P3/P4/P7、§11。
 
 ### 6.3 Model-2：完整模型（数值 → 移交 Skill 2）
 
@@ -307,7 +309,7 @@ $$\nabla^2 p_j=0\ (j=1,2),\qquad [p]_{\rm int}=\gamma\kappa,\qquad v_n=-\dfrac{h
 |---|---|---|
 | **P1** | $\lambda^\ast/h\propto\mathrm{Ca}^{-1/2}$，**指数 $=-0.50$，零自由参数** | 扫 **$\Delta\gamma$（经醇分数 $\varphi$）**——**不是 $\mu_2$**（H1：$\mu_2$ 相消、不移动 Ca），FFT 提 $\lambda^\ast$，测 $\log\lambda^\ast$–$\log\mathrm{Ca}$ 斜率。测得 $-1$ ⇒ naive-B（毛细平衡）；$0$ ⇒ naive-A（只由 $h$ 定）。模型死。（criterion K1） |
 | **P2** | $\lambda^\ast=\pi h\sqrt{\gamma/(U(\mu_2-\mu_1))}=2.12$ mm（给定独立测的 $U$ 与 $\gamma$）⇒ $N\approx9$ | 数指的条数。偏 $1/\sqrt3$（$\approx-42\%$）⇒ 把临界波长当了指宽（onset-C）。（criterion K2）**（一参预言，非零参：$\gamma$ 需实测）** |
-| **P3** | 坍缩：$\lambda^\ast/h$ vs $\mathrm{Ca}$ **落在斜率 $-1/2$ 的线上**——**杠杆只有 $\Delta\gamma(\varphi)$ 与 $\gamma$**（H1：$\mu_2$ 相消、$h$ 在此图退化） | 扫 $\Delta\gamma$ 画坍缩图。不坍缩 ⇒ 漏了一个组（A-3 剪切变稀，或 A-2 无 $\gamma$）。**注意 Model-0 输出恒落线（恒等式），真检验在实验。**（F-2） |
+| **P3** | 坍缩：$\lambda^\ast/h$ vs $\mathrm{Ca}$ **落在斜率 $-1/2$ 的线上**——**杠杆是 $\{\Delta\gamma(\varphi),\gamma,h,R\}$**（H1/r2 订正：**只有 $\mu_2$ 相消退化**；$h$、$R$ 都真移动 Ca） | 扫 $\Delta\gamma$（或 $h$）画坍缩图。不坍缩 ⇒ 漏了一个组（A-3 剪切变稀，或 A-2 无 $\gamma$）。**注意 Model-0 输出恒落线（恒等式），真检验在实验。**（F-2） |
 | **P4** | **自然耦合下**（$U$ 由 Marangoni 定，式 13）$N\propto\sqrt{R/h}$、$\lambda^\ast\propto h^{1/2}R^{1/2}$（**不是**固定-$U$ 的 $N\propto R$、$\lambda^\ast\propto h^1$，H1 订正） | 扫 $R$、$h$，数 $N$。测得 $N\propto R^1$ 而非 $\sqrt{R/h}$ ⇒ $U$ 其实不随 Marangoni 耦合（外加驱动？）⇒ 查 A-8/驱动机制 |
 | **P5** | **失稳需 $\mu_2>\mu_1$**：防守相更黏才长指；反之光滑铺展 | 换低黏「漆」/高黏「墨」（$r>1$）⇒ 应**不长指**。若仍长指 ⇒ 那不是 Saffman–Taylor（sign-D 或 A-8）。（criterion K3、F-3） |
 | **P6** | 高-$\mathrm{Ca}$、多代 tip-splitting 极限下，图样落入 **DLA 普适类，$D\approx1.71$**（**文献**，非本模型推导） | 盒计数测 $D$。**注意：$D\approx1.7$ 是普适的、对模型细节不敏感 ⇒ 它是弱判别子**（很多错模型也给 1.7）。**验证要靠 $\sigma(k)$ 的峰位（V-1），不是靠 $D$。** |
@@ -357,6 +359,15 @@ $$\nabla^2 p_j=0\ (j=1,2),\qquad [p]_{\rm int}=\gamma\kappa,\qquad v_n=-\dfrac{h
 - **H4（MINOR）**：`criterion_matrix.py` 的 K2 `tolerance_source` 重写为「$\gamma\pm30\%$ 求和方 ⟹ 1σ≈19% ⟹ 门槛 20%」，$\gamma$ 不确定度与 §9 统一到 ±30%。
 - **H5（MINOR，良性，已核 skill 门）**：内嵌 `criterion_matrix` 的手加 `script` 键是 Stage 8.5 **有意**的（契约要求保留）。核 `check_matrix_desync`（check_analysis.py:1340）：`embedded = {k:v for k,v in cm.items() if k != "script"}` 后要求 `embedded == matrix.json` **逐字相等**——**只剥离 `script` 这一个键，任何第二个多余键或改值都会被抓**。故不是「对多一个键放行」的盲区，门 scope 正确，无需改。本轮保留 `script`。
 - **UNCLEAR/A-2**：审稿判「无从加罪」（已预注册 RISKY + 退化签名），不改；仍是全题头号物理前提，靠实测 $\gamma$ + 看谱峰定。
+
+### r2 审稿（新 MAJOR：镜像瞎锁）→ r3 修订
+
+**★★ 教训 15/22 当场复现**：r1 修 H1 时，我把 r1 审稿的一句口误（「$h$ 在坍缩图上退化」——它是在**旧** $\mathrm{Ca}=\mu_2U/\gamma$ 的框架下说的）**照抄**进了修订后的 $\mathrm{Ca}=\Delta\gamma h/(R\gamma)$ 框架——而新公式分子里**有 $h$**。**拆掉 $\mu_2$ 那把瞎锁，换上了一把 $h$ 的镜像瞎锁。** r2 审稿（fresh，重新推）当场抓到。
+
+- **新 MAJOR（$h$ 不退化）**：实算扫 $h$：$\mathrm{Ca}$ 从 0.17 到 1.67、$\log(\lambda^\ast/h)$-$\log\mathrm{Ca}$ 斜率恰 $-0.500$ ⟹ **$h$ 是有效坍缩杠杆**（且能离散区分 naive-A 的斜率 0）。真杠杆是 $\{\Delta\gamma(\varphi),\gamma,h,R\}$，**只有 $\mu_2$ 退化**。改 **6 处**：§0 摘要、§4 杠杆点、§6.2 点 3、§8 P3、契约 F-2 `series`/`purpose`/`expected_shape`、`00-problem` 的 $h$-扫行 + 意图。**根因是「照抄审稿的话、没在新公式上重推」——已把这条写进上面（审稿给的说法也要重新推一遍）。**
+- **MINOR（H2 没传播到契约）**：§3 散文改了 $h/R$，但 `model-spec.json` 的 `A-1.breaks_when` 仍是旧的 $h/\lambda^\ast\to0.5$（教训 4 复发：修订落在推导、漏了契约）。r3 已同步契约。
+- **MINOR（S-2 契约脱钩）**：`00-problem` S-2 仍写 $N\propto R$（S-1 改了 S-2 漏了），r3 已改成耦合 $N\propto\sqrt{R/h}$。
+- H1 内核（$\mu_2$ 相消）、H3/H4/H5 r2 审稿复核均**已修好**；sha256 三处一致；DESYNC scope 论证成立。
 
 ### 交接
 
