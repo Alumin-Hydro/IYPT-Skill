@@ -1,0 +1,797 @@
+{
+  "problem": {
+    "slug": "fractal-fingers",
+    "title": "Fractal Fingers (IYPT 2023 P1)",
+    "statement": "The effect of fractal fingering can be observed if a droplet of an ink-alcohol mixture is deposited onto diluted acrylic paint. How are the geometry and dynamics of the fingers influenced by relevant parameters?",
+    "type": "dependence"
+  },
+  "tasks": [
+    {
+      "id": "T-1",
+      "kind": "essence",
+      "statement": "指出指状花样的物理本质：是哪种界面失稳（Saffman–Taylor 黏性指 vs Marangoni 铺展指），驱动/失稳/稳定各由谁承担。",
+      "excavated_from": "fractal fingering"
+    },
+    {
+      "id": "T-2",
+      "kind": "mode-classification",
+      "statement": "定量刻画几何：指宽 λ*、条数 N、tip-splitting，以及 'fractal' 的定量含义——分形维数 D（怎么测）。",
+      "excavated_from": "fractal"
+    },
+    {
+      "id": "T-3",
+      "kind": "dependence",
+      "statement": "几何与动力学如何依赖 relevant parameters：给出标度律（λ*/h ∝ Ca^(-1/2)）与数据坍缩；判定哪些参数相关、哪些不相关。",
+      "excavated_from": "influenced by relevant parameters"
+    },
+    {
+      "id": "T-4",
+      "kind": "dependence",
+      "statement": "刻画动力学：前沿如何推进、指如何增长、图样如何随醇蒸发而冻结（有无随时间的模式转变）。",
+      "excavated_from": "dynamics"
+    },
+    {
+      "id": "T-5",
+      "kind": "regime-boundary",
+      "statement": "条件边界：分形指在什么条件下出现、什么条件下不出现（形态相图）。",
+      "excavated_from": "can be observed if",
+      "why_implicit": "'can be observed if' 预设现象不总是发生；'diluted' 暗示要把黏度比调进能长指的区间。答案是参数空间相图，不是一条曲线。"
+    }
+  ],
+  "essence": {
+    "one_sentence": "低表面张力的醇-墨滴在高黏漆膜上以 Marangoni 应力驱动铺展，低黏流体驱替高黏流体的推进界面在 Laplacian 增长下失稳、由界面张力选出最快波长 λ* 并反复 tip-splitting，在驱动与界面张力的竞争中长出自相似的分形指；醇的蒸发使驱动关闭、花样冻结。",
+    "system_type": "界面失稳与花样形成（Laplacian growth / viscous fingering），经 tip-splitting 级联到分形（DLA 普适类）",
+    "energy_chain": "自由面表面能（醇造成的 Δγ）→ 前沿推进的黏性耗散 + 新增界面能；醇蒸发抹平 Δγ → 驱动→0 → 冻结",
+    "competing_effects": "驱动 Marangoni Δγ（设定前沿速度 U） vs 稳定 界面张力 γ（惩罚短波曲率）；比值 Ca=μ2 U/γ 选出 λ*；黏度比 r=μ1/μ2 定失稳强度"
+  },
+  "variables": {
+    "independent": {
+      "system": [
+        "漆黏度 μ2（由稀释度定）",
+        "醇墨黏度 μ1",
+        "界面张力 γ",
+        "Marangoni 反差 Δγ",
+        "醇质量分数 φ",
+        "醇扩散系数 D_a",
+        "密度 ρ"
+      ],
+      "configuration": [
+        "漆膜厚度 h",
+        "液滴半径/体积 R"
+      ],
+      "initial_conditions": [
+        "滴落高度/冲击速度",
+        "初始醇浓度",
+        "液滴与膜的温度"
+      ],
+      "environment": [
+        "温度（控 μ2、γ、蒸发率）",
+        "湿度",
+        "气流",
+        "基底浸润性"
+      ]
+    },
+    "dependent": {
+      "scalars": [
+        "最快波长/指宽 λ*",
+        "指的条数 N",
+        "分形维数 D",
+        "前沿速度 U",
+        "冻结时间 t_ev"
+      ],
+      "functions": [
+        "色散关系 σ(k)",
+        "N(t)",
+        "包络半径 R(t)",
+        "指宽分布"
+      ],
+      "modes": [
+        "① 光滑圆铺展（不长指）",
+        "② 少数光滑不分叉的指（Saffman–Taylor）",
+        "③ 密集分叉的分形（DLA 类 tip-splitting）",
+        "④ 完全互溶/无花样",
+        "以及它们随参数的转变边界"
+      ]
+    }
+  },
+  "symbols": [
+    {
+      "symbol": "h",
+      "meaning": "漆膜厚度（Hele-Shaw 有效间隙）",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\mu_1",
+      "meaning": "醇-墨（入侵相）动力黏度",
+      "unit": "Pa·s"
+    },
+    {
+      "symbol": "\\mu_2",
+      "meaning": "稀释丙烯漆（防守相）动力黏度",
+      "unit": "Pa·s"
+    },
+    {
+      "symbol": "r",
+      "meaning": "黏度比 μ1/μ2",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\gamma",
+      "meaning": "醇墨/漆之间的界面张力（稳定短波）",
+      "unit": "N/m"
+    },
+    {
+      "symbol": "\\Delta\\gamma",
+      "meaning": "自由面表面张力反差（Marangoni 驱动）",
+      "unit": "N/m"
+    },
+    {
+      "symbol": "U",
+      "meaning": "铺展前沿速度",
+      "unit": "m/s"
+    },
+    {
+      "symbol": "R",
+      "meaning": "液滴（图样）半径",
+      "unit": "m"
+    },
+    {
+      "symbol": "k",
+      "meaning": "界面扰动波数",
+      "unit": "1/m"
+    },
+    {
+      "symbol": "\\sigma",
+      "meaning": "扰动线性增长率（非电导率）",
+      "unit": "1/s"
+    },
+    {
+      "symbol": "\\eta",
+      "meaning": "界面扰动位移",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\xi",
+      "meaning": "扰动幅度 ξ(t)",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\Gamma",
+      "meaning": "界面曲线（Model-2 状态变量）",
+      "unit": "m"
+    },
+    {
+      "symbol": "\\lambda^\\ast",
+      "meaning": "最快增长波长 = 指宽",
+      "unit": "m"
+    },
+    {
+      "symbol": "k^\\ast",
+      "meaning": "最快增长波数",
+      "unit": "1/m"
+    },
+    {
+      "symbol": "\\lambda_c",
+      "meaning": "临界波长（σ=0）",
+      "unit": "m"
+    },
+    {
+      "symbol": "k_c",
+      "meaning": "临界波数",
+      "unit": "1/m"
+    },
+    {
+      "symbol": "N",
+      "meaning": "指的条数",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\mathrm{Ca}",
+      "meaning": "毛细数 μ2 U/γ",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\mathrm{Pe}",
+      "meaning": "Péclet 数 UR/D_a",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\mathrm{Re}",
+      "meaning": "Reynolds 数 ρUh/μ2",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\mathrm{Bo}",
+      "meaning": "Bond 数 ρg h²/γ",
+      "unit": "1"
+    },
+    {
+      "symbol": "D",
+      "meaning": "分形维数",
+      "unit": "1"
+    },
+    {
+      "symbol": "D_a",
+      "meaning": "醇在水中的分子扩散系数",
+      "unit": "m^2/s"
+    },
+    {
+      "symbol": "\\varphi",
+      "meaning": "醇质量分数",
+      "unit": "1"
+    },
+    {
+      "symbol": "\\rho",
+      "meaning": "液体密度（水基）",
+      "unit": "kg/m^3"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度",
+      "unit": "m/s^2"
+    },
+    {
+      "symbol": "\\kappa",
+      "meaning": "界面全曲率（Young–Laplace）",
+      "unit": "1/m"
+    },
+    {
+      "symbol": "k_{\\rm th}",
+      "meaning": "液体导热系数（A-7 蒸发冷却估计）",
+      "unit": "W/(m·K)"
+    },
+    {
+      "symbol": "L_v",
+      "meaning": "醇的汽化潜热",
+      "unit": "J/kg"
+    },
+    {
+      "symbol": "J",
+      "meaning": "醇蒸发质量通量",
+      "unit": "kg/(m^2·s)"
+    },
+    {
+      "symbol": "\\dot\\gamma_c",
+      "meaning": "丙烯漆剪切变稀起始剪切率",
+      "unit": "1/s"
+    },
+    {
+      "symbol": "t_g",
+      "meaning": "指增长特征时间 1/σ(k*)",
+      "unit": "s"
+    },
+    {
+      "symbol": "t_s",
+      "meaning": "铺展特征时间 R/U",
+      "unit": "s"
+    },
+    {
+      "symbol": "t_{ev}",
+      "meaning": "醇蒸发特征时间",
+      "unit": "s"
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h",
+      "meaning": "漆膜厚度",
+      "value": 0.0003,
+      "unit": "m",
+      "sweep_range": [
+        0.0001,
+        0.001
+      ],
+      "sweep_scale": "log",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\mu_1",
+      "meaning": "醇-墨黏度",
+      "value": 0.0015,
+      "unit": "Pa·s",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\mu_2",
+      "meaning": "稀释丙烯漆黏度",
+      "value": 0.1,
+      "unit": "Pa·s",
+      "sweep_range": [
+        0.02,
+        0.5
+      ],
+      "sweep_scale": "log",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\gamma",
+      "meaning": "醇墨/漆界面张力（估值，需实测）",
+      "value": 0.005,
+      "unit": "N/m",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\Delta\\gamma",
+      "meaning": "自由面 Marangoni 反差",
+      "value": 0.025,
+      "unit": "N/m",
+      "source": "setting"
+    },
+    {
+      "symbol": "U",
+      "meaning": "铺展前沿速度（Marangoni 定，可实测）",
+      "value": 0.01,
+      "unit": "m/s",
+      "sweep_range": [
+        0.002,
+        0.05
+      ],
+      "sweep_scale": "log",
+      "source": "derived"
+    },
+    {
+      "symbol": "R",
+      "meaning": "液滴半径",
+      "value": 0.003,
+      "unit": "m",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\varphi",
+      "meaning": "醇质量分数",
+      "value": 0.5,
+      "unit": "1",
+      "sweep_range": [
+        0.1,
+        0.9
+      ],
+      "sweep_scale": "linear",
+      "source": "setting"
+    },
+    {
+      "symbol": "\\rho",
+      "meaning": "液体密度（水基）",
+      "value": 1000.0,
+      "unit": "kg/m^3",
+      "source": "literature",
+      "ref": "水基分散体, ~1000 kg/m^3"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度",
+      "value": 9.81,
+      "unit": "m/s^2",
+      "source": "literature",
+      "ref": "标准重力"
+    },
+    {
+      "symbol": "D_a",
+      "meaning": "醇在水中扩散系数",
+      "value": 1e-09,
+      "unit": "m^2/s",
+      "source": "literature",
+      "ref": "小分子醇在水中 ~1e-9 m^2/s"
+    }
+  ],
+  "dimensionless_groups": [
+    {
+      "name": "\\Pi_1",
+      "expression": "\\lambda^\\ast/h",
+      "meaning": "无量纲指宽",
+      "baseline_value": 7.078
+    },
+    {
+      "name": "\\mathrm{Ca}",
+      "expression": "\\mu_2 U/\\gamma",
+      "meaning": "黏性驱动 / 界面张力",
+      "baseline_value": 0.2
+    },
+    {
+      "name": "r",
+      "expression": "\\mu_1/\\mu_2",
+      "meaning": "黏度比（失稳强度）",
+      "baseline_value": 0.015
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A-1",
+      "statement": "薄膜 Hele-Shaw（Darcy）近似：深度平均流服从达西定律",
+      "criterion": "h \\ll \\lambda^\\ast 且 h \\ll R",
+      "criterion_check": "h/λ*=0.14, h/R=0.10——勉强成立",
+      "breaks_when": "h 增大（扫描上端 h=1mm, h/λ*→0.5）或黏度比很大使 λ* 变小",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "Darcy 前因子 h²/12 失真（自由面还要改 h²/3），λ* 绝对值偏移，但指数 -1/2 不变（来自 k 与 k³ 竞争，与前因子无关）。只影响 P2 不影响 P1。"
+    },
+    {
+      "id": "A-2",
+      "statement": "存在锐利、可定义界面张力 γ 的两相界面",
+      "criterion": "\\mathrm{Pe}=UR/D_a \\gg 1 且 \\gamma_{\\rm eff}>0 足以选出 λ*>观测分辨率",
+      "criterion_check": "Pe=3e4≫1（前沿动力学锐利）；但醇水互溶，γ 无表值、极不确定——判据第二半无法确认",
+      "grade": "RISKY",
+      "breaks_when": "两相充分互溶且聚合物不提供有效张力 ⇒ γ_eff→0 ⇒ λ*→0（无短波截断）",
+      "impact_if_false": "没有被选出的 λ*，图样退化为无波长选择的纯 Laplacian/DLA 分形；P1/P2/P3/P4 全失去对象，只剩 P6。全题最要命的一条。"
+    },
+    {
+      "id": "A-3",
+      "statement": "稀释丙烯漆是牛顿流体",
+      "criterion": "\\dot\\gamma \\sim U/h \\ll \\dot\\gamma_c",
+      "criterion_check": "U/h=33/s，而 γ̇_c~5/s ⇒ 比值≈6.7>1——判据不满足，剪切变稀已激活",
+      "grade": "RISKY",
+      "breaks_when": "U 增大（扫描上端 U=50mm/s ⇒ γ̇=167/s）更严重",
+      "impact_if_false": "指尖有效黏度低于指身，迁移率非线性，Ca 不再唯一控制 ⇒ 多参数数据不再坍缩到单条 λ*/h=f(Ca)；指数 -1/2 漂移。威胁 P1/P3。"
+    },
+    {
+      "id": "A-4",
+      "statement": "指增长期间前沿速度 U 准定常",
+      "criterion": "t_g=1/\\sigma(k^\\ast) \\ll t_s=R/U（且 \\ll t_{ev}）",
+      "criterion_check": "t_g≈0.05s, t_s=0.30s, t_ev~1e2s ⇒ t_g/t_s≈0.17——成立",
+      "grade": "LOAD-BEARING",
+      "breaks_when": "接近蒸发末期 U→0 时 λ*∝U^(-1/2)→∞，指变粗停止分叉",
+      "impact_if_false": "λ* 变成 U(t) 的函数，N(t) 随时间演化（正是 F-5 的动力学）；坍缩要用瞬时 U 而非平均 U。"
+    },
+    {
+      "id": "A-5",
+      "statement": "忽略重力对面内失稳的影响",
+      "criterion": "水平基底面内重力=0；跨膜 \\mathrm{Bo}=\\rho g h^2/\\gamma \\ll 1 只影响膜形",
+      "criterion_check": "面内重力=0；Bo=0.18（膜形上重力占表面张力 18%，但不驱动/抑制面内指）",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-6",
+      "statement": "忽略惯性（蠕动流，Re≪1）",
+      "criterion": "\\mathrm{Re}=\\rho U h/\\mu_2 \\ll 1",
+      "criterion_check": "Re=0.03≪1——宽裕成立（但高U/低μ2 角落 Re→0.75）",
+      "grade": "SAFE",
+      "impact_if_false": "扫描角落（U=50mm/s, μ2=0.02）Re→0.75，蠕动流近似变弱，Model-0 在该角落失效。"
+    },
+    {
+      "id": "A-7",
+      "statement": "等温：忽略蒸发冷却驱动的热 Marangoni",
+      "criterion": "热 Marangoni 反差 \\ll 溶质 Marangoni 反差 Δγ",
+      "criterion_check": "ΔT~0.13K ⇒ 热反差~2e-5 N/m，占 Δγ 的 8e-4——可忽略",
+      "grade": "SAFE"
+    },
+    {
+      "id": "A-8",
+      "statement": "波长选择机制是 Saffman–Taylor（黏度反差），Marangoni 只设定 U",
+      "criterion": "Saffman–Taylor 增长率 \\gg Marangoni（表面张力梯度）失稳增长率",
+      "criterion_check": "面内黏性压变~23Pa ≫ 指尺度上的 Δγ 梯度残余——量级支持，但 Marangoni 指无法完全排除",
+      "grade": "RISKY",
+      "breaks_when": "极低黏度反差（r→1）时 ST 关闭，若仍见指 ⇒ 那是 Marangoni 指",
+      "impact_if_false": "λ* 标度不再是 Ca^(-1/2)，而由 Marangoni 铺展标度定；且 r→1 时指不消失（ST 预言消失）。"
+    }
+  ],
+  "equations": [
+    {
+      "id": "(7)",
+      "model_level": "model-0",
+      "kind": "algebraic",
+      "latex": "\\sigma(k)=\\dfrac{k}{\\mu_1+\\mu_2}\\left[U(\\mu_2-\\mu_1)-\\dfrac{\\gamma h^2}{12}k^2\\right]",
+      "numerical_notes": "★ Gate 0（极限对拍，纯线性代数）：在 Model-2 里播一个单一波数 k、小振幅正弦界面扰动，量初始指数增长率 σ_num(k)，必须逐点等于本式 (7)，峰位在 k*=2√(U(μ2-μ1)/(γh²))（(8)），误差 <0.1%，并随扰动振幅→0 单调收敛。这把「代码对不对」与「物理对不对」解耦。"
+    },
+    {
+      "id": "(9)",
+      "model_level": "model-0",
+      "kind": "algebraic",
+      "latex": "\\lambda^\\ast=\\dfrac{2\\pi}{k^\\ast}=\\pi h\\sqrt{\\dfrac{\\gamma}{U(\\mu_2-\\mu_1)}}",
+      "closed_form": "pi * h * (gamma/(U*(mu_2 - mu_1)))**0.5"
+    },
+    {
+      "id": "(12)",
+      "model_level": "model-0",
+      "kind": "algebraic",
+      "latex": "N=\\dfrac{2\\pi R}{\\lambda^\\ast}=\\dfrac{2R}{h}\\sqrt{\\mathrm{Ca}(1-r)}"
+    },
+    {
+      "id": "(14)",
+      "model_level": "model-2",
+      "kind": "pde",
+      "latex": "\\nabla^2 p=0\\ (\\text{each phase});\\quad [p]=\\gamma\\kappa;\\quad v_n=-\\dfrac{h^2}{12\\mu}\\partial_n p",
+      "state_variables": [
+        "界面曲线 \\Gamma(t)"
+      ],
+      "initial_conditions": "半径 R_0 的圆 + 小白噪声扰动",
+      "boundary_conditions": "远场 p→基态；界面 Young–Laplace 压跳 [p]=γκ（κ 全曲率），法向速度 v_n 连续。物理含义：入侵相内准均匀压（低黏⇒指内近等压），压降几乎全落在防守相——这正是 Laplacian 场把梯度聚到尖端的原因。P6 警戒：若误把入侵相当高黏、压降落在指内，尖端反而变钝，得到相反的稳定结论。",
+      "suggested_method": "相场法（Cahn–Hilliard + Darcy）或边界积分（共形映射）；γ 可调以扫 Ca",
+      "numerical_notes": "自由边界问题，界面附近需细网格；γ→0 极限奇异（无短波截断），扫 Ca 时下端注意分辨率。"
+    }
+  ],
+  "targets": [
+    {
+      "symbol": "\\lambda^\\ast",
+      "meaning": "最快增长波长（指宽）",
+      "unit": "mm",
+      "analytical_prediction": "\\pi h\\sqrt{\\gamma/(U(\\mu_2-\\mu_1))}",
+      "baseline_value": 2.123,
+      "closed_form": "pi * h * (gamma/(U*(mu_2 - mu_1)))**0.5 * 1e3",
+      "scaling_law": "\\lambda^\\ast/h \\propto \\mathrm{Ca}^{-1/2}",
+      "baseline_conditions": "基准 S-1..S-6：h=0.3mm, μ2=0.1 Pa·s, μ1=1.5e-3, γ=5e-3 N/m, U=1e-2 m/s"
+    },
+    {
+      "symbol": "k^\\ast",
+      "meaning": "最快增长波数",
+      "unit": "1/m",
+      "analytical_prediction": "2\\sqrt{U(\\mu_2-\\mu_1)/(\\gamma h^2)}",
+      "baseline_value": 2959.0,
+      "closed_form": "2*(U*(mu_2 - mu_1)/(gamma*h**2))**0.5",
+      "scaling_law": "k^\\ast \\propto \\mathrm{Ca}^{1/2}",
+      "baseline_conditions": "同 λ* 基准"
+    },
+    {
+      "symbol": "N",
+      "meaning": "指的条数",
+      "unit": "1",
+      "analytical_prediction": "(2R/h)\\sqrt{\\mathrm{Ca}(1-r)}",
+      "baseline_value": 8.877,
+      "closed_form": "2*R/(h*(gamma/(U*(mu_2 - mu_1)))**0.5)",
+      "scaling_law": "N \\propto R\\sqrt{\\mathrm{Ca}}",
+      "baseline_conditions": "同 λ* 基准, R=3mm"
+    },
+    {
+      "symbol": "\\lambda_c",
+      "meaning": "临界波长（σ=0，稳定/不稳定分界）",
+      "unit": "mm",
+      "analytical_prediction": "\\lambda^\\ast/\\sqrt{3}",
+      "baseline_value": 1.226,
+      "closed_form": "pi * h * (gamma/(U*(mu_2 - mu_1)))**0.5 * 1e3 / 3**0.5",
+      "scaling_law": "\\lambda_c/\\lambda^\\ast = 1/\\sqrt{3}",
+      "baseline_conditions": "同 λ* 基准"
+    }
+  ],
+  "figures": [
+    {
+      "id": "F-1",
+      "purpose": "证明界面失稳 + 波长选择：色散关系有一个峰，定出指宽 λ*",
+      "x": "波数 k",
+      "y": "增长率 σ(k)",
+      "kind": "line",
+      "answers_task": "T-1",
+      "expected_shape": "σ(0)=0；k<k_c 时 σ>0（失稳）；单峰在 k*；k>k_c 时 σ<0（界面张力稳定短波）。峰位=指宽选择。",
+      "compare_with": "Model-0 闭式 (7)"
+    },
+    {
+      "id": "F-2",
+      "purpose": "零自由参数标度律的证伪：不同 (U,μ2,γ,h) 的指宽坍缩到一条斜率 -1/2 的线",
+      "x": "\\mathrm{Ca}=\\mu_2 U/\\gamma",
+      "y": "\\lambda^\\ast/h",
+      "kind": "collapse",
+      "series": "不同 (U,μ2,γ,h) 组合",
+      "answers_task": "T-3",
+      "expected_shape": "log-log 上所有点坍缩到一条斜率 -1/2 的直线。不坍缩 ⇒ 漏了一个组（A-3 剪切变稀或 A-2 无 γ）。",
+      "compare_with": "斜率 -1/2 参考线"
+    },
+    {
+      "id": "F-3",
+      "purpose": "条件边界（T-5 的答案）：形态相图——分形指只在哪片参数区出现",
+      "x": "\\mathrm{Ca}（或 μ2）",
+      "y": "黏度比 r（或 醇分数 φ）",
+      "kind": "regime-map",
+      "answers_task": "T-5",
+      "expected_shape": "参数平面被分成几个形态区：光滑圆铺展 / Saffman–Taylor 少数指 / 密集分形（tip-splitting）/ 完全互溶。两条形态边界。",
+      "compare_with": "失稳判据 μ2>μ1 与 λ*<2πR 的边界线"
+    },
+    {
+      "id": "F-4",
+      "purpose": "'fractal' 的定量含义：盒计数测分形维数 D",
+      "x": "\\log(1/\\varepsilon)（盒尺度）",
+      "y": "\\log N_{\\rm box}(\\varepsilon)",
+      "kind": "loglog",
+      "answers_task": "T-2",
+      "expected_shape": "直线，斜率 = D。高-Ca 多代 tip-splitting 极限下 D→1.71（DLA）；低-Ca 更致密 D→2。",
+      "compare_with": "DLA 文献 D=1.71（Witten–Sander）"
+    },
+    {
+      "id": "F-5",
+      "purpose": "动力学（T-4）：前沿推进 R(t)、条数 N(t) 随 tip-splitting 增长、随蒸发冻结",
+      "x": "时间 t",
+      "y": "R(t) 与 N(t)",
+      "kind": "line",
+      "answers_task": "T-4",
+      "expected_shape": "R(t) 先增后饱和；N(t) 经 tip-splitting 阶梯式增长；醇蒸发使 U→0 ⇒ λ*→∞、分叉停止、花样冻结。",
+      "compare_with": "N(t)≈2πR(t)/λ*(U(t))"
+    },
+    {
+      "id": "F-6",
+      "purpose": "维数随控制参数的变化：D 随 Ca / 代数变化，展示形态从致密到稀疏",
+      "x": "\\mathrm{Ca}（或 tip-splitting 代数）",
+      "y": "分形维数 D",
+      "kind": "line",
+      "answers_task": "T-2",
+      "expected_shape": "D 从低-Ca 的 ~2（致密）单调降到高-Ca 的 ~1.7（DLA 稀疏分形）。D 对模型细节不敏感——弱判别子。",
+      "compare_with": "DLA 渐近 1.71"
+    },
+    {
+      "id": "V-1",
+      "purpose": "验中间量：线性增长率 σ(k) 的峰位 k*，独立于非线性分形维数",
+      "x": "波数 k",
+      "y": "数值实测增长率 σ_num(k)",
+      "kind": "line",
+      "answers_task": "T-1",
+      "expected_shape": "σ_num(k) 逐点落在闭式 (7) 上，峰在 k*=2√(U(μ2-μ1)/(γh²))，σ(0)=0、σ(k_c)=0 两个零点位置正确。",
+      "compare_with": "闭式 (7)"
+    },
+    {
+      "id": "V-2",
+      "purpose": "验中间量：前沿速度 U 由前沿轨迹独立测得，不由指宽反推",
+      "x": "时间 t",
+      "y": "前沿半径 R(t)（斜率=U）",
+      "kind": "line",
+      "answers_task": "T-4",
+      "expected_shape": "R(t) 早期近线性，斜率=U，与 Marangoni 估计 (13) U~Δγh/(μ2R) 同量级；U 独立于 λ*（不反推）。",
+      "compare_with": "Marangoni 量级估计 (13)"
+    }
+  ],
+  "model_validation_checks": [
+    {
+      "id": "V-1",
+      "intermediate_quantity": "线性色散关系 σ(k)（尤其峰位 k*）",
+      "why_it_can_fail_silently": "若只测最终分形维数 D≈1.7，正确模型和多种错模型都给 ~1.7（D 是弱判别子，对模型细节不敏感）——两个错误可以抵消而 D 仍对。σ(k) 的峰位 k* 才是有判别力的中间量。",
+      "independent_checks": [
+        "闭式 (7) 逐点对拍",
+        "峰位在解析 k*=2√(U(μ2-μ1)/(γh²))（离散量，非拟合）",
+        "σ(0)=0 与 σ(k_c)=0 两个零点位置"
+      ],
+      "experimental_check": "早期界面的空间 FFT，追踪各模幅度的指数增长率（比数指客观）",
+      "figure": "V-1"
+    },
+    {
+      "id": "V-2",
+      "intermediate_quantity": "铺展前沿速度 U",
+      "why_it_can_fail_silently": "λ*∝U^(-1/2)：若 U 估错且 γ 也估错，两者可在 λ* 里互相抵消，λ* 仍对而链条错。必须独立测 U（前沿轨迹），不由指宽反推。",
+      "independent_checks": [
+        "前沿轨迹 R(t) 求导得 U",
+        "Marangoni 平衡量级估计 (13) U~Δγh/(μ2R)"
+      ],
+      "experimental_check": "高速相机顶视追踪前沿 R(t)，求斜率",
+      "figure": "V-2"
+    }
+  ],
+  "risky_assumption_checks": [
+    {
+      "assumption_id": "A-2",
+      "task": "把有效界面张力 γ_eff 从基准值逐步降到 0，重算色散关系 σ(k)，看是否还存在一个有限 k* 的峰（波长选择）。",
+      "pass_criterion": "σ(k) 存在一个有限 k*>0 的单峰 ⇒ 存在被选出的指宽 λ*。若 γ_eff→0 峰消失、σ(k) 变单调增（无短波截断），则本假设失效，图样是无波长选择的纯分形——必须在 01-analysis.md 把 P1/P2/P3/P4 标注为对象缺失。",
+      "degenerate_signature": "色散谱里有没有一个峰：有峰（k* 有限，界面张力选出波长）vs 无峰（σ 单调增，无短波截断）。这是离散的是/否，不是拟合值。"
+    },
+    {
+      "assumption_id": "A-3",
+      "task": "用剪切变稀本构 μ2(γ̇)（Carreau/幂律）替换牛顿 μ2，扫 (U,μ2,γ,h) 重算 λ*，画 λ*/h vs Ca 坍缩图。",
+      "pass_criterion": "多参数曲线仍坍缩到单条斜率 -1/2 的线（Ca 仍是唯一控制组）。若曲线扇形张开、不再重合，则剪切变稀破坏了单参数坍缩，P1/P3 降级。",
+      "degenerate_signature": "多参数曲线是否重合（坍缩到一条）vs 扇形张开——坍缩的成/不成是结构性的是/否（曲线族的拓扑），不是单条拟合斜率的连续漂移。"
+    },
+    {
+      "assumption_id": "A-8",
+      "task": "把黏度比 r=μ1/μ2 推向 1（μ1→μ2），看 Saffman–Taylor 增长率 σ_max 是否→0、指是否消失。",
+      "pass_criterion": "r→1 时 σ_max→0，指消失（纯 ST）。若 r→1 时仍长指，则驱动是 Marangoni 铺展失稳而非 ST，λ* 的标度改由 Marangoni 定，P1 的 Ca^(-1/2) 失效。",
+      "degenerate_signature": "r→1 时指消失（Saffman–Taylor，σ_max→0）vs 指保留（Marangoni 铺展指）。离散的是/否，没有中间地带。"
+    }
+  ],
+  "experiment_plan": {
+    "apparatus": [
+      "稀释丙烯漆 + 醇-墨（乙醇/墨水，φ 可调）",
+      "水平玻璃板",
+      "刮涂器控膜厚 h",
+      "高速相机（≥100 fps，顶视）",
+      "悬滴/吊片张力仪独立测醇墨/漆界面张力 γ（关键）",
+      "流变仪测 μ2(γ̇)（查 A-3）",
+      "轮廓仪/干涉测 h",
+      "控温控湿箱"
+    ],
+    "measurements": [
+      "λ*——早期界面空间 FFT 峰位（比数指客观）",
+      "N——数条数",
+      "D——盒计数",
+      "U——前沿轨迹 R(t) 求导",
+      "γ——悬滴法独立测（不能反推）"
+    ],
+    "error_sources": [
+      "系统——γ 的不确定度（主导，λ*∝γ^(1/2)）",
+      "蒸发使 U、φ、γ 随时间漂移（A-4）",
+      "膜厚不均",
+      "剪切变稀（A-3）",
+      "随机——液滴体积、滴落冲击"
+    ],
+    "precision_needed": "区分 P1 的斜率 -0.5 与 -1：Ca 扫一个十进位、λ* 测到 ~10%（≥数十条指或干净 FFT）即可。而 P2（绝对值）受限于 γ：K2 只容 ±44% 的 γ 误差（criterion matrix robustness），而 γ 只能测到 ±30%——裕度仅 1.5×，所以 γ 必须独立实测，不能取表值。"
+  },
+  "criterion_matrix": {
+    "generated_by": "01-criteria/criterion_matrix.py",
+    "purpose": "★★★ 判据 × 模型的**双向**表 + P18 的三个新维度。\n只跑「正确模型」那一列 = 换了一把新的失明的锁。\n**而只跑布尔值，那张表可以被调到全绿（审稿模式 P18）。**",
+    "robustness_scan": {
+      "parameter": "δγ/γ = 界面张力 γ 的系统相对偏差 [1]",
+      "why": "★ **「不误杀」必须在协议自己承认的系统误差上跑过**（P18 ④）。\n**γ 是最不确定的输入**：醇墨/稀漆对没有表值，且随醇蒸发而漂移。\nλ* ∝ γ^(1/2) ⟹ γ 的系统偏差经 K2（绝对值）误杀正确模型。\n★★ r4-H1：边界**必须二分定出**，不能靠网格撞。\n★★ r5-H1：必须报 `scan_upper_bound` —— 否则 delta_max=None 与「没扫够远」不可区分。",
+      "scan_upper_bound": 1.0,
+      "systematic_error_budget": 0.3,
+      "delta_max": 0.440002,
+      "delta_max_bracket": [
+        0.439941,
+        0.440002
+      ],
+      "verdict": "判据的有效窗口：**δγ/γ < 44.00%**（**二分定出**，括在 [43.99, 44.00]%）。协议必须独立测 γ 到 **±30%** 以内（悬滴法测醇墨/稀漆对；安全裕度 1.47×）。"
+    },
+    "min_detectable": {
+      "why": "★★ 一个错模型「被抓到了 ✓」**没有信息量 —— 因为幅度是作者挑的**（P18 ②）。\n**扫常数偏置 ε，报「最小可检测幅度」ε\\*** —— 那才是判据集的分辨率。",
+      "constant_offset": {
+        "eps_star": 0.2012,
+        "caught_by": [
+          "K2"
+        ],
+        "note": "「判据能分辨指宽 **20%** 的绝对偏差」。\n★ 而 K2 的容差就是 20%（预言侧 h/γ/U/μ2 不确定度）—— **ε\\* 就是那个数**。\n**⟹ 想抓更小的偏差，只能先把 h、γ、U 量得更准。判据本身已经到头了。**\nonset-C 的偏置 = 1/√3 − 1 = -42.3% > ε\\* ⟹ 被 K2 抓到。"
+      }
+    },
+    "wrong_models": [
+      {
+        "id": "naive-A 指宽只由膜厚定",
+        "statement": "指宽只由膜厚定",
+        "why_a_student_writes_it": "**本题头号直觉陷阱**：数一遍长度尺度，只看见膜厚 h ⟹ λ*~h。在基准点标定成和正确模型一样，**只有「λ* 对 Ca 的指数」抓得到它。**"
+      },
+      {
+        "id": "naive-B 毛细平衡给 Ca^-1",
+        "statement": "毛细平衡给 Ca^-1",
+        "why_a_student_writes_it": "把毛细压强 γ/λ 直接和黏性驱动压强 μ2·U/h 平衡 ⟹ λ ~ γh/(μ2 U) = h/Ca。**一个看似合理的量纲平衡**，但漏了增长率里表面张力进的是 k³ 而非 k ⟹ 指数错成 −1。"
+      },
+      {
+        "id": "★ onset-C 用临界波长而非最快波长",
+        "statement": "onset-C 用临界波长而非最快波长",
+        "why_a_student_writes_it": "**最难抓的一个**：把 σ(k)=0 的临界波长 λ_c 错当成实际指宽，混淆 onset 与 fastest-growing。**所有标度律一字不差**（λ_c ∝ h·Ca^(−1/2)，指数完全相同），只有绝对值偏了 1/√3。**⇒ 只有 K2（绝对值）看得见它。没有它，K2 就会显得多余。**"
+      },
+      {
+        "id": "sign-D 丢了失稳符号条件",
+        "statement": "丢了失稳符号条件",
+        "why_a_student_writes_it": "只记得「有黏度差就 fingering」，漏了「必须是**低黏推高黏**（μ2>μ1）」。⟹ 它会在稳定构型（高黏推低黏）里**谎报 fingering**。只有 K3（符号）看得见它。"
+      }
+    ],
+    "criteria": [
+      {
+        "id": "K1",
+        "statement": "K1 λ* ∝ Ca^(−1/2)【结构】",
+        "tolerance": 0.15,
+        "tolerance_source": "指数是**离散**的：正确给 −0.500，naive-A（只由 h 定）给 0.000，naive-B（毛细平衡）给 −1.000 —— 相邻间隔 ≥ 0.5。\n  实验：Ca 扫一个十进位、λ* 由 FFT 峰位测到 ~5% ⟹ 对数拟合斜率误差 ≈ 0.03。\n  ⟹ 门槛 0.15 —— 远离 0.5 的间隔、也远高于噪声。**离散。**",
+        "passes_correct": true,
+        "correct_model_detail": "p = -0.500（预言 −0.500）",
+        "catches": [
+          {
+            "id": "naive-A 指宽只由膜厚定",
+            "detail": "p = -0.000（预言 −0.500）"
+          },
+          {
+            "id": "naive-B 毛细平衡给 Ca^-1",
+            "detail": "p = -1.000（预言 −0.500）"
+          }
+        ]
+      },
+      {
+        "id": "K2",
+        "statement": "K2 λ* 的绝对值【零参】",
+        "tolerance": 0.2,
+        "tolerance_source": "**绝对值/零自由参数**判据 ⟹ 预言侧不确定度主导：\n  λ* ∝ h·(γ/(U·μ2))^(1/2) ⟹ δλ*/λ* = δh/h + ½(δγ/γ + δU/U + δμ2/μ2)。\n  h(膜厚 ±10%) · γ(界面张力 ±15%) · U(前沿速度 ±10%) · μ2(漆黏度 ±10%)\n  ⟹ 1σ ≈ 10% + ½·(15+10+10)% ≈ **17%** ⟹ 门槛 **20%**。\n  ★★ **⟹ 这条判据分辨不了 20% 以下的绝对值偏差** —— 见 min_detectable。",
+        "passes_correct": true,
+        "correct_model_detail": "λ* = 2.123 mm（预言 2.123）",
+        "catches": [
+          {
+            "id": "★ onset-C 用临界波长而非最快波长",
+            "detail": "λ* = 1.226 mm（预言 2.123）"
+          }
+        ]
+      },
+      {
+        "id": "K3",
+        "statement": "K3 失稳需 μ2>μ1【结构】",
+        "tolerance": null,
+        "tolerance_source": "**结构性布尔判据**（失稳符号），无数值容差：\n  Saffman–Taylor 要求 μ2>μ1 才有增长模。在**反转反差**（μ2<μ1）下，\n  正确模型必须预言 σ_max ≤ 0（**不长指**）。这是离散的是/否，不需要门槛。",
+        "passes_correct": true,
+        "correct_model_detail": "反转反差下：稳定（不长指）✓",
+        "catches": [
+          {
+            "id": "sign-D 丢了失稳符号条件",
+            "detail": "反转反差下：**谎报 fingering** ✗"
+          }
+        ]
+      }
+    ],
+    "verdict": "PASS",
+    "source_sha256": "6605c22683daff9369d9a44f732caea71919a6c8f03c2401e953bb92f8a804c1",
+    "script": "01-criteria/criterion_matrix.py"
+  },
+  "open_gaps": []
+}

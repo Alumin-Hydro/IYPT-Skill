@@ -499,13 +499,34 @@ def check_contract(spec: dict) -> None:
 
 # ---------------------------------------------------------------- 正文检查
 
+def _tag_defn_nums(md: str) -> list:
+    r"""从 \tag{...} 里抽出**定义**的公式号。
+
+    ★ 教训 12（「正则写死一种排版」第四次）：旧正则 `\\tag\{\(?(\d+)\)?\}` 只认单个号，
+    对一行定义多式的 `\tag{8,9}`、`\tag{11, 12}` **整条不匹配** ⟹ 8/9/11/12 全被误报为「缺」。
+    而「一行给出 k* 与 λ* 两式、共一个 \tag{8,9}」是**极常见**的排版。
+
+    规则：body **完全是数字列表**（数字/逗号/括号/空白）才算「定义」，逐个抽出其中的数字：
+      · `\tag{7}` / `\tag{(7)}` → [7]      · `\tag{8,9}` / `\tag{11, 12}` → [8,9] / [11,12]
+    body 含**其它文字**的是「引用」，跳过（否则会把它里的号**重复计数**，假报 EQ-DUP）：
+      · `\tag{对应 (9)}` / `\tag{cf. 3}` → []   —— 「见式 (9)」这种再引用不是新定义。
+
+    ★ 诚实的已知局限（钉进 selftest 盲区探针）：字母子式 `\tag{7a}` 也被当引用**跳过**
+      —— 若某号**只**以 `7a` 出现、`7` 没单独出现，EQ-GAP 会假报缺 7（WARNING 级）。
+      字母编号的 EQ 连续性本就歧义（7a 算不算「7」？在 7 和 8 之间？），不在本门 scope 内。"""
+    nums: list = []
+    for body in re.findall(r"\\tag\{([^}]*)\}", md):
+        if re.fullmatch(r"[\s\d,()]+", body):
+            nums += [int(n) for n in re.findall(r"\d+", body)]
+    return nums
+
+
 def check_equations(md: str) -> None:
-    """公式编号连续、无重复。"""
-    tags = re.findall(r"\\tag\{\(?(\d+)\)?\}", md)
-    if not tags:
+    r"""公式编号连续、无重复。`\tag{8,9}` 一行多式、`\tag{对应 (9)}` 引用都要正确处理。"""
+    nums = _tag_defn_nums(md)
+    if not nums:
         warn("EQ-NONE", "正文里没有找到 \\tag{n} 编号公式——推导应当给公式编号，审稿人要靠它定位")
         return
-    nums = [int(t) for t in tags]
 
     dupes = {n for n in nums if nums.count(n) > 1}
     if dupes:
@@ -1926,6 +1947,25 @@ def selftest() -> int:
     # ★ 引用计数也必须锚死：A-6 不许从 A-6a 里被数出来
     eq("A-6 不会被 A-6a 冒名顶替",
        len(re.findall(r"\bA-6(?![0-9a-z])", "见 A-6a 与 A-6b，另见 A-6a。")), 0)
+
+    print()
+    print("=" * 72)
+    print("②a-eq EQ 编号（教训 12 第四次）：\\tag{8,9} 一行多式要收得住；\\tag{对应 (9)} 引用不许重复计数")
+    print("=" * 72)
+    eq(r"单式 \tag{7}",          _tag_defn_nums(r"x=1\tag{7}"),          [7])
+    eq(r"带括号 \tag{(7)}",       _tag_defn_nums(r"x=1\tag{(7)}"),        [7])
+    # ★ fractal-fingers 真实踩的：一行给 k* 与 λ* 两式共 \tag{8,9}，旧正则整条不匹配 ⟹ 假报缺 8,9
+    eq(r"一行两式 \tag{8,9}",     _tag_defn_nums(r"k=..,\lam=..\tag{8,9}"),   [8, 9])
+    eq(r"带空格 \tag{11, 12}",    _tag_defn_nums(r"N=..\tag{11, 12}"),        [11, 12])
+    # ★★ 盲区探针：引用 tag（body 含文字）**不是定义**，跳过——否则和真定义 (9) 撞成假 EQ-DUP
+    eq(r"引用 \tag{对应 (9)} 跳过", _tag_defn_nums(r"\lam/h=..\tag{对应 (9)}"),  [])
+    eq(r"引用 \tag{cf. 3} 跳过",    _tag_defn_nums(r"\tag{cf. 3}"),         [])
+    # ★★ 端到端：8,9 与「对应 (9)」共存时，9 只数一次（无 EQ-DUP）—— fractal-fingers 的真实排版
+    eq(r"组合 + 引用：9 不重复计数",
+       sorted(_tag_defn_nums(r"a\tag{8,9} b\lam/h\tag{对应 (9)}")),        [8, 9])
+    # ★ 已知局限（记录在案，非「已修好」）：字母子式 \tag{7a} 被当引用跳过 —— body 含 'a' 非纯数字列表。
+    #   若某号只以 7a 出现、7 没单独出现，EQ-GAP 会假报缺 7（WARNING 级）。字母编号连续性本就歧义，不在 scope。
+    eq(r"已知局限：\tag{7a} 跳过（body 非纯数字列表）", _tag_defn_nums(r"\tag{7a}"), [])
 
     print()
     print("=" * 72)
