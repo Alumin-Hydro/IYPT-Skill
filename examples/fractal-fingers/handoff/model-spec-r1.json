@@ -293,7 +293,7 @@
     },
     {
       "symbol": "\\mu_2",
-      "meaning": "稀释丙烯漆黏度（★ H1：固定驱动下 μ2 相消、不进 Ca；扫它测失稳存在性 μ2>μ1 与时标，不是 Ca 轴）",
+      "meaning": "稀释丙烯漆黏度",
       "value": 0.1,
       "unit": "Pa·s",
       "sweep_range": [
@@ -305,26 +305,21 @@
     },
     {
       "symbol": "\\gamma",
-      "meaning": "醇墨/漆界面张力（估值 ±30%，需实测；Ca 的一个旋钮）",
+      "meaning": "醇墨/漆界面张力（估值，需实测）",
       "value": 0.005,
       "unit": "N/m",
       "source": "setting"
     },
     {
       "symbol": "\\Delta\\gamma",
-      "meaning": "自由面 Marangoni 反差（★ H1：Ca=Δγh/(Rγ) 的真旋钮，经醇分数 φ 扫）",
+      "meaning": "自由面 Marangoni 反差",
       "value": 0.025,
       "unit": "N/m",
-      "sweep_range": [
-        0.005,
-        0.05
-      ],
-      "sweep_scale": "log",
       "source": "setting"
     },
     {
       "symbol": "U",
-      "meaning": "铺展前沿速度（Marangoni 定 U=Δγh/(μ2R)，可实测；扫 U ⇔ 扫 Δγ ⇔ 扫 Ca）",
+      "meaning": "铺展前沿速度（Marangoni 定，可实测）",
       "value": 0.01,
       "unit": "m/s",
       "sweep_range": [
@@ -530,7 +525,7 @@
       "analytical_prediction": "(2R/h)\\sqrt{\\mathrm{Ca}(1-r)}",
       "baseline_value": 8.877,
       "closed_form": "2*R/(h*(gamma/(U*(mu_2 - mu_1)))**0.5)",
-      "scaling_law": "N \\propto \\sqrt{R/h}（Marangoni 耦合，H1；固定 U 下才是 R\\sqrt{\\mathrm{Ca}}）",
+      "scaling_law": "N \\propto R\\sqrt{\\mathrm{Ca}}",
       "baseline_conditions": "同 λ* 基准, R=3mm"
     },
     {
@@ -557,13 +552,13 @@
     },
     {
       "id": "F-2",
-      "purpose": "零参标度律（指数 -1/2）的证伪：指宽坍缩到斜率 -1/2 的线。★ H1：能沿 Ca 挪的杠杆只有 Δγ(φ)、γ",
-      "x": "\\mathrm{Ca}=\\Delta\\gamma h/(R\\gamma)",
+      "purpose": "零自由参数标度律的证伪：不同 (U,μ2,γ,h) 的指宽坍缩到一条斜率 -1/2 的线",
+      "x": "\\mathrm{Ca}=\\mu_2 U/\\gamma",
       "y": "\\lambda^\\ast/h",
       "kind": "collapse",
-      "series": "不同 Δγ(φ)、γ 组合（★ 不是 μ2/h——μ2 相消、h 退化，H1）",
+      "series": "不同 (U,μ2,γ,h) 组合",
       "answers_task": "T-3",
-      "expected_shape": "log-log 坍缩到斜率 -1/2 的直线。★ Model-0 输出恒落线（代数恒等式，不构成检验）——真检验是实验沿 Ca（扫 Δγ）量到 -1/2。不坍缩 ⇒ A-3 剪切变稀 或 A-2 无 γ。",
+      "expected_shape": "log-log 上所有点坍缩到一条斜率 -1/2 的直线。不坍缩 ⇒ 漏了一个组（A-3 剪切变稀或 A-2 无 γ）。",
       "compare_with": "斜率 -1/2 参考线"
     },
     {
@@ -605,16 +600,6 @@
       "answers_task": "T-2",
       "expected_shape": "D 从低-Ca 的 ~2（致密）单调降到高-Ca 的 ~1.7（DLA 稀疏分形）。D 对模型细节不敏感——弱判别子。",
       "compare_with": "DLA 渐近 1.71"
-    },
-    {
-      "id": "F-7",
-      "purpose": "★ H1 的正确预言（回答题面 diluted）：固定驱动下 λ* 与稀释度 μ2 近乎无关",
-      "x": "漆黏度 \\mu_2（稀释度）",
-      "y": "指宽 \\lambda^\\ast",
-      "kind": "line",
-      "answers_task": "T-5",
-      "expected_shape": "固定 Δγ 时 λ*-vs-μ2 近乎水平（只因 (1-r) 项微降）；对比错误的 μ2^(-1/2) 斜线。稀释改变的是失稳阈值 μ2>μ1 与时标（U∝1/μ2），不是 λ*。",
-      "compare_with": "错误预期 λ*∝μ2^(-1/2)（固定 U 的产物）"
     },
     {
       "id": "V-1",
@@ -779,7 +764,7 @@
         "id": "K2",
         "statement": "K2 λ* 的绝对值【零参】",
         "tolerance": 0.2,
-        "tolerance_source": "**绝对值/一参**判据（绝对值含 γ、需实测 ⟹ 非零参；零参的是指数 K1）——预言侧不确定度主导（r1 审稿 H4 订正）：\n  λ* ∝ h·γ^(1/2)·U^(−1/2)·(μ2−μ1)^(−1/2) ⟹ 灵敏度系数 h→1、γ/U/μ2→½。\n  δh/h=10%、**δγ/γ=30%（无表值、需实测；与 §9 统一，不再是旧稿的 ±15%）**、δU/U=10%、δμ2/μ2=10%。\n  **求和方**（各项独立）：√(10² + (½·30)² + (½·10)² + (½·10)²) = √(10²+15²+5²+5²) ≈ **19.4%** ⟹ 门槛 **20%**。\n  ★★ **⟹ 这条判据分辨不了 20% 以下的绝对值偏差** —— 见 min_detectable。",
+        "tolerance_source": "**绝对值/零自由参数**判据 ⟹ 预言侧不确定度主导：\n  λ* ∝ h·(γ/(U·μ2))^(1/2) ⟹ δλ*/λ* = δh/h + ½(δγ/γ + δU/U + δμ2/μ2)。\n  h(膜厚 ±10%) · γ(界面张力 ±15%) · U(前沿速度 ±10%) · μ2(漆黏度 ±10%)\n  ⟹ 1σ ≈ 10% + ½·(15+10+10)% ≈ **17%** ⟹ 门槛 **20%**。\n  ★★ **⟹ 这条判据分辨不了 20% 以下的绝对值偏差** —— 见 min_detectable。",
         "passes_correct": true,
         "correct_model_detail": "λ* = 2.123 mm（预言 2.123）",
         "catches": [
@@ -805,7 +790,7 @@
       }
     ],
     "verdict": "PASS",
-    "source_sha256": "1305f41b3b02848dca60da1cecdd78363ecc4fb4013d424eb6dc0295cd6501d7",
+    "source_sha256": "6605c22683daff9369d9a44f732caea71919a6c8f03c2401e953bb92f8a804c1",
     "script": "01-criteria/criterion_matrix.py"
   },
   "open_gaps": []
