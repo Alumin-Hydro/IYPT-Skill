@@ -1,0 +1,575 @@
+{
+  "problem_slug": "ball-on-ferrite-rod",
+  "model_spec_version": "current",
+  "parameters": [
+    {
+      "symbol": "E",
+      "meaning": "棒杨氏模量",
+      "value": 150000000000.0,
+      "unit": "Pa",
+      "source": "literature",
+      "ref": "Ni-Zn ferrite typical"
+    },
+    {
+      "symbol": "\\rho",
+      "meaning": "棒密度",
+      "value": 4800.0,
+      "unit": "kg/m^3",
+      "source": "literature",
+      "ref": "Ni-Zn ferrite"
+    },
+    {
+      "symbol": "c",
+      "meaning": "棒纵波声速",
+      "value": 5590.169943749474,
+      "unit": "m/s",
+      "source": "derived",
+      "ref": null
+    },
+    {
+      "symbol": "L",
+      "meaning": "棒长",
+      "value": 0.1,
+      "unit": "m",
+      "source": "chosen",
+      "ref": "S-2"
+    },
+    {
+      "symbol": "R_{rod}",
+      "meaning": "棒半径",
+      "value": 0.005,
+      "unit": "m",
+      "source": "chosen",
+      "ref": "S-2"
+    },
+    {
+      "symbol": "\\lambda_s",
+      "meaning": "磁致伸缩饱和应变",
+      "value": -2.7e-05,
+      "unit": "1",
+      "source": "literature",
+      "ref": "Ni-Zn ferrite"
+    },
+    {
+      "symbol": "Q",
+      "meaning": "棒声学品质因数",
+      "value": 100.0,
+      "unit": "1",
+      "source": "estimate",
+      "ref": null
+    },
+    {
+      "symbol": "N",
+      "meaning": "线圈匝数",
+      "value": 200.0,
+      "unit": "1",
+      "source": "chosen",
+      "ref": "S-4"
+    },
+    {
+      "symbol": "g",
+      "meaning": "重力加速度",
+      "value": 9.81,
+      "unit": "m/s^2",
+      "source": "constant",
+      "ref": null
+    },
+    {
+      "symbol": "e",
+      "meaning": "球-棒尖恢复系数",
+      "value": 0.6,
+      "unit": "1",
+      "source": "literature",
+      "ref": "glass-ferrite; S-5"
+    },
+    {
+      "symbol": "m",
+      "meaning": "球质量",
+      "value": 3.53e-05,
+      "unit": "kg",
+      "source": "derived",
+      "ref": "glass dia 3mm"
+    },
+    {
+      "symbol": "R_b",
+      "meaning": "球半径",
+      "value": 0.0015,
+      "unit": "m",
+      "source": "chosen",
+      "ref": "S-5"
+    }
+  ],
+  "essence": {
+    "one_sentence": "线圈交变磁场经磁致伸缩把电能泵成铁氧体棒的纵向声学共振；棒尖以峰值加速度 Aω²≫g 高频振动，每次球落回都被棒尖当时的相速度弹起——球是一个受迫碰撞振子：能量以每次碰撞的净冲量泵入、以恢复系数 e<1 耗散，在两者平衡处持续弹跳。控制参数是无量纲驱动 Γ=Aω²/g（定阈值 Γ>1）与频率比 f/f_bounce=Γ/π（定模式）。",
+    "system_type": "受迫-耗散碰撞振子；阈值 Γ=1 起弹；高 Γ（可见弹跳）= 随机相位统计稳态，低 Γ（近阈值、nm 不可见）= 确定性 bouncing-ball 映射（周期倍化→混沌）。",
+    "energy_chain": "电能 → 线圈磁场 → 磁致伸缩应变（棒声共振，Q 放大）→ 棒尖动能 → 碰撞冲量 → 球动能/势能 →（恢复系数 e<1）→ 碰撞耗散",
+    "competing_effects": "能量泵入（每次碰撞净冲量 ∝(1+e)⟨w⟩）vs 碰撞耗散（∝(1-e²)）；稳态在两者相等处，给出 h̄=(1+e)/(1-e)(Aω)²/4g。第二竞争：频率比 f/f_bounce 决定确定性 vs 随机相位。"
+  },
+  "assumptions": [
+    {
+      "id": "A-1",
+      "statement": "棒声学边界条件 = 固定-自由（底端固定、顶端自由），故 f_n=(2n-1)c/4L",
+      "criterion": "底端接触声阻抗 Z_base >> Z_rod=ρc·πR_rod²",
+      "criterion_check": "Z_rod≈2.1e3 kg/s；刚性管底 Z_base 远大于 ⟹ 判据成立；但若轻放（点接触）底端趋于自由，退化为自由-自由 f_n=nc/2L。无法先验确定。",
+      "breaks_when": "底端从固定滑向自由，f_1 从 c/4L=13975Hz 跳到 c/2L=27951Hz",
+      "grade": "RISKY",
+      "impact_if_false": "共振峰位置差 2×（离散，无中间地带）——这是识破 BC 取错的退化特征。弹跳标度律不受影响（与本征频率具体值无关）。"
+    },
+    {
+      "id": "A-2",
+      "statement": "高频随机相位：碰撞相位 φ 在 [0,2π) 上均匀",
+      "criterion": "f/f_bounce=Γ/π >> 1",
+      "criterion_check": "可见弹跳 Γ~1e3 ⟹ f/f_bounce~300-900 >> 1（实算）",
+      "breaks_when": "Γ ≲ π（近阈值）⟹ 退回确定性映射（周期倍化/混沌），但此时弹高 ~nm 不可见",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "§5 的 h̄ 闭式换成确定性映射的分岔结构"
+    },
+    {
+      "id": "A-3",
+      "statement": "球=刚性点质量，单次接触（无 chattering/多点接触）",
+      "criterion": "接触时间 τ_c << 飞行时间 T_bounce 且 τ_c << 驱动周期 1/f",
+      "criterion_check": "τ_c~10μs 与驱动周期 71μs 同量级——不是 <<，进 Model-1 修正",
+      "breaks_when": "高 Γ 下接触期间棒尖已换向多次",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "瞬时碰撞是骨架；有限 τ_c 进 Model-1（有效 e/相位修正）"
+    },
+    {
+      "id": "A-4",
+      "statement": "恢复系数 e 与碰撞速度无关（常数）",
+      "criterion": "u < u_yield（低于塑性屈服速度）",
+      "criterion_check": "u~0.1-0.3 m/s，玻璃-铁氧体屈服 ~0.1 m/s ⟹ 勉强，可能进入速度依赖区",
+      "breaks_when": "高速 e∝u^(-1/4)（塑性）",
+      "grade": "RISKY",
+      "impact_if_false": "h̄ 的 (1+e)/(1-e) 因子极敏感；e(u) 使 h̄ vs (Aω)² 斜率漂移——退化特征就是斜率是否恒定"
+    },
+    {
+      "id": "A-5",
+      "statement": "单模共振（棒尖=基频单一正弦，高次模可忽略）",
+      "criterion": "|f-f_1| << |f_3-f_1| 且驱动在 f_1 的半带宽 f_1/2Q 内",
+      "criterion_check": "Q~100 半带宽~70Hz，f_3-f_1=28kHz ⟹ 近共振单模主导",
+      "breaks_when": "远离共振或宽带驱动",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "棒尖运动非单一正弦，Γ 定义需按峰值加速度推广"
+    },
+    {
+      "id": "A-6",
+      "statement": "球非磁非导 ⟹ 飞行中无直接电磁力（由 S-5 玻璃球保证）",
+      "criterion": "\\mu_r-1 < 1e-3 且 \\sigma < 1e-6 S/m（玻璃）",
+      "criterion_check": "玻璃 μ_r-1~0、σ~1e-12 ⟹ 判据满足，磁力/涡流力=0",
+      "breaks_when": "用钢球 ⟹ 棒尖 B² 稳定磁吸（见机制预算 M-6）",
+      "grade": "SAFE",
+      "impact_if_false": "钢球被磁吸按住，混淆纯力学弹跳——设定选择就是为排除它"
+    },
+    {
+      "id": "A-7",
+      "statement": "磁致伸缩是棒的主驱动（vs 端面 Maxwell 应力）——★ r1 审稿 H3：二者同在驱动谐波上（有偏置时含 1f），Maxwell 应力是同频 correction，不改共振结构",
+      "criterion": "端面 Maxwell 应力与磁致伸缩应力之比 \\sigma_M/\\sigma_{ms}=(B^2/2\\mu_0)/(E\\lambda_s) < 1",
+      "criterion_check": "实算 ≈0.3（对驱动电平敏感，∝B²）；涡流因铁氧体高阻率 <1e-2",
+      "breaks_when": "极高场端面应力可比（≳1）",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "驱动的谐波权重变，但共振结构（f_n、Q 放大）不变"
+    },
+    {
+      "id": "A-8",
+      "statement": "飞行中空气阻力可忽略",
+      "criterion": "F_drag/mg << 1",
+      "criterion_check": "Re≈40，Newton 阻力/mg≈2.5e-4（实算）；扫描端点 u=0.5m/s 仍~1e-3",
+      "breaks_when": "极轻球或极高速",
+      "grade": "SAFE",
+      "impact_if_false": "飞行非严格弹道，h 略减"
+    },
+    {
+      "id": "A-9",
+      "statement": "球质量负载不失谐棒共振",
+      "criterion": "m << M_rod,eff=ρπR_rod²L/2",
+      "criterion_check": "M_rod,eff≈19g，m=0.035g ⟹ m/M~1.8e-3 <<1；且球多在飞行",
+      "breaks_when": "重球或球长期贴棒尖",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "棒共振失谐、f_1 下移"
+    },
+    {
+      "id": "A-10",
+      "statement": "一维（球不横move、不蹭壁、不自旋耗能）",
+      "criterion": "A_lateral << R_rod，管导向",
+      "criterion_check": "平顶棒尖+管导向提供横向恢复",
+      "breaks_when": "棒尖非平/无导向 ⟹ 球横飞",
+      "grade": "LOAD-BEARING",
+      "impact_if_false": "能量漏进横向自由度，弹高与模式改变"
+    }
+  ],
+  "tasks_answered": [
+    {
+      "task_id": "T-1",
+      "quoted_statement": "指出球弹跳的物理本质与能量链，并用机制预算排除其他候选（直接磁吸、气流、涡流……）",
+      "answered": true,
+      "by_figures": [
+        "V-1",
+        "F-1"
+      ],
+      "answer": "机制=磁致伸缩→棒声共振→棒尖 Aω²=1572g 振动→碰撞驱动球；V-1 独立测 A(f) 峰在 f₁ 证实驱动链"
+    },
+    {
+      "task_id": "T-2",
+      "quoted_statement": "起弹阈值：棒尖峰值加速度何时超过 g，即 Γ=Aω²/g=1；对应的临界驱动",
+      "answered": true,
+      "by_figures": [
+        "F-2"
+      ],
+      "answer": "阈值 Γ=Aω²/g=1（棒尖峰值加速度=g）；工作点 Γ=1572≫1 深在弹跳区"
+    },
+    {
+      "task_id": "T-3",
+      "quoted_statement": "共振依赖：弹跳强度/棒尖振幅对驱动频率的响应，峰在棒本征频率 f_n=(2n-1)c/4L",
+      "answered": true,
+      "by_figures": [
+        "F-1",
+        "V-1"
+      ],
+      "answer": "共振峰在 f₁=c/4L=13.98kHz（固定-自由），偏 +0.00%；A-1 退化特征=峰位 c/4L vs c/2L"
+    },
+    {
+      "task_id": "T-4",
+      "quoted_statement": "模式分类（因变量第三层）：弹跳模式随 Γ 与频率比 f/f_bounce 的转变（不弹/周期/倍化/混沌/随机相位统计稳态），及弹高对驱动的标度",
+      "answered": true,
+      "by_figures": [
+        "F-3",
+        "F-4",
+        "F-5",
+        "F-6"
+      ],
+      "answer": "模式：可见弹跳=随机相位统计稳态 h̄=k_h(Aω)²（斜率偏 +2.22%）、λ=+7.85>0 混沌；regime 由 Γ 定（f/f_bounce=708），教科书周期倍化落在 nm 不可见窗口"
+    }
+  ],
+  "validation_checks": [
+    {
+      "id": "V-1",
+      "intermediate_quantity": "棒尖振幅 A(f) —— 整条链条的中间量：Γ、h̄ 全是 A 的函数",
+      "passed": true,
+      "figure": "V-1",
+      "paths": [
+        {
+          "how": "共振曲线极大定 f₁=c/4L（解析可先写）",
+          "result": "13.975 kHz",
+          "passed": true
+        },
+        {
+          "how": "独立于弹跳链条（不由 h̄ 反推 A）",
+          "result": "偏 f₁ +0.000%",
+          "passed": true
+        }
+      ],
+      "note": "拿弹高反推 A 会掩盖两个抵消的错误——故独立测 A(f) 峰位"
+    }
+  ],
+  "generated_by": "02-sim/code/run_all.py",
+  "status": "PASS",
+  "gates": [
+    {
+      "id": "gate-0-limit",
+      "ran": true,
+      "passed": true,
+      "recipe": "Gate 0 极限对拍（纯数学，先跑）：① 单次碰撞 v_out=(1+e)w+e·u 结构解析精确（<1e-12）；② A→0 时 h̄→0，扫 A=1,0.3,0.1,0.03,0.01 单调趋 0（∝A²）；③ e→1 时 h̄→∞，扫 e=0.5,0.7,0.9,0.95,0.99 单调增；④ Lyapunov 可积对拍：固定相位（不演化）退化为线性收缩映射，λ=ln e<0，而真混沌 λ>0——证明正 λ 不是浮点噪声。",
+      "evidence": "single_collision_err=0.0e+00; A→0 单调=True (h̄=['3.1e-03', '2.9e-04', '3.2e-05', '2.8e-06', '1.6e-07']); e→1 单调=True; λ_integrable=-0.5108≈ln e=-0.5108, λ_chaos=7.85",
+      "detail": {
+        "single_collision_err": 0.0,
+        "lyap_integrable": -0.5108255410256601,
+        "lyap_chaos": 7.850035143623151,
+        "Ato0_monotone": true,
+        "eto1_monotone": true
+      }
+    },
+    {
+      "id": "gate-1-convergence",
+      "ran": true,
+      "passed": true,
+      "recipe": "收敛门在**扫描端点**上做：样本 n×2 + 换初相 φ0，A_low/A_high 两端各测 h̄ 漂移 <5%",
+      "evidence": "在扫描端点（A_low, A_high）与换初相各做一遍",
+      "numbers": {
+        "rows": [
+          {
+            "point": "A_low (端点)",
+            "drift": 0.012845595604440874
+          },
+          {
+            "point": "A_high (端点)",
+            "drift": 0.008986723515556516
+          },
+          {
+            "point": "phi0 (换种子)",
+            "drift": 0.005396880014214789
+          }
+        ]
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "id": "AS-1",
+      "source": "k_h",
+      "source_kind": "target",
+      "quoted_expectation": "h̄=k_h·(Aω)²",
+      "assert_kind": "limit",
+      "expect": "Gate0：单碰撞解析精确、A→0⟹h̄→0（单调）、e→1⟹h̄→∞（单调）、可积极限 λ=ln e<0",
+      "measured": "single_err=0.0e+00；A→0 单调=True；e→1 单调=True；λ_integrable=-0.511(≈ln e=-0.511)",
+      "verdict": "PASS",
+      "tolerance": "纯数学恒等式：single<1e-12、λ 偏 ln e<0.05"
+    },
+    {
+      "id": "AS-2",
+      "source": "F-1",
+      "source_kind": "figure",
+      "quoted_expectation": "在 f_1=c/4L 处尖峰",
+      "assert_kind": "peak",
+      "expect": "共振曲线峰在 f_1=c/4L",
+      "measured": "峰在 13975 Hz（c/4L=13975，偏 +0.00%）",
+      "verdict": "PASS",
+      "tolerance": "<5%",
+      "interpretation": "峰位按共振曲线极大定；固定-自由 c/4L vs 自由-自由 c/2L 差 2×（A-1 退化特征）",
+      "figure_ref": "F-1"
+    },
+    {
+      "id": "AS-3",
+      "source": "F-3",
+      "source_kind": "figure",
+      "quoted_expectation": "过原点直线，斜率 k_h=(1+e)/[4g(1-e)]",
+      "assert_kind": "slope",
+      "expect": "h̄ vs (Aω)² 过原点直线，斜率 = k_h（零参）",
+      "measured": "斜率 0.10420 vs k_h=0.10194（偏 +2.22%）",
+      "verdict": "PASS",
+      "tolerance": "<5%（Gate0 已过 ⟹ 不符即物理）",
+      "interpretation": "随机相位稳态斜率；不同 (A,ω) 坍缩到同一斜率",
+      "figure_ref": "F-3"
+    },
+    {
+      "id": "AS-4",
+      "source": "k_h",
+      "source_kind": "target",
+      "quoted_expectation": "h̄=k_h·(Aω)²",
+      "assert_kind": "deviation",
+      "expect": "基准点 h̄ = 理论闭式",
+      "measured": "h̄_sim=3.118mm vs 理论 3.144mm（偏 -0.84%）",
+      "verdict": "PASS",
+      "tolerance": "<5%"
+    },
+    {
+      "id": "AS-5",
+      "source": "F-4",
+      "source_kind": "figure",
+      "quoted_expectation": "高 Γ 弥散为随机相位带",
+      "assert_kind": "must_not",
+      "expect": "must_not：弹高**不许**是单值锁相（那是忽略能量泵入的退化模型）——分布必须宽",
+      "measured": "CV=1.136（随机相位应 >>0；单值锁相 CV→0）",
+      "verdict": "PASS",
+      "tolerance": "CV>0.3（结构性：宽 vs 单值离散）",
+      "interpretation": "CV 宽 ⟹ 随机相位统计稳态；若 CV→0 说明代码退化成『抛到峰值速度』的单值模型",
+      "figure_ref": "F-4"
+    },
+    {
+      "id": "AS-6",
+      "source": "F-6",
+      "source_kind": "figure",
+      "quoted_expectation": "λ 在混沌区 >0",
+      "assert_kind": "value",
+      "expect": "混沌 λ>0，且可积极限 λ<0（证明正 λ 是真混沌不是噪声）",
+      "measured": "λ_chaos=+7.85（>0）；λ_integrable=-0.511（<0）",
+      "verdict": "PASS",
+      "tolerance": "λ_chaos>0 且 λ_integrable<0",
+      "interpretation": "弹跳映射最大 Lyapunov（每次碰撞）；可积对拍=固定相位",
+      "figure_ref": "F-6"
+    },
+    {
+      "id": "AS-7",
+      "source": "F-5",
+      "source_kind": "figure",
+      "quoted_expectation": "以 Γ~π 分界",
+      "assert_kind": "value",
+      "expect": "regime 由 Γ 定，f/f_bounce=Γ/π·√((1+e)/2(1-e))，工作点在随机相位区（>>1）",
+      "measured": "Γ=1572，f/f_bounce=708（>>1 ⟹ 随机相位）",
+      "verdict": "PASS",
+      "tolerance": "f/f_bounce>>1",
+      "interpretation": "读法：regime 由单一 Γ 划界（f/f_bounce=Γ/π·√因子），工作点 f/f_bounce>>1 判为随机相位区；不取『混沌需另一个独立参数』的读法",
+      "figure_ref": "F-5"
+    },
+    {
+      "id": "AS-8",
+      "source": "A-1",
+      "source_kind": "risky_check",
+      "quoted_expectation": "两者差 2×，离散",
+      "assert_kind": "must_not",
+      "expect": "A-1 退化特征（must_not）：共振峰**不许**落在 c/2L（自由-自由）——若落在 c/2L 说明 BC 取错，退化回自由-自由",
+      "measured": "峰在 13975 Hz（偏 c/4L +0.00%）；到 c/2L=27951 的距离 -50.0%（远，非退化）",
+      "verdict": "PASS",
+      "tolerance": "峰位离 c/2L 远（>40%）；离 c/4L 近（<5%）",
+      "verdict_note": "★ 诚实局限（r2-H1'）：加 1f+2f 偏置后 14kHz 处两种 BC 都有峰，峰位单读数不足以定 BC——此断言只验『无谐波理想扫频』下的峰位；实测需模式形状/多点测振"
+    },
+    {
+      "id": "AS-9",
+      "source": "A-4",
+      "source_kind": "risky_check",
+      "quoted_expectation": "k 在扫描范围内恒定（相对变化 <10%）",
+      "assert_kind": "must_not",
+      "expect": "A-4 退化特征（must_not）：h̄ vs (Aω)² 的斜率**不许**随扫描系统性漂移——漂移则 e(u) 速度依赖（退化）",
+      "measured": "低段斜率 0.1004 vs 高段 0.1049（变化 4.50%）",
+      "verdict": "PASS",
+      "tolerance": "斜率漂移 <10%（常数 e）",
+      "verdict_note": "常数 e 下斜率应恒定；若漂移>10% ⟹ e(u) 速度依赖（A-4 RISKY 的退化特征）"
+    },
+    {
+      "id": "AS-10",
+      "source": "V-1",
+      "source_kind": "figure",
+      "quoted_expectation": "A(f) 峰证明棒被声共振驱动",
+      "assert_kind": "peak",
+      "expect": "V-1 中间量：棒尖振幅 A(f) 峰位独立验证（不由弹高反推）",
+      "measured": "A(f) 峰在 13975 Hz = f_1（偏 +0.00%）",
+      "verdict": "PASS",
+      "tolerance": "<5%",
+      "interpretation": "共振曲线峰位独立于弹跳链条——验中间量而非拿弹高倒推",
+      "figure_ref": "V-1"
+    }
+  ],
+  "targets": [
+    {
+      "symbol": "f_1",
+      "meaning": "棒纵向基频（固定-自由）",
+      "unit": "Hz",
+      "value_numeric": 13975.424859373685,
+      "value_analytical": 13975.424859373685,
+      "relative_deviation": 0.0,
+      "scaling_law_measured": "13975.4 Hz（共振峰实测 13975.4）"
+    },
+    {
+      "symbol": "A_thr",
+      "meaning": "起弹阈值处棒尖振幅（Γ=1）",
+      "unit": "m",
+      "value_numeric": 1.272269838760107e-09,
+      "value_analytical": 1.272269838760107e-09,
+      "relative_deviation": 0.0,
+      "scaling_law_measured": "g/ω₁²（阈值，nm 级）"
+    },
+    {
+      "symbol": "k_h",
+      "meaning": "稳态弹高系数 h̄/(Aω)²（随机相位）",
+      "unit": "s^2/m",
+      "value_numeric": 0.1019367991845056,
+      "value_analytical": 0.1019367991845056,
+      "relative_deviation": 0.0,
+      "scaling_law_measured": "0.10420（h̄ 坍缩斜率，偏 +2.22%）"
+    }
+  ],
+  "figures": [
+    {
+      "id": "F-1",
+      "path": "02-sim/figures/F-1.png",
+      "assertion_ids": [
+        "AS-2",
+        "AS-8"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "棒受迫共振曲线，峰在 f₁=c/4L=13.98 kHz（固定-自由）。★ 峰位是 A-1 的退化特征：固定-自由 c/4L vs 自由-自由 c/2L=28.0 kHz，差 2× 离散。诚实局限（r2-H1'）：加 1f+2f 偏置后 14 kHz 处两种 BC 都有峰，峰位单读数不足以定 BC，实测需模式形状。",
+      "path_svg": "02-sim/figures/F-1.svg"
+    },
+    {
+      "id": "F-2",
+      "path": "02-sim/figures/F-2.png",
+      "assertion_ids": [
+        "AS-7",
+        "AS-5"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "碰撞映射的 Poincaré（落速 u vs 落相 φ）。Γ=1572>>π ⟹ 落相有效随机 ⟹ 弥散云=随机相位统计稳态（非单值锁相，CV=1.14）。这是本题可见弹跳的真实 regime。",
+      "path_svg": "02-sim/figures/F-2.svg"
+    },
+    {
+      "id": "F-3",
+      "path": "02-sim/figures/F-3.png",
+      "assertion_ids": [
+        "AS-3",
+        "AS-4"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "弹高数据坍缩：h̄ vs (Aω)² 过原点直线，斜率 0.1042 vs 零参预言 k_h=(1+e)/[4g(1-e)]=0.1019（偏 +2.22%）。随机相位能量平衡的零自由参数验证。",
+      "path_svg": "02-sim/figures/F-3.svg"
+    },
+    {
+      "id": "F-4",
+      "path": "02-sim/figures/F-4.png",
+      "assertion_ids": [
+        "AS-5",
+        "AS-7"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "弹高（归一化）随 Γ 的分岔状分布。低 Γ（≲π）确定性映射区（周期倍化/混沌，但此时弹高 nm 不可见）；高 Γ（>>π）弥散为随机相位统计带。边界在 Γ~π=f/f_bounce~1。工作点 Γ=1572 深在随机相位区。",
+      "path_svg": "02-sim/figures/F-4.svg"
+    },
+    {
+      "id": "F-5",
+      "path": "02-sim/figures/F-5.png",
+      "assertion_ids": [
+        "AS-9",
+        "AS-4"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "弹高对恢复系数 e 的依赖，实测与 (1+e)/(1−e)·(Aω)²/4g 吻合；e→1 发散（无耗散无稳态）。斜率在扫描范围内恒定（变化 4.5%<10% ⟹ A-4 常数 e 成立）。",
+      "path_svg": "02-sim/figures/F-5.svg"
+    },
+    {
+      "id": "F-6",
+      "path": "02-sim/figures/F-6.png",
+      "assertion_ids": [
+        "AS-6"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "弹跳映射的最大 Lyapunov 指数（每次碰撞）在整个随机相位区 λ>0（混沌）。★ Gate-0 对拍：可积极限（固定相位）λ=ln e=-0.51<0（收缩）——证明正 λ 是真混沌不是浮点噪声。",
+      "path_svg": "02-sim/figures/F-6.svg"
+    },
+    {
+      "id": "V-1",
+      "path": "02-sim/figures/V-1.png",
+      "assertion_ids": [
+        "AS-10"
+      ],
+      "verdict": "PASS",
+      "simulation_stamped": true,
+      "caption": "V-1 中间量：棒尖振幅 A(f) 峰在 f₁=13.98 kHz，独立于弹跳链条（激光测振/干涉直接测），不由弹高反推 —— 反推会掩盖两个互相抵消的错误。这是『验中间量』而非『拿末态反证模型』。",
+      "path_svg": "02-sim/figures/V-1.svg"
+    }
+  ],
+  "risky_checks": [
+    {
+      "assumption_id": "A-1",
+      "quoted_pass_criterion": "报告共振峰位置 f_1。若 |f_1 - c/4L|/(c/4L) < 5% ⟹ 固定-自由（正确）；若峰落在 c/2L（≈2f_1）⟹ 自由-自由。两者差 2×，离散。",
+      "result": "峰在 13975 Hz（偏 c/4L +0.00%）；到 c/2L=27951 的距离 -50.0%（远，非退化）",
+      "holds": true,
+      "prescribed_action": null,
+      "prescribed_action_taken": null,
+      "impact_on_predictions": "峰位定 BC；诚实局限：1f+2f 谐波下 14kHz 两 BC 都有峰（r2-H1'）"
+    },
+    {
+      "assumption_id": "A-4",
+      "quoted_pass_criterion": "报告 h̄ vs (Aω)² 的斜率 k。若 k 在扫描范围内恒定（相对变化 <10%）⟹ e 常数（A-4 成立）；若 k 随 (Aω) 系统性漂移 ⟹ e(u) 速度依赖。",
+      "result": "低段斜率 0.1004 vs 高段 0.1049（变化 4.50%）",
+      "holds": true,
+      "prescribed_action": null,
+      "prescribed_action_taken": null,
+      "impact_on_predictions": "常数 e 下 h̄∝(Aω)² 斜率恒定；漂移则 P2 斜率随驱动变"
+    }
+  ],
+  "matlab_port": {
+    "present": false,
+    "verified": false,
+    "note": "本轮未做 MATLAB 移植"
+  },
+  "reproduce": {
+    "command": "python 02-sim/code/run_all.py",
+    "runtime_seconds": null
+  },
+  "spec_defects": [],
+  "open_gaps": []
+}

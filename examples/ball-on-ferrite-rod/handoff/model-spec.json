@@ -456,7 +456,8 @@
       "latex": "\\bar h=\\dfrac{1+e}{1-e}\\dfrac{(A\\omega)^2}{4g}",
       "kind": "algebraic",
       "closed_form": "(1+e)/(1-e)*(A*omega)**2/(4*g)",
-      "suggested_method": "随机相位能量平衡（A-2）"
+      "suggested_method": "随机相位能量平衡（A-2）",
+      "numerical_notes": "Gate 0 极限对拍（纯数学，先跑）：① 单次碰撞 v_out=(1+e)w+e·u 结构解析精确（<1e-12）；② A→0 时 h̄→0，扫 A=1,0.3,0.1,0.03,0.01 单调趋 0（∝A²）；③ e→1 时 h̄→∞，扫 e=0.5,0.7,0.9,0.95,0.99 单调增；④ Lyapunov 可积对拍：固定相位（不演化）退化为线性收缩映射，λ=ln e<0，而真混沌 λ>0——证明正 λ 不是浮点噪声。"
     },
     {
       "id": "(2)",
@@ -563,17 +564,6 @@
       "series": "扫 Γ",
       "kind": "lyapunov-map",
       "expected_shape": "λ 在混沌区 >0；频谱从离散峰展宽为连续宽带",
-      "compare_with": "数值",
-      "answers_task": "T-4"
-    },
-    {
-      "id": "F-7",
-      "purpose": "T-4：球轨迹随 Γ 从周期→混沌切换（时空演化）",
-      "x": "时间 t",
-      "y": "球高度 z_ball(t) 叠加棒尖 z_tip(t)",
-      "series": "几个 Γ",
-      "kind": "animation",
-      "expected_shape": "低 Γ 规则周期弹，高 Γ 不规则——一眼看懂模式转变",
       "compare_with": "数值",
       "answers_task": "T-4"
     },
