@@ -355,7 +355,7 @@ $$\nabla^2 p_j=0\ (j=1,2),\qquad [p]_{\rm int}=\gamma\kappa,\qquad v_n=-\dfrac{h
 - **H2（MINOR）**：§3 A-1 失效边界 $h/\lambda^\ast$（与 $h$ 无关，恒 0.14）→ **$h/R$**（$\to0.33$）。
 - **H3（MINOR）**：§0 摘要「零自由参数」限定到**指数**；绝对值 $\lambda^\ast$ 标为一参（需实测 $\gamma$）。§8 P2 同步。
 - **H4（MINOR）**：`criterion_matrix.py` 的 K2 `tolerance_source` 重写为「$\gamma\pm30\%$ 求和方 ⟹ 1σ≈19% ⟹ 门槛 20%」，$\gamma$ 不确定度与 §9 统一到 ±30%。
-- **H5（MINOR，良性）**：内嵌 `criterion_matrix` 的手加 `script` 键——见下（DESYNC 门设计上剥离 `script` 再比对，故 provenance 仍可信；本轮保留，另在 skill 层评估门是否该更严）。
+- **H5（MINOR，良性，已核 skill 门）**：内嵌 `criterion_matrix` 的手加 `script` 键是 Stage 8.5 **有意**的（契约要求保留）。核 `check_matrix_desync`（check_analysis.py:1340）：`embedded = {k:v for k,v in cm.items() if k != "script"}` 后要求 `embedded == matrix.json` **逐字相等**——**只剥离 `script` 这一个键，任何第二个多余键或改值都会被抓**。故不是「对多一个键放行」的盲区，门 scope 正确，无需改。本轮保留 `script`。
 - **UNCLEAR/A-2**：审稿判「无从加罪」（已预注册 RISKY + 退化签名），不改；仍是全题头号物理前提，靠实测 $\gamma$ + 看谱峰定。
 
 ### 交接
