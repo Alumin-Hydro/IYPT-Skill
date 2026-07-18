@@ -33,9 +33,9 @@ def f1(AS, D):
         fs, Af = D["res_fs"] / 1e3, D["res_A"]
         FK.plot_model(ax, fs, Af / Af.max(), 0, "driven tip amplitude A(f) (Lorentz, Q=100)")
         ax.axvline(D["peak_c4L"] / 1e3, color=FK.INK, ls="-", lw=1.4)
-        ax.annotate(f"fixed-free f₁ = c/4L = {D['peak_c4L']/1e3:.2f} kHz  ✓ (peak here)",
-                    xy=(D["peak_c4L"] / 1e3, 1.0), xytext=(6, -6), textcoords="offset points",
-                    fontsize=10.5, color=FK.INK, fontweight="bold")
+        ax.annotate(f"fixed-free f₁ = c/4L = {D['peak_c4L']/1e3:.2f} kHz ✓",
+                    xy=(D["peak_c4L"] / 1e3, 1.0), xytext=(-8, -4), textcoords="offset points",
+                    fontsize=10.5, color=FK.INK, fontweight="bold", ha="right", va="top")
         ax.axvline(D["peak_c2L"] / 1e3, color=FK.SLOTS[3]["color"], ls="--", lw=1.4)
         ax.annotate(f"free-free c/2L = {D['peak_c2L']/1e3:.1f} kHz\n(no peak ⟹ not this BC)",
                     xy=(D["peak_c2L"] / 1e3, 0.4), fontsize=10, color=FK.SLOTS[3]["color"], ha="right")
@@ -163,7 +163,7 @@ def f6(AS, D):
         ax.set_xscale("log")
         ax.set_xlabel("Γ = Aω²/g")
         ax.set_ylabel("max Lyapunov exponent λ (per collision)")
-        ax.legend(loc="upper right", fontsize=10)
+        ax.legend(loc="upper left", fontsize=10)
         FK.assertions(fig, _rows(AS, [
             ("AS-6", "λ_chaos>0 & λ_integrable<0", f"λ_c={D['lyap_chaos']:+.2f}, λ_i={D['lyap_integrable']:+.3f}"),
         ]))
@@ -182,7 +182,7 @@ def v1(AS, D):
         ax.axvline(F1 / 1e3, color=FK.INK, ls="-", lw=1.2)
         ax.set_xlabel("drive frequency f (kHz)")
         ax.set_ylabel("tip amplitude A/A_max")
-        ax.legend(loc="upper right", fontsize=10)
+        ax.legend(loc="lower left", fontsize=10)
         ax.annotate("measure A(f) directly (interferometer),\n"
                     "NOT back-inferred from bounce height\n"
                     "(that would mask two cancelling errors)",
