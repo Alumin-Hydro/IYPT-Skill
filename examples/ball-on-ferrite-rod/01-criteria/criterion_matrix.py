@@ -78,8 +78,8 @@ criteria = [
  {"id":"C1-peak","statement":"共振峰位 = c/4L（固定-自由）","tolerance":0.10,
   "tolerance_source":"【结构】峰位是本征值，固定-自由 c/4L=13975Hz vs 自由-自由 c/2L=27951Hz，**差 2× 离散**。门槛 10% ≪ 100% 间隔 ⟹ 远离两者。不用弹高幅度（连续可漂移）。",
   "measure":"peak","target":f_res,"kind":"relerr"},
- {"id":"C2-slope","statement":"h̄ = (1+e)/(1-e)(Aω)²/4g（绝对值/斜率）","tolerance":0.15,
-  "tolerance_source":"实验侧：独立测 A（干涉 ~10%）+ e（落球 ~5%）⟹ 预言侧不确定度 ~15%。这是**绝对值**判据（唯一能抓『形状全对、系数偏了』的错模型）。",
+ {"id":"C2-slope","statement":"h̄ = (1+e)/(1-e)(Aω)²/4g（绝对值/斜率）","tolerance":0.22,
+  "tolerance_source":"★ r2 审稿 H2'（P17-in-gate）：预言侧误差传播必须按 h̄∝A² 算。独立测 A（干涉 ~10%）进 h̄ 是 **2×10%=20%**；e（落球 ~5% ⟹ δe≈0.03）经 d ln[(1+e)/(1-e)]/de=2/(1-e²)≈3.1 给 ~9%。求积 √(20²+9²)≈**22%**（不是 15%——那把 A 当线性了）。这是**绝对值**判据（唯一能抓『形状全对、系数偏了』的 WM5）；WM5 偏 2×（=100%）远超 22%，稳抓。",
   "measure":"hbar","target":hb_th,"kind":"relerr"},
  {"id":"C3-diverge","statement":"h̄ 随 e→1 发散（(1+e)/(1-e) 结构）","tolerance":0.20,
   "tolerance_source":"【结构】比值 h̄(0.9)/h̄(0.6)：正确 (1+e)/(1-e) 给 (1.9/0.1)/(1.6/0.4)=4.75；无耗散结构（如 e² 或常数）给 ≠4.75。门槛 20% 分辨 4.75 vs 其它。",
@@ -159,17 +159,19 @@ for wm in wrong_models:
 
 # ─────────────────────────────────────────── robustness_scan（正确模型在自己承认的系统误差上不误杀）
 # 承认的系统误差：e 的测量不确定度 ±5%（A-4）。扫 e，确认 C1(峰位) 与 C3(发散结构) 不误杀。
-budget_e = 0.05
-scan_upper = 0.20                    # 扫到 4× budget（≥3×，CRIT-ROBUSTNESS-COARSE）
+C2_TOL = 0.22
+# ★ r2 审稿 H2'③：robustness 必须扰动**主导**不确定度 A（h̄∝A²），不能只扫 e。
+budget_A = 0.10                      # 独立测 A 的不确定度（干涉 ~10%）
+scan_upper = 0.35                    # 扫到 3.5× budget（> 3×，避开浮点边界）
 scan = []
-for de in [-0.20, -0.10, -0.05, 0.0, 0.05, 0.10, 0.20]:
-    ee = e0 * (1 + de)
-    hb = hbar_sim(A0, w0, ee)
-    passC2 = abs(hb / hb_th - 1) <= 0.15
-    scan.append({"delta_e": round(de, 4), "hbar": hb, "C2_pass": passC2})
-# delta_max：C2 开始误杀正确模型的最小 |de| —— **二分**定界（bracket 相对宽 <5%，非网格）
-def falsekilled(de):
-    return abs(hbar_sim(A0, w0, e0 * (1 + de)) / hb_th - 1) > 0.15
+for dA in [-0.35, -0.20, -0.10, 0.0, 0.10, 0.20, 0.35]:
+    AA = A0 * (1 + dA)
+    hb = hbar_sim(AA, w0, e0)
+    passC2 = abs(hb / hb_th - 1) <= C2_TOL   # target 用名义 A0 ⟹ 测 A 偏 dA 时 h̄ 偏 ~2dA
+    scan.append({"delta_A": round(dA, 4), "hbar": hb, "C2_pass": passC2})
+# delta_max：C2 开始误杀正确模型的最小 |dA| —— 二分定界
+def falsekilled(dA):
+    return abs(hbar_sim(A0 * (1 + dA), w0, e0) / hb_th - 1) > C2_TOL
 lo, hi, delta_max = 0.0, None, None
 step = 0.005
 d = step
@@ -192,7 +194,7 @@ if hi is not None:                       # 二分收紧 [lo,hi] 到相对宽 <5%
 eps_offset = None
 for fac in [x / 100 for x in range(400, 200, -2)]:   # 4.00 → 2.02
     hb_wm = (1 + e0) / (1 - e0) * (A0 * w0) ** 2 / (fac * g)
-    if abs(hb_wm / hb_th - 1) > 0.15:                 # 被 C2 抓到
+    if abs(hb_wm / hb_th - 1) > C2_TOL:               # 被 C2 抓到
         eps_offset = abs(4.0 / fac - 1); break
 # ε*_BC：C1 能检测的最小峰位偏移（连续从 c/4L 移开）
 eps_bc = 0.10   # = C1 tolerance（峰位偏 >10% 即抓）
@@ -206,15 +208,15 @@ matrix = {
    "passes_all": all(correct_pass.values()),
  },
  "robustness_scan": {
-   "parameter": "e（恢复系数）测量不确定度",
-   "why": "A-4 承认 e 有 ±5% 测量不确定度；正确模型在这条系统误差上不能被 C2 误杀。",
+   "parameter": "A（棒尖振幅）测量不确定度 —— r2 审稿 H2'③：h̄∝A² 是主导不确定度，必须扫它",
+   "why": "独立测 A 有 ±10% 不确定度（干涉），且 h̄∝A² 放大成 ±20% —— 这是预言侧主导误差；正确模型在这条上不能被 C2 误杀。（只扫 e 会对主导量结构性失明。）",
    "scan_upper_bound": scan_upper,
-   "systematic_error_budget": budget_e,
+   "systematic_error_budget": budget_A,
    "delta_max": bracket_hi,
    "delta_max_bracket": [bracket_lo, bracket_hi] if bracket_hi is not None else None,
-   "margin": (bracket_hi / budget_e) if bracket_hi else None,
+   "margin": (bracket_hi / budget_A) if bracket_hi else None,
    "scan": scan,
-   "verdict": "PASS" if (delta_max is None or delta_max >= budget_e) else "FALSEKILL-RISK",
+   "verdict": "PASS" if (delta_max is None or delta_max >= budget_A) else "FALSEKILL-RISK",
  },
  "min_detectable": {
    "why": "ε* 是判据集的分辨率——可汇报的物理结论，而非『某个错模型被抓到』。",
@@ -247,7 +249,7 @@ print("=== 双向表 ===")
 print("正确模型全 PASS :", matrix["correct_model"]["passes_all"], correct_pass)
 print("每个错模型被抓 :", model_caught)
 print("每条判据抓到   :", {k: v for k, v in catches.items()})
-print("robustness      : delta_max=%s budget=%s margin=%s" % (delta_max, budget_e, matrix["robustness_scan"]["margin"]))
+print("robustness      : delta_max=%s budget=%s margin=%s" % (delta_max, budget_A, matrix["robustness_scan"]["margin"]))
 print("min_detectable  : eps_offset(C2)=%s eps_bc(C1)=%s" % (eps_offset, eps_bc))
 print("VERDICT         :", matrix["verdict"])
 raise SystemExit(0 if matrix["verdict"] == "PASS" else 1)

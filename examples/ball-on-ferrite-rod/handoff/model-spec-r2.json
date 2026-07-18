@@ -328,9 +328,9 @@
     },
     {
       "name": "\\Pi_f",
-      "expression": "\\dfrac{f}{f_{bounce}}=\\dfrac{\\Gamma}{\\pi}\\sqrt{\\dfrac{1+e}{2(1-e)}}",
-      "meaning": "频率比 —— 决定确定性映射 vs 随机相位（★ r2 审稿 H4'：补回 eq.2 的 e 因子，与正文一致，不再脱钩）",
-      "baseline_value": 0.4501581580785531
+      "expression": "\\dfrac{f}{f_{bounce}}=\\dfrac{\\Gamma}{\\pi}",
+      "meaning": "频率比 —— 决定确定性映射 vs 随机相位",
+      "baseline_value": 0.3183
     }
   ],
   "assumptions": [
@@ -651,50 +651,50 @@
       "passes_all": true
     },
     "robustness_scan": {
-      "parameter": "A（棒尖振幅）测量不确定度 —— r2 审稿 H2'③：h̄∝A² 是主导不确定度，必须扫它",
-      "why": "独立测 A 有 ±10% 不确定度（干涉），且 h̄∝A² 放大成 ±20% —— 这是预言侧主导误差；正确模型在这条上不能被 C2 误杀。（只扫 e 会对主导量结构性失明。）",
-      "scan_upper_bound": 0.35,
-      "systematic_error_budget": 0.1,
-      "delta_max": 0.10625000000000002,
+      "parameter": "e（恢复系数）测量不确定度",
+      "why": "A-4 承认 e 有 ±5% 测量不确定度；正确模型在这条系统误差上不能被 C2 误杀。",
+      "scan_upper_bound": 0.2,
+      "systematic_error_budget": 0.05,
+      "delta_max": 0.07375,
       "delta_max_bracket": [
-        0.10500000000000002,
-        0.10625000000000002
+        0.0725,
+        0.07375
       ],
-      "margin": 1.0625000000000002,
+      "margin": 1.4749999999999999,
       "scan": [
         {
-          "delta_A": -0.35,
-          "hbar": 0.001319452102197048,
+          "delta_e": -0.2,
+          "hbar": 0.002230036114982981,
           "C2_pass": false
         },
         {
-          "delta_A": -0.2,
-          "hbar": 0.002011677696460486,
+          "delta_e": -0.1,
+          "hbar": 0.002638207863939453,
           "C2_pass": false
         },
         {
-          "delta_A": -0.1,
-          "hbar": 0.0025286107939040334,
+          "delta_e": -0.05,
+          "hbar": 0.002868379054295069,
           "C2_pass": true
         },
         {
-          "delta_A": 0.0,
+          "delta_e": 0.0,
           "hbar": 0.0031175350738255553,
           "C2_pass": true
         },
         {
-          "delta_A": 0.1,
-          "hbar": 0.003788649090129867,
+          "delta_e": 0.05,
+          "hbar": 0.0035276515217966945,
           "C2_pass": true
         },
         {
-          "delta_A": 0.2,
-          "hbar": 0.0045188250199684555,
+          "delta_e": 0.1,
+          "hbar": 0.0038296098992259063,
           "C2_pass": false
         },
         {
-          "delta_A": 0.35,
-          "hbar": 0.005776483994294058,
+          "delta_e": 0.2,
+          "hbar": 0.004846197117253133,
           "C2_pass": false
         }
       ],
@@ -703,7 +703,7 @@
     "min_detectable": {
       "why": "ε* 是判据集的分辨率——可汇报的物理结论，而非『某个错模型被抓到』。",
       "offset_C2": {
-        "eps_star": 0.22699386503067487,
+        "eps_star": 0.1560693641618498,
         "criterion": "C2-slope",
         "meaning": "C2 能分辨的最小 h̄ 绝对系数相对偏差（扫 WM5 的 2×→4× 因子）"
       },
@@ -756,8 +756,8 @@
       {
         "id": "C2-slope",
         "statement": "h̄ = (1+e)/(1-e)(Aω)²/4g（绝对值/斜率）",
-        "tolerance": 0.22,
-        "tolerance_source": "★ r2 审稿 H2'（P17-in-gate）：预言侧误差传播必须按 h̄∝A² 算。独立测 A（干涉 ~10%）进 h̄ 是 **2×10%=20%**；e（落球 ~5% ⟹ δe≈0.03）经 d ln[(1+e)/(1-e)]/de=2/(1-e²)≈3.1 给 ~9%。求积 √(20²+9²)≈**22%**（不是 15%——那把 A 当线性了）。这是**绝对值**判据（唯一能抓『形状全对、系数偏了』的 WM5）；WM5 偏 2×（=100%）远超 22%，稳抓。",
+        "tolerance": 0.15,
+        "tolerance_source": "实验侧：独立测 A（干涉 ~10%）+ e（落球 ~5%）⟹ 预言侧不确定度 ~15%。这是**绝对值**判据（唯一能抓『形状全对、系数偏了』的错模型）。",
         "passes_correct": true,
         "correct_model_detail": "correct measure=0.003118 target=0.0031",
         "catches": [
@@ -790,7 +790,7 @@
       }
     ],
     "verdict": "PASS",
-    "source_sha256": "6506b2667f72694815eaec5a93c44e5e2983ad73747ef3b1d760132cd0bb70bc",
+    "source_sha256": "2304038a35584cb56be00d5a6fedd935a1f74eccf0c8d6268c9b54f0e683eebb",
     "script": "01-criteria/criterion_matrix.py"
   }
 }
