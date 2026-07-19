@@ -81,7 +81,7 @@ motion of the magnet and how the terminal velocity depends on relevant parameter
 | Skill | 职责 | 状态 |
 |---|---|---|
 | `iypt-analysis` | 补全设定 → 假设台账 → 量纲分析 → 机制预算 → 分层推导 → 可证伪预测 | ✅ |
-| `iypt-physics-review` | 对抗式物理审稿（17 条具体错误模式） | ✅ |
+| `iypt-physics-review` | 对抗式物理审稿（18 条具体错误模式 P1–P18） | ✅ |
 | `iypt-simulation` | 数值解 + 六道验证门 + 可视化（Python / JS 动态页面 / 带自检的 MATLAB 移植） | ✅ |
 | `iypt-slides` | Physics Fight 用的幻灯片（**数字不许手打，只许写指针**） | ✅ |
 | `iypt-design-review` | 图 / 交互页 / 幻灯片的设计审查（16 条失败模式，**必须真的看图**） | ✅ |
@@ -136,7 +136,26 @@ motion of the magnet and how the terminal velocity depends on relevant parameter
 
 ## 样例
 
-`examples/magnetic-brake/` 是一次真实跑通的完整产出（"圆柱磁体在导电铜管中下落，研究终速对参数的依赖"），可以直接当作参考基线：设定书、6 条假设台账、Buckingham Π、机制预算、闭式解 $v_t = \frac{1024}{45}\frac{Mga^4}{\mu_0^2m^2\sigma w} = 2.74$ cm/s、7 条零自由参数预测、实验方案，以及审稿报告。
+`examples/` 下有四道真实跑通的题，每一道示范流水线的一个侧面：
+
+| 题 | slug | 它教你什么 |
+|---|---|---|
+| 磁刹车 | `magnetic-brake` | **回归基线**：完整走完 1→2→3→4，并演示「数值打脸模型 → 反向边修订」全过程 |
+| 线圈里弹簧上的磁体 | `electrical-damping` | **判据的双向验证**：8 轮对抗审稿把「判据只在正确模型上跑过 = 换了一把新的瞎锁」压成 ~16 道机械门 |
+| 铁氧体棒上的球 | `ball-on-ferrite-rod` | **practice + correspond**（见下）：独立跑完再和真实获奖报告对照 |
+| 分形手指（流体/图案） | `fractal-fingers` | **换一个物理域**：Marangoni 铺展 + 黏性指 + DLA 分形，检验 skill 在非电磁题上还成不成立 |
+
+### practice + correspond：怎么知道这套流水线可信
+
+`example-ppt/` 里存了十几份真实的 IYPT/CUPT 获奖报告。验证方法是：**拿一道有真实报告的旧题，只读题面、独立跑一遍流水线，写完之前绝不看参考解答，再拿真实报告做「对照」**（`examples/<题>/02-correspond.md`）。**"先写完再看" 是纪律**——偷看就成了抄，只有双框架的独立收敛才有说服力。三个层次的结论：
+
+1. **收敛**：一个**没有任何上下文**的 Claude + skill，能从一句话的题面独立收敛到真实获奖队的整个物理骨架（同一个碰撞映射 / 同一套形态分相 / 同一个分形维数）。
+2. **对抗审稿抓真 bug**：fresh-context 审稿人抓到的 MAJOR，往往正是「真实团队靠某个设计选择避开、而独立分析没那个上下文就会踩」的地方。
+3. **★ 对账抓到审稿够不到的那层**：当分析**诚实地**把某个机制标成 `RISKY`，审稿人无从给一个预注册的假设定罪——**只有对照真实报告 / 真实实验，才能证明那条 RISKY 分支才是对的**。对抗审稿与对照是**互补**的两层，各自抓对方结构上抓不到的东西。
+
+---
+
+`examples/magnetic-brake/` 是最值得逐行读的参考基线（"圆柱磁体在导电铜管中下落，研究终速对参数的依赖"）：设定书、6 条假设台账、Buckingham Π、机制预算、闭式解 $v_t = \frac{1024}{45}\frac{Mga^4}{\mu_0^2m^2\sigma w} = 2.74$ cm/s、7 条零自由参数预测、实验方案，以及审稿报告。
 
 这个样例最值得看的地方是**它的模型是"知道自己错在哪"的**：点偶极子近似要求 $a \gg L$，而实际 $a/L = 0.60$——判据根本不满足。台账把它标为 `RISKY`，并明确指出：这**不影响** $v_t \propto \sigma^{-1}, w^{-1}, B_r^{-2}$ 的指数，但**会让最激进的预测 $v_t \propto a^4$ 站不住**。这种"我的结论哪一条会先塌"的自觉，正是 Physics Fight 上分数的来源。
 

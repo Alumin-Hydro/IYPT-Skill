@@ -11,7 +11,7 @@ Skill 1 (物理分析) ⇄ 审稿  →  Skill 2 (仿真/验证/可视化) ⇄ Sk
 | Skill | 名称 | 状态 |
 |---|---|---|
 | 1 | `iypt-analysis` | ✅ |
-| 1R | `iypt-physics-review` | ✅（17 条错误模式；**P17「判据界错了量」产出比最高**） |
+| 1R | `iypt-physics-review` | ✅（18 条错误模式 P1–P18；**P17「判据界错了量」产出比最高**） |
 | 2 | `iypt-simulation` | ✅（六道验证门 + 中间量验证） |
 | 3 | `iypt-slides` | ✅（**溯源即结构**：数字不许手打，只许写指针） |
 | 4 | `iypt-design-review` | ✅（16 条设计失败模式；**HTML 也是图**） |
